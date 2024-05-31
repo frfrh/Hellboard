@@ -1,0 +1,8 @@
+#
+
+*.orig
+
+*auto_saved_files*
+_autosave*
+~*
+PCB/Hellboard-backups/*
