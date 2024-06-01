@@ -31,7 +31,8 @@ You can change the modifyer key in https://github.com/frfrh/Hellboard/blob/maste
 
 ## Build your own
 
-You can use the gerber files in https://github.com/frfrh/Hellboard/tree/master/PCB/gerber to order your own PCBs or order it directly from https://aisler.net/p/AHPZGPKK.
+You can use the gerber files in [PCB/gerber](https://github.com/frfrh/Hellboard/tree/master/PCB/gerber) to order your own PCBs or order it directly from https://aisler.net/p/AHPZGPKK.
+
 You will also need the following parts:
 
 | Part | Amount | Link |
