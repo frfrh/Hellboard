@@ -530,13 +530,13 @@
     "annotate_start_num": 0,
     "bom_fmt_presets": [],
     "bom_fmt_settings": {
-      "field_delimiter": ",",
+      "field_delimiter": ";",
       "keep_line_breaks": false,
       "keep_tabs": false,
-      "name": "CSV",
+      "name": "Strichpunkte",
       "ref_delimiter": ",",
       "ref_range_delimiter": "",
-      "string_delimiter": "\""
+      "string_delimiter": "'"
     },
     "bom_presets": [],
     "bom_settings": {
@@ -588,6 +588,12 @@
           "group_by": false,
           "label": "Beschreibung",
           "name": "Description",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Datasheet Socket",
+          "name": "Datasheet Socket",
           "show": false
         }
       ],
