@@ -4923,7 +4923,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.waveshare.com/rp2040-zero.htm"
 			(at 102.87 44.45 0)
 			(effects
 				(font
@@ -4932,7 +4932,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" ""
+		(property "Description" "Waveshare RP2040-Zero controller"
 			(at 93.98 49.53 0)
 			(effects
 				(font
@@ -5054,7 +5054,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.datasheethub.com/ssd1306-128x64-mono-0-96-inch-i2c-oled-display/"
 			(at 160.02 73.66 90)
 			(effects
 				(font
@@ -6521,7 +6521,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "M93C66-WMN6P"
+		(property "Datasheet" "https://www.st.com/resource/en/datasheet/m93c46-w.pdf"
 			(at 232.41 34.29 0)
 			(effects
 				(font
@@ -6823,6 +6823,15 @@
 			)
 		)
 		(property "Description" "RGB LED with integrated controller, 2.0 x 2.0 mm, 12 mA"
+			(at 102.87 147.32 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet Socket" "http://www.kailh.com/product/Ms/rcb/CPG151101S11-16.pdf"
 			(at 102.87 147.32 0)
 			(effects
 				(font
