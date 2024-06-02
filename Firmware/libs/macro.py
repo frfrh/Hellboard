@@ -106,4 +106,6 @@ class Macros:
     AutocannonSentry = Macro("Autocannon Sentry", Color.GREEN, [Direction.DOWN, Direction.UP, Direction.RIGHT, Direction.UP, Direction.LEFT, Direction.UP])
     RocketSentry = Macro("Rocket Sentry", Color.GREEN, [Direction.DOWN, Direction.UP, Direction.RIGHT, Direction.RIGHT, Direction.LEFT])
     EMSMortarSentry = Macro("EMS Mortar Sentry", Color.GREEN, [Direction.DOWN, Direction.DOWN, Direction.UP, Direction.UP, Direction.LEFT])
-    PatriotSuit = Macro("Patriot Suite", Color.BLUE, [Direction.LEFT, Direction.DOWN, Direction.RIGHT, Direction.UP, Direction.LEFT, Direction.DOWN, Direction.UP])
+    PatriotSuitExo = Macro("EXO-45 Patriot Exosuit", Color.BLUE, [Direction.LEFT, Direction.DOWN, Direction.RIGHT, Direction.UP, Direction.LEFT, Direction.DOWN, Direction.DOWN])
+    PatriotSuitPexo = Macro("PEXO-49 Emancipator Exosuit", Color.BLUE, [Direction.LEFT, Direction.DOWN, Direction.RIGHT, Direction.UP, Direction.LEFT, Direction.DOWN, Direction.UP])
+    

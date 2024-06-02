@@ -6,9 +6,11 @@ import time
 
 # CONFIG
 # https://deskthority.net/wiki/Scancode
-modifier = 0x06
+modifier = 0xe0
 modifierUseToggle = False
-sleepTime = 20
+pressTime = 50
+openMenueTime = 500
+sleepTime = 100
 
 class Hellbutton():
     def __init__(self, pin, macro):
@@ -34,14 +36,16 @@ class Hellboard():
 
     def sendMacro (self, macro):
         self.k.press(modifier)
-        time.sleep_ms(sleepTime)
+        time.sleep_ms(pressTime)
         if modifierUseToggle:
             self.k.release(modifier)
             time.sleep_ms(sleepTime)
 
+        time.sleep_ms(openMenueTime)
+
         for direction in macro.getDirections():
             self.k.press(direction)
-            time.sleep_ms(sleepTime)
+            time.sleep_ms(pressTime)
             self.k.release(direction)
             time.sleep_ms(sleepTime)
 
