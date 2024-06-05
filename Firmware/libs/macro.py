@@ -65,7 +65,7 @@ class Macros:
     
     OrbitalGatlingBarrage = Macro("Orbital Gatling Barrage", Color.RED, [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP, Direction.UP])
     OrbitalAirburstStrike = Macro("Orbital Airburst Strike", Color.RED, [Direction.RIGHT, Direction.RIGHT, Direction.RIGHT])
-    Orbital120MMHEBarrage = Macro("Orbital 120MM HE Barrage", Color.RED, [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.RIGHT, Direction.DOWN])
+    Orbital120MMHEBarrage = Macro("Orbital 120MM HE Barrage", Color.RED, [Direction.RIGHT, Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.RIGHT, Direction.DOWN])
     OrbitalWalkingBarrage = Macro("Orbital Walking Barrage", Color.RED, [Direction.RIGHT, Direction.DOWN, Direction.UP, Direction.UP, Direction.LEFT, Direction.DOWN, Direction.DOWN])
     Orbital380MMHEBarrage = Macro("Orbital 380MM HE Barrage", Color.RED, [Direction.RIGHT, Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.RIGHT, Direction.DOWN])
     OrbitalLasers = Macro("Orbital Lasers", Color.RED, [Direction.RIGHT, Direction.DOWN, Direction.UP, Direction.RIGHT, Direction.DOWN])
