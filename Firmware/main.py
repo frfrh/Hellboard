@@ -15,6 +15,7 @@ HEIGHT = 64 # oled display height
 
 BRIGHTNESS = 0x50
 BRIGHTNESS_CONFIRM = 0x80
+SCROLLING_TEXT = True
 
 b1_4 = Pin(0, Pin.IN, Pin.PULL_UP)
 b1_3 = Pin(1, Pin.IN, Pin.PULL_UP)
@@ -31,20 +32,54 @@ button_1_2 = Hellbutton(b1_2, Macros.Resupply)
 button_1_3 = Hellbutton(b1_3, Macros.Reinforce)
 button_1_4 = Hellbutton(b1_4, Macros.CYCLE)
 
-button_2_1 = Hellbutton(b2_1, Macros.GrenadeLauncher)
-button_2_2 = Hellbutton(b2_2, Macros.ShieldGeneratorPack)
-button_2_3 = Hellbutton(b2_3, Macros.MortarSentry)
-button_2_4 = Hellbutton(b2_4, Macros.Eagle500KGBomb)
+# Macros.AntiMaterialRifle
+# Macros.ExpendableAntiTank
+# Macros.Autocannon
+# Macros.AirburstRocketLauncher
+# Macros.OrbitalLasers
+# Macros.OrbitalRailcannonStrike
+# Macros.EagleAirstrike
+# Macros.EagleClusterBomb
+# Macros.Eagle500KGBomb
+# Macros.OrbitalPrecisionStrike
+# Macros.GuardDogRover
+# Macros.QuasarCannon
+# Macros.ShieldGeneratorPack
+# Macros.GatlingSentry
+# Macros.MortarSentry
+# Macros.AutocannonSentry
+# Macros.Orbital380MMHEBarrage
+# Macros.PatriotSuitExo
+# Macros.PatriotSuitPexo
+
+# button_2_1 = Hellbutton(b2_1, Macros.ShieldGeneratorPack)
+# button_2_2 = Hellbutton(b2_2, Macros.QuasarCannon)
+# button_2_3 = Hellbutton(b2_3, Macros.EagleClusterBomb)
+# button_2_4 = Hellbutton(b2_4, Macros.AutocannonSentry)
+
+button_2_1 = Hellbutton(b2_1, Macros.EagleClusterBomb)
+button_2_2 = Hellbutton(b2_2, Macros.Eagle500KGBomb)
+button_2_3 = Hellbutton(b2_3, Macros.GatlingSentry)
+button_2_4 = Hellbutton(b2_4, Macros.AutocannonSentry)
 
 row1List = []
-row1List.append (Macros.SOSBeacon)
-row1List.append (Macros.EagleRearm)
-row1List.append (Macros.SuperEarthFlag)
-row1List.append (Macros.SEAFArtilery)
-row1List.append (Macros.UploadData)
-row1List.append (Macros.SeismicProbe)
+row1List.append (Macros.ShieldGeneratorPack)
+row1List.append (Macros.QuasarCannon)
+row1List.append (Macros.GuardDogRover)
+row1List.append (Macros.MortarSentry)
+row1List.append (Macros.OrbitalRailcannonStrike)
 row1List.append (Macros.Hellbomb)
-row1List.append (Macros.OrbitalIlluminationFlare)
+row1List.append (Macros.Eagle110MMRocketPods)
+#row1List.append (Macros.PatriotSuitExo)
+#row1List.append (Macros.PatriotSuitPexo)
+# row1List.append (Macros.EagleRearm)
+# row1List.append (Macros.SEAFArtilery)
+# row1List.append (Macros.Hellbomb)
+# row1List.append (Macros.SOSBeacon)
+# row1List.append (Macros.SuperEarthFlag)
+# row1List.append (Macros.UploadData)
+# row1List.append (Macros.SeismicProbe)
+# row1List.append (Macros.OrbitalIlluminationFlare)
 
 colors = {}
 
@@ -114,6 +149,11 @@ lastTime = time.ticks_ms()
 switchTimeout = 300
 brightnessConfirm = (BRIGHTNESS_CONFIRM<<16) + (BRIGHTNESS_CONFIRM<<8) + (BRIGHTNESS_CONFIRM)
 
+btn_1_3_index = 0
+updateCtr = 0
+lastUpdateCtr = 0
+button_1_3_txt = ''
+
 def doButtons():
     global index
     global lastTime
@@ -138,18 +178,45 @@ def doButtons():
 
 def doDisplay():
     global displayReady
+    global updateCtr
+    global lastUpdateCtr
+    global btn_1_3_index
+    global button_1_3_txt
+
+    
+    if button_1_3_txt != button_1_3.getName():
+        button_1_3_txt = button_1_3.getName()
+        btn_1_3_index = 0
+        updateCtr = 0
+
+    btn_1_3_len = len(button_1_3_txt)
+    
     if displayReady:
+
         oled.fill(0)
-        oled.text(button_1_3.getName(),0,4)
+        oled.text(button_1_3.getName()[btn_1_3_index::1],0,4)
         oled.text("----------------",0,18)
         oled.text(button_2_1.getName(),0,24)
         oled.text(button_2_2.getName(),0,34)
         oled.text(button_2_3.getName(),0,44)
         oled.text(button_2_4.getName(),0,54)
         oled.show()
+    
+    if SCROLLING_TEXT == True:
+        updateCtr = updateCtr + 1
+        
+        if (updateCtr > 10 and updateCtr % 5 == 0):
+            if btn_1_3_index + 16 < btn_1_3_len:
+                btn_1_3_index = btn_1_3_index + 1
+                lastUpdateCtr = updateCtr
+
+        if btn_1_3_index + 16 >= btn_1_3_len and updateCtr - lastUpdateCtr > 10:
+            btn_1_3_index = 0
+            updateCtr = 0
 
 def doLed(buttonPressed):
     global brightnessConfirm
+    
     data = bytearray()
     if buttonPressed:
         for x in range(8):
