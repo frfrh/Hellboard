@@ -13,9 +13,12 @@ openMenueTime = 500
 sleepTime = 100
 
 class Hellbutton():
+    global btnPressed
+
     def __init__(self, pin, macro):
         self.macro = macro
         self.pin = pin
+        self.btnPressed = False
     
     def setMacro(self, macro):
         self.macro = macro
@@ -26,8 +29,20 @@ class Hellbutton():
     def getName(self):
         return self.macro.getName()
     
-    def isPressed(self):
-        return not self.pin.value()
+    def isPressed(self, onRelease):
+        btnState = not self.pin.value()
+        returnValue = False
+        if(onRelease == True):
+            if (btnState == False):
+                if(self.btnPressed == True):
+                    returnValue = True
+                self.btnPressed = False
+            else:
+                self.btnPressed = True
+        else:
+            returnValue = btnState
+
+        return returnValue
         
 
 class Hellboard():
