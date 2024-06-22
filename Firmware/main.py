@@ -19,12 +19,13 @@ BRIGHTNESS = 0x30
 BRIGHTNESS_CONFIRM = 0x80
 SCROLLING_TEXT = True
 
-SHOWLOGO_MSEC = 5000
+SHOWLOGO_MSEC = 3000
 ACTIVATE_SCREENSAVER_MSEC = 0*60*1000 + 30*1000 + 0
 
 ShowLogoCnt = 0
 ScreenSaverCnt = 0
 ScreenSaverActive = False
+PressedBtnIndex = -1
 
 helldiverImage = [
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -150,6 +151,8 @@ button_2_4 = Hellbutton(b2_4, Macros.AutocannonSentry)
 row1List = []
 row1List.append (Macros.ShieldGeneratorPack)
 row1List.append (Macros.QuasarCannon)
+#row1List.append (Macros.AntiPersonnelMinefield)
+#row1List.append (Macros.MachineGun)
 #row1List.append (Macros.Eagle110MMRocketPods)
 #row1List.append (Macros.OrbitalRailcannonStrike)
 #row1List.append (Macros.GuardDogRover)
@@ -246,30 +249,47 @@ button_txt_list = []
 
 def doButtons():
     global ScreenSaverCnt
+    global ScreenSaverActive
     global index
+    global PressedBtnIndex
     global lastTime
-    onBtnRelease = False
+    onBtnRelease = True
     pressed = False
-    for button in buttons:
-        if button.isPressed(onBtnRelease):
-            if button.getMacro() == Macros.CYCLE:
-                if (lastTime + switchTimeout) < time.ticks_ms():
-                    lastTime = time.ticks_ms()
-                    index = index + 1
-                    if index >= len(row1List):
-                        index = 0
-                    pressed = True
-                    button_1_3.setMacro(row1List[index])
-                    
+
+ 
+    if(PressedBtnIndex == -1):
+        btnIndex = 0
+        for button in buttons:
+            if button.isPressed(onBtnRelease):
+                if button.getMacro() == Macros.CYCLE:
+                    if(ScreenSaverActive == True):
+                        ScreenSaverCnt = 0
+                    else:
+                        if (lastTime + switchTimeout) < time.ticks_ms():
+                            lastTime = time.ticks_ms()
+                            index = index + 1
+                            if index >= len(row1List):
+                                index = 0
+                            pressed = True
+                            button_1_3.setMacro(row1List[index])
+                            
+                            if(DEBUG_PRINT == True):
+                                print("Button 1-3 set to: \"" + button_1_3.getMacro().getName() + "\"")
+                else:
                     if(DEBUG_PRINT == True):
-                        print("Button 1-3 set to: \"" + button_1_3.getMacro().getName() + "\"")
-            else:
-                if(DEBUG_PRINT == True):
-                    print(button.getMacro())
-                board.sendMacro(button.getMacro())
-                pressed = True
+                        print(button.getMacro())
+                    board.sendMacro(button.getMacro())
+                    PressedBtnIndex = btnIndex
+                    
+            
+                ScreenSaverCnt = 0
+            btnIndex = btnIndex +1
+    else:
+        if PressedBtnIndex >= 0 and PressedBtnIndex < len(buttons):
+            pressed = board.sendMacro(buttons[PressedBtnIndex].getMacro())
         
-            ScreenSaverCnt = 0
+        if(pressed == True):
+            PressedBtnIndex = -1
 
     return pressed
 
@@ -301,11 +321,11 @@ def doDisplay():
         if (ScreenSaverActive == False):
             oled.fill(0)
             oled.text(button_1_3.getName()[btn_text_index::1],0,4)
-            oled.text("----------------",0,18)
-            oled.text(button_2_1.getName()[btn_text_index::1],0,24)
-            oled.text(button_2_2.getName()[btn_text_index::1],0,34)
+            #oled.text("----------------",0,18)
+            oled.text(button_2_1.getName()[btn_text_index::1],0,20)
+            oled.text(button_2_2.getName()[btn_text_index::1],0,32)
             oled.text(button_2_3.getName()[btn_text_index::1],0,44)
-            oled.text(button_2_4.getName()[btn_text_index::1],0,54)
+            oled.text(button_2_4.getName()[btn_text_index::1],0,56)
             oled.show()
         else:
             oled.fill(0)
@@ -390,32 +410,38 @@ taskTimer_20ms = 20
 taskTimer_50ms = 50
 taskTimer_100ms = 100
 
+pressed = False
+
 while True:
     if(ShowLogoCnt >= SHOWLOGO_MSEC):    
 
-        if(taskTimer_10ms == 0):
-            
-            taskTimer_10ms = 10
+        if doButtons() == True:
+            pressed = True
+
+        if(taskTimer_10ms <= 0):
+
+            taskTimer_10ms = 10 - TASK_TIME_MS
         else:
             taskTimer_10ms = taskTimer_10ms - TASK_TIME_MS
 
-        if(taskTimer_20ms == 0):
-            pressed = doButtons()
-            doLed(pressed)
-            taskTimer_20ms = 20
+        if(taskTimer_20ms <= 0):
+            
+            taskTimer_20ms = 20 - TASK_TIME_MS
         else:
             taskTimer_20ms = taskTimer_20ms - TASK_TIME_MS
 
-        if(taskTimer_50ms == 0):
+        if(taskTimer_50ms <= 0):
             doScreenSaver()
             doDisplay()
-            taskTimer_50ms = 50
+            taskTimer_50ms = 50 - TASK_TIME_MS
         else:
             taskTimer_50ms = taskTimer_50ms - TASK_TIME_MS
 
-        if(taskTimer_100ms == 0):
-            
-            taskTimer_100ms = 100
+        if(taskTimer_100ms <= 0):
+            doLed(pressed)
+            pressed = False
+
+            taskTimer_100ms = 100 - TASK_TIME_MS
         else:
             taskTimer_100ms = taskTimer_100ms - TASK_TIME_MS
     else:
