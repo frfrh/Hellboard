@@ -368,7 +368,7 @@ def doScreenSaver():
     global ScreenSaverActive
 
     if(ScreenSaverCnt < ACTIVATE_SCREENSAVER_MSEC):
-        ScreenSaverCnt = ScreenSaverCnt + 50
+        ScreenSaverCnt = ScreenSaverCnt + 100
         ScreenSaverActive = False
     else:
         ScreenSaverActive = True
@@ -402,9 +402,25 @@ colors[Color.WHITE] = (BRIGHTNESS<<16) + (BRIGHTNESS<<8) + (BRIGHTNESS)
 
 drawLogo()
 
-TASK_TIME_MS = 5
+TASK_TIME_MS = 1
 taskTimer = 0
+ShowLogoCnt = time.ticks_ms()
 
+debugTaskTiming = 0
+
+avgTaskTime_5ms = -1
+avgTaskTime_10ms = -1
+avgTaskTime_20ms = -1
+avgTaskTime_50ms = -1
+avgTaskTime_100ms = -1
+
+lastTaskTime_5ms = -1
+lastTaskTime_10ms = -1
+lastTaskTime_20ms = -1
+lastTaskTime_50ms = -1
+lastTaskTime_100ms = -1
+
+taskTimer_5ms = 5
 taskTimer_10ms = 10
 taskTimer_20ms = 20
 taskTimer_50ms = 50
@@ -413,39 +429,43 @@ taskTimer_100ms = 100
 pressed = False
 
 while True:
-    if(ShowLogoCnt >= SHOWLOGO_MSEC):    
+    taskTimer = time.ticks_ms()
+
+    if ((ShowLogoCnt + SHOWLOGO_MSEC) < taskTimer):    
 
         if doButtons() == True:
             pressed = True
+        # if((lastTaskTime_5ms + taskTimer_5ms) < taskTimer):
 
-        if(taskTimer_10ms <= 0):
+        #     avgTaskTime_5ms = (avgTaskTime_5ms + (taskTimer - lastTaskTime_5ms))/2
+        #     lastTaskTime_5ms = taskTimer
 
-            taskTimer_10ms = 10 - TASK_TIME_MS
-        else:
-            taskTimer_10ms = taskTimer_10ms - TASK_TIME_MS
+        # if((lastTaskTime_10ms + taskTimer_10ms) < taskTimer):
 
-        if(taskTimer_20ms <= 0):
-            
-            taskTimer_20ms = 20 - TASK_TIME_MS
-        else:
-            taskTimer_20ms = taskTimer_20ms - TASK_TIME_MS
+        #     avgTaskTime_10ms = (avgTaskTime_10ms + (taskTimer - lastTaskTime_10ms))/2
+        #     lastTaskTime_10ms = taskTimer
 
-        if(taskTimer_50ms <= 0):
-            doScreenSaver()
+        # if((lastTaskTime_20ms + taskTimer_20ms) < taskTimer):
+
+        #     avgTaskTime_20ms = (avgTaskTime_20ms + (taskTimer - lastTaskTime_20ms))/2
+        #     lastTaskTime_20ms = taskTimer
+
+        if((lastTaskTime_50ms + taskTimer_50ms) < taskTimer):
             doDisplay()
-            taskTimer_50ms = 50 - TASK_TIME_MS
-        else:
-            taskTimer_50ms = taskTimer_50ms - TASK_TIME_MS
 
-        if(taskTimer_100ms <= 0):
+            avgTaskTime_50ms = (avgTaskTime_50ms + (taskTimer - lastTaskTime_50ms))/2
+            lastTaskTime_50ms = taskTimer
+
+        if((lastTaskTime_100ms + taskTimer_100ms) < taskTimer):
+            doScreenSaver()
             doLed(pressed)
             pressed = False
 
-            taskTimer_100ms = 100 - TASK_TIME_MS
-        else:
-            taskTimer_100ms = taskTimer_100ms - TASK_TIME_MS
-    else:
-        ShowLogoCnt = ShowLogoCnt + TASK_TIME_MS
+            avgTaskTime_100ms = (avgTaskTime_100ms + (taskTimer - lastTaskTime_100ms))/2
+            lastTaskTime_100ms = taskTimer
 
-    time.sleep_ms(TASK_TIME_MS)
-    taskTimer = taskTimer + TASK_TIME_MS
+    if ((debugTaskTiming + 10000) < time.ticks_ms()):
+        print ("Average Task Timings [5ms; 10ms; 20ms; 50ms; 100ms]:  [" + str(avgTaskTime_5ms) + "; " + str(avgTaskTime_10ms) + "; " + str(avgTaskTime_20ms) + "; " + str(avgTaskTime_50ms) + "; " + str(avgTaskTime_100ms) + "]")
+        debugTaskTiming = time.ticks_ms()
+    #time.sleep_ms(TASK_TIME_MS)
+    #taskTimer = taskTimer + TASK_TIME_MS

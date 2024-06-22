@@ -7,11 +7,10 @@ import time
 # CONFIG
 # https://deskthority.net/wiki/Scancode
 MODIFIER = 0xe0
-CALL_CYCLE_TIME_MS = 5
 MODIFIER_USE_TOGGLE = False
-PRESS_TIME = 50
+PRESS_TIME = 40
 OPEN_MENU_TIME = 500
-SLEEP_TIME = 50
+SLEEP_TIME = 20
 
 STATE_IDLE = 1
 STATE_PRESS_WAIT = 2
@@ -73,7 +72,7 @@ class Hellboard():
                 print("PressKey: Modifier")
                 print(str(macro) + "   Length: " + str(len(macro.getDirections())))
             self.k.press(MODIFIER)
-            self.waitTime = PRESS_TIME
+            self.waitTime = time.ticks_ms()
             self.macroIndex = 0
 
             if(DEBUG_PRINT == True):
@@ -81,9 +80,7 @@ class Hellboard():
             self.state = STATE_OPEN_MENU_WAIT
 
         elif self.state == STATE_OPEN_MENU_WAIT:
-            if self.waitTime > 0:
-                self.waitTime = self.waitTime - CALL_CYCLE_TIME_MS
-            else:
+            if ((self.waitTime + OPEN_MENU_TIME) <= time.ticks_ms()):
                 if MODIFIER_USE_TOGGLE:
                     if(DEBUG_PRINT == True):
                         print("ReleaseKey: Modifier")
@@ -96,42 +93,36 @@ class Hellboard():
 
         elif self.state == STATE_PRESS_WAIT:
 
-            if self.waitTime > 0:
-                self.waitTime = self.waitTime - CALL_CYCLE_TIME_MS
-            else:
-                if self.waitTime == -1:
-                    if(DEBUG_PRINT == True):
-                        print("macroIndex: " + str(self.macroIndex))
-                        print("PressKey: " + str(macro.getDirections()[self.macroIndex]))
-                    self.k.press(macro.getDirections()[self.macroIndex])
-                    self.waitTime = PRESS_TIME
-                else:
-                    self.waitTime = -1
-                    if(DEBUG_PRINT == True):
-                        print("Next State: STATE_RELEASE_WAIT")
-                    self.state = STATE_RELEASE_WAIT
+            if self.waitTime == -1:
+                if(DEBUG_PRINT == True):
+                    print("macroIndex: " + str(self.macroIndex))
+                    print("PressKey: " + str(macro.getDirections()[self.macroIndex]))
+                self.k.press(macro.getDirections()[self.macroIndex])
+                self.waitTime = time.ticks_ms()
+            elif ((self.waitTime + PRESS_TIME) <= time.ticks_ms()):
+                self.waitTime = -1
+                if(DEBUG_PRINT == True):
+                    print("Next State: STATE_RELEASE_WAIT")
+                self.state = STATE_RELEASE_WAIT
 
         elif self.state == STATE_RELEASE_WAIT:
 
-                if self.waitTime > 0:
-                    self.waitTime = self.waitTime - CALL_CYCLE_TIME_MS
+            if self.waitTime == -1:
+                if(DEBUG_PRINT == True):
+                    print("ReleaseKey: " + str(macro.getDirections()[self.macroIndex]))
+                self.k.release(macro.getDirections()[self.macroIndex])
+                self.waitTime = time.ticks_ms()
+            elif ((self.waitTime + SLEEP_TIME) <= time.ticks_ms()):
+                if self.macroIndex < (len(macro.getDirections())-1):
+                    self.macroIndex = self.macroIndex + 1
+                    self.waitTime = -1
+                    if(DEBUG_PRINT == True):
+                        print("Next State: STATE_PRESS_WAIT")
+                    self.state = STATE_PRESS_WAIT
                 else:
-                    if self.waitTime == -1:
-                        if(DEBUG_PRINT == True):
-                            print("ReleaseKey: " + str(macro.getDirections()[self.macroIndex]))
-                        self.k.release(macro.getDirections()[self.macroIndex])
-                        self.waitTime = SLEEP_TIME
-                    else:
-                        if self.macroIndex < (len(macro.getDirections())-1):
-                            self.macroIndex = self.macroIndex + 1
-                            self.waitTime = -1
-                            if(DEBUG_PRINT == True):
-                                print("Next State: STATE_PRESS_WAIT")
-                            self.state = STATE_PRESS_WAIT
-                        else:
-                            if(DEBUG_PRINT == True):
-                                print("Next State: STATE_FINISHED")
-                            self.state = STATE_FINISHED
+                    if(DEBUG_PRINT == True):
+                        print("Next State: STATE_FINISHED")
+                    self.state = STATE_FINISHED
         else:
             if not MODIFIER_USE_TOGGLE:
                 if(DEBUG_PRINT == True):
@@ -143,19 +134,3 @@ class Hellboard():
             self.state = STATE_IDLE
 
         return returnValue
-        # self.k.press(MODIFIER)
-        # time.sleep_ms(PRESS_TIME)
-        # if MODIFIER_USE_TOGGLE:
-        #     self.k.release(MODIFIER)
-        #     time.sleep_ms(SLEEP_TIME)
-
-        # time.sleep_ms(OPEN_MENU_TIME)
-
-        # for direction in macro.getDirections():
-        #     self.k.press(direction)
-        #     time.sleep_ms(PRESS_TIME)
-        #     self.k.release(direction)
-        #     time.sleep_ms(SLEEP_TIME)
-
-        # if not MODIFIER_USE_TOGGLE:
-        #     self.k.release(MODIFIER)
