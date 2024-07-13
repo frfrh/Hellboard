@@ -22,11 +22,15 @@ DEBUG_PRINT = False
 
 class Hellbutton():
     global btnPressed
+    global btnPressedHold
+    global btnPressedTimeStp
 
     def __init__(self, pin, macro):
         self.macro = macro
         self.pin = pin
         self.btnPressed = False
+        self.btnPressedHold = False
+        self.btnPressedTimeStp = time.ticks_ms()
     
     def setMacro(self, macro):
         self.macro = macro
@@ -37,21 +41,28 @@ class Hellbutton():
     def getName(self):
         return self.macro.getName()
     
-    def isPressed(self, onRelease):
+    def isPressed(self, onRelease, msec):
         btnState = not self.pin.value()
-        returnValue = False
+        returnValue = 0
         if(onRelease == True):
             if (btnState == False):
-                if(self.btnPressed == True):
-                    returnValue = True
+                if(self.btnPressed == True and self.btnPressedHold == False):
+                    returnValue = 1
+                elif(self.btnPressed == True and self.btnPressedHold == True):
+                    self.btnPressedHold = False
                 self.btnPressed = False
+                self.btnPressedTimeStp = time.ticks_ms()
             else:
-                self.btnPressed = True
+                if (self.btnPressedTimeStp + msec) < time.ticks_ms():
+                    self.btnPressedTimeStp = time.ticks_ms() + msec
+                    self.btnPressedHold = True
+                    returnValue = 2
+                else:
+                    self.btnPressed = True
         else:
             returnValue = btnState
 
         return returnValue
-        
 
 class Hellboard():
     global returnValue

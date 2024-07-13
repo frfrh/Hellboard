@@ -6,26 +6,12 @@ from helldiver import Hellboard, Hellbutton
 from macro import Macros, Color
 import framebuf
 import time
-
-k = keyboard.Keyboard()
-board = Hellboard(k)
-
-WIDTH = 128 # oled display width
-HEIGHT = 64 # oled display height
+from hellboard_cfg import *
 
 DEBUG_PRINT = False
 
-BRIGHTNESS = 0x30
-BRIGHTNESS_CONFIRM = 0x80
-SCROLLING_TEXT = True
-
-SHOWLOGO_MSEC = 3000
-ACTIVATE_SCREENSAVER_MSEC = 0*60*1000 + 30*1000 + 0
-
-ShowLogoCnt = 0
-ScreenSaverCnt = 0
-ScreenSaverActive = False
-PressedBtnIndex = -1
+k = keyboard.Keyboard()
+board = Hellboard(k)
 
 helldiverImage = [
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -93,82 +79,10 @@ helldiverImage = [
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 
-b1_4 = Pin(0, Pin.IN, Pin.PULL_UP)
-b1_3 = Pin(1, Pin.IN, Pin.PULL_UP)
-b1_2 = Pin(2, Pin.IN, Pin.PULL_UP)
-b1_1 = Pin(3, Pin.IN, Pin.PULL_UP)
-
-b2_1 = Pin(29, Pin.IN, Pin.PULL_UP)
-b2_2 = Pin(28, Pin.IN, Pin.PULL_UP)
-b2_3 = Pin(27, Pin.IN, Pin.PULL_UP)
-b2_4 = Pin(26, Pin.IN, Pin.PULL_UP)
-
-button_1_1 = Hellbutton(b1_1, Macros.Reinforce)
-button_1_2 = Hellbutton(b1_2, Macros.Resupply)
-button_1_3 = Hellbutton(b1_3, Macros.Reinforce)
-button_1_4 = Hellbutton(b1_4, Macros.CYCLE)
-
-# Macros.AntiMaterialRifle
-# Macros.ExpendableAntiTank
-# Macros.Autocannon
-# Macros.AirburstRocketLauncher
-# Macros.OrbitalLasers
-# Macros.OrbitalRailcannonStrike
-# Macros.EagleAirstrike
-# Macros.EagleClusterBomb
-# Macros.Eagle500KGBomb
-# Macros.OrbitalPrecisionStrike
-# Macros.GuardDogRover
-# Macros.QuasarCannon
-# Macros.ShieldGeneratorPack
-# Macros.GatlingSentry
-# Macros.MortarSentry
-# Macros.AutocannonSentry
-# Macros.Orbital380MMHEBarrage
-# Macros.PatriotSuitExo
-# Macros.PatriotSuitPexo
-
-# button_2_1 = Hellbutton(b2_1, Macros.ShieldGeneratorPack)
-# button_2_2 = Hellbutton(b2_2, Macros.QuasarCannon)
-# button_2_3 = Hellbutton(b2_3, Macros.EagleClusterBomb)
-# button_2_4 = Hellbutton(b2_4, Macros.AutocannonSentry)
-
-#button_2_1 = Hellbutton(b2_1, Macros.EagleClusterBomb)
-button_2_1 = Hellbutton(b2_1, Macros.OrbitalGatlingBarrage)
-#button_2_1 = Hellbutton(b2_1, Macros.OrbitalRailcannonStrike)
-#button_2_1 = Hellbutton(b2_1, Macros.OrbitalPrecisionStrike)
-#button_2_2 = Hellbutton(b2_2, Macros.EagleClusterBomb)
-button_2_2 = Hellbutton(b2_2, Macros.Eagle110MMRocketPods)
-#button_2_2 = Hellbutton(b2_2, Macros.OrbitalPrecisionStrike)
-#button_2_2 = Hellbutton(b2_2, Macros.OrbitalGatlingBarrage)
-#button_2_2 = Hellbutton(b2_2, Macros.Orbital380MMHEBarrage)
-button_2_3 = Hellbutton(b2_3, Macros.GatlingSentry)
-#button_2_3 = Hellbutton(b2_3, Macros.ShieldGeneratorPack)
-button_2_4 = Hellbutton(b2_4, Macros.AutocannonSentry)
-#button_2_4 = Hellbutton(b2_4, Macros.HeavyMg)
-#button_2_4 = Hellbutton(b2_4, Macros.QuasarCannon)
-
-row1List = []
-row1List.append (Macros.ShieldGeneratorPack)
-row1List.append (Macros.QuasarCannon)
-#row1List.append (Macros.AntiPersonnelMinefield)
-#row1List.append (Macros.MachineGun)
-#row1List.append (Macros.Eagle110MMRocketPods)
-#row1List.append (Macros.OrbitalRailcannonStrike)
-#row1List.append (Macros.GuardDogRover)
-#row1List.append (Macros.MortarSentry)
-row1List.append (Macros.Hellbomb)
-#row1List.append (Macros.Eagle110MMRocketPods)
-# row1List.append (Macros.PatriotSuitExo)
-# row1List.append (Macros.PatriotSuitPexo)
-# row1List.append (Macros.EagleRearm)
-row1List.append (Macros.SEAFArtilery)
-# row1List.append (Macros.Hellbomb)
-# row1List.append (Macros.SOSBeacon)
-# row1List.append (Macros.SuperEarthFlag)
-# row1List.append (Macros.UploadData)
-# row1List.append (Macros.SeismicProbe)
-# row1List.append (Macros.OrbitalIlluminationFlare)
+ShowLogoCnt = 0
+ScreenSaverCnt = 0
+ScreenSaverActive = False
+PressedBtnIndex = -1
 
 colors = {}
 
@@ -225,19 +139,10 @@ def intToData(color):
                      ((color>>8)&0xFF),
                      ((color)&0xFF))
 
-buttons = []
-buttons.append(button_1_4)
-buttons.append(button_1_3)
-buttons.append(button_1_2)
-buttons.append(button_1_1)
-buttons.append(button_2_1)
-buttons.append(button_2_2)
-buttons.append(button_2_3)
-buttons.append(button_2_4)
-
 index = 0
 lastTime = time.ticks_ms()
 switchTimeout = 300
+btnHoldTime   = 300
 brightnessConfirm = (BRIGHTNESS_CONFIRM<<16) + (BRIGHTNESS_CONFIRM<<8) + (BRIGHTNESS_CONFIRM)
 
 btn_text_len = 0
@@ -260,8 +165,22 @@ def doButtons():
     if(PressedBtnIndex == -1):
         btnIndex = 0
         for button in buttons:
-            if button.isPressed(onBtnRelease):
+            buttonState = button.isPressed(onBtnRelease, btnHoldTime)
+            
+            if buttonState == 2:
                 if button.getMacro() == Macros.CYCLE:
+                    print("buttonState: " + str(buttonState))
+                    index = index - 1
+                    if index < 0:
+                        index = len(row1List) - 1
+                    pressed = True
+                    button_1_3.setMacro(row1List[index])
+
+                    if(DEBUG_PRINT == True):
+                        print("Button 1-3 set to: \"" + button_1_3.getMacro().getName() + "\"")
+            elif buttonState == 1:
+                if button.getMacro() == Macros.CYCLE:
+                    print("buttonState: " + str(buttonState))
                     if(ScreenSaverActive == True):
                         ScreenSaverCnt = 0
                     else:
@@ -464,8 +383,8 @@ while True:
             avgTaskTime_100ms = (avgTaskTime_100ms + (taskTimer - lastTaskTime_100ms))/2
             lastTaskTime_100ms = taskTimer
 
-    if ((debugTaskTiming + 10000) < time.ticks_ms()):
-        print ("Average Task Timings [5ms; 10ms; 20ms; 50ms; 100ms]:  [" + str(avgTaskTime_5ms) + "; " + str(avgTaskTime_10ms) + "; " + str(avgTaskTime_20ms) + "; " + str(avgTaskTime_50ms) + "; " + str(avgTaskTime_100ms) + "]")
-        debugTaskTiming = time.ticks_ms()
+    # if ((debugTaskTiming + 10000) < time.ticks_ms()):
+    #     print ("Average Task Timings [5ms; 10ms; 20ms; 50ms; 100ms]:  [" + str(avgTaskTime_5ms) + "; " + str(avgTaskTime_10ms) + "; " + str(avgTaskTime_20ms) + "; " + str(avgTaskTime_50ms) + "; " + str(avgTaskTime_100ms) + "]")
+    #     debugTaskTiming = time.ticks_ms()
     #time.sleep_ms(TASK_TIME_MS)
     #taskTimer = taskTimer + TASK_TIME_MS
