@@ -5,7 +5,7 @@ from macro import Macros, Color
 WIDTH = 128 # oled display width
 HEIGHT = 64 # oled display height
 
-BRIGHTNESS = 0x30
+BRIGHTNESS = 0x60
 BRIGHTNESS_CONFIRM = 0x80
 SCROLLING_TEXT = True
 
@@ -41,9 +41,10 @@ row1List.append (Macros.Autocannon)
 row1List.append (Macros.AutocannonSentry)
 row1List.append (Macros.MortarSentry)
 row1List.append (Macros.EMSMortarSentry)
-row1List.append (Macros.OrbitalRailcannonStrike)
 row1List.append (Macros.AirburstRocketLauncher)
 row1List.append (Macros.Hellbomb)
+row1List.append (Macros.Railgun)
+row1List.append (Macros.OrbitalRailcannonStrike)
 #row1List.append (Macros.MachineGun)
 #row1List.append (Macros.Eagle110MMRocketPods)
 #row1List.append (Macros.GuardDogRover)

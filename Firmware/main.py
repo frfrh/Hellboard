@@ -180,7 +180,8 @@ def doButtons():
                         print("Button 1-3 set to: \"" + button_1_3.getMacro().getName() + "\"")
             elif buttonState == 1:
                 if button.getMacro() == Macros.CYCLE:
-                    print("buttonState: " + str(buttonState))
+                    if(DEBUG_PRINT == True):
+                        print("buttonState: " + str(buttonState))
                     if(ScreenSaverActive == True):
                         ScreenSaverCnt = 0
                     else:

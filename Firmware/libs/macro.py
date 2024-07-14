@@ -64,7 +64,7 @@ class Macros:
     Flamethrower = Macro("Flamethrower", Color.BLUE, [Direction.DOWN, Direction.LEFT, Direction.UP, Direction.DOWN, Direction.UP])
     Autocannon = Macro("Autocannon", Color.BLUE, [Direction.DOWN, Direction.LEFT, Direction.DOWN, Direction.UP, Direction.UP, Direction.RIGHT])
     HeavyMg = Macro("MG-206 Heavy Machine Gun", Color.BLUE, [Direction.DOWN, Direction.LEFT, Direction.UP, Direction.DOWN, Direction.DOWN])
-    Railgun = Macro("Railgun", Color.BLUE, [Direction.DOWN, Direction.RIGHT, Direction.LEFT, Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT])
+    Railgun = Macro("Railgun", Color.BLUE, [Direction.DOWN, Direction.RIGHT, Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT])
     Spear = Macro("Spear", Color.BLUE, [Direction.DOWN, Direction.DOWN, Direction.UP, Direction.DOWN, Direction.DOWN])
     GrenadeLauncher = Macro("Grenade Launcher", Color.BLUE, [Direction.DOWN, Direction.LEFT, Direction.UP, Direction.LEFT, Direction.DOWN])
     LaserCannon = Macro("Laser Cannon", Color.BLUE, [Direction.DOWN, Direction.LEFT, Direction.DOWN, Direction.UP, Direction.LEFT])
