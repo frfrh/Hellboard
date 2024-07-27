@@ -62,6 +62,7 @@ class Macros:
     AirburstRocketLauncher = Macro("Airburst Rocket Launcher", Color.BLUE, [Direction.DOWN, Direction.UP, Direction.UP, Direction.LEFT, Direction.RIGHT])
     Railgun = Macro("Railgun", Color.BLUE, [Direction.DOWN, Direction.RIGHT, Direction.LEFT, Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT])
     Spear = Macro("Spear", Color.BLUE, [Direction.DOWN, Direction.DOWN, Direction.UP, Direction.DOWN, Direction.DOWN])
+    Commando = Macro("MLS-4X Commando", Color.BLUE, [Direction.DOWN, Direction.LEFT, Direction.UP, Direction.DOWN, Direction.RIGHT])
     
     OrbitalGatlingBarrage = Macro("Orbital Gatling Barrage", Color.RED, [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP, Direction.UP])
     OrbitalAirburstStrike = Macro("Orbital Airburst Strike", Color.RED, [Direction.RIGHT, Direction.RIGHT, Direction.RIGHT])
