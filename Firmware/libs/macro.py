@@ -85,6 +85,7 @@ class Macros:
     OrbitalGasStrike = Macro("Orbital Gas Strike", Color.RED, [Direction.RIGHT, Direction.RIGHT, Direction.DOWN, Direction.RIGHT])
     OrbitalEMSStrike = Macro("Orbital EMS Strike", Color.RED, [Direction.RIGHT, Direction.RIGHT, Direction.LEFT, Direction.DOWN])
     OrbitalSmokeStrike = Macro("Orbital Smoke Strike", Color.RED, [Direction.RIGHT, Direction.RIGHT, Direction.DOWN, Direction.UP])
+    OrbitalNapalmStrike = Macro("Orbital Napalm Strike", Color.RED, [Direction.RIGHT, Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.RIGHT, Direction.UP])
     HMGEmplacement = Macro("HMG Emplacement", Color.GREEN, [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT, Direction.RIGHT, Direction.LEFT])
     ShieldGenerationRelay = Macro("Shield Generation Relay", Color.GREEN, [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.DOWN, Direction.RIGHT, Direction.RIGHT])
     TeslaTower = Macro("Tesla Tower", Color.GREEN, [Direction.DOWN, Direction.UP, Direction.RIGHT, Direction.UP, Direction.LEFT, Direction.RIGHT])
