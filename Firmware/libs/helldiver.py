@@ -8,7 +8,7 @@ import time
 # https://deskthority.net/wiki/Scancode
 modifier = 0x06
 modifierUseToggle = False
-sleepTime = 20
+sleepTime = 50
 
 class Hellbutton():
     def __init__(self, pin, macro):
