@@ -1,0 +1,14 @@
+# Build output
+bin/
+obj/
+publish/
+artifacts/
+
+# IDE
+.idea/
+.vs/
+*.user
+*.DotSettings.user
+
+# Game content (screenshots, captured icons) – local only, never committed (see doc/spec §3.3)
+tests/testData/local/
