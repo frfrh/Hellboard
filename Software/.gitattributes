@@ -1,0 +1,8 @@
+# Line endings: LF in the repository, CRLF in the working copy (matches .editorconfig).
+* text=auto eol=crlf
+
+# Binary files
+*.ico binary
+*.png binary
+*.jpg binary
+*.webp binary
