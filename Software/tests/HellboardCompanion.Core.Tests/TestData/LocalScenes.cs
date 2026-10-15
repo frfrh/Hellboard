@@ -55,6 +55,21 @@ public static class LocalScenes
         return data;
     }
 
+    /// <summary>All scenes (loadout screens and negative examples) × synthetic heights.</summary>
+    public static TheoryData<string, int> AllScenesAtAllHeights()
+    {
+        var data = new TheoryData<string, int>();
+        foreach (var scene in All)
+        {
+            foreach (var height in Heights)
+            {
+                data.Add(scene.File, height);
+            }
+        }
+
+        return data;
+    }
+
     public static Scene Get(string file) => All.Single(s => s.File == file);
 
     /// <summary>
