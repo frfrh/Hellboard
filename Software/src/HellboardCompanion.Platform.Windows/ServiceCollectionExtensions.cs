@@ -14,6 +14,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddWindowsPlatform(this IServiceCollection services)
     {
         services.AddSingleton<IPlatformInfo, WindowsPlatformInfo>();
+        services.AddSingleton<IGameLocator, Win32GameLocator>();
         return services;
     }
 }

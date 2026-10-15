@@ -35,6 +35,7 @@ internal static class Program
 
         var log = services.GetRequiredService<ILoggerFactory>().CreateLogger("HellboardCompanion");
         log.LogInformation("{Product} {Version} starting", AppInfo.ProductName, AppInfo.Version);
+        services.GetRequiredService<IGameLocator>().Start();
 
         try
         {

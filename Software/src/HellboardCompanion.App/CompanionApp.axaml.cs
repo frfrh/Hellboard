@@ -58,8 +58,13 @@ public sealed partial class CompanionApp : Application
     {
         if (_mainWindow is null)
         {
-            _mainWindow = new MainWindow { DataContext = CreateMainWindowViewModel() };
-            _mainWindow.Closed += (_, _) => _mainWindow = null;
+            var viewModel = CreateMainWindowViewModel();
+            _mainWindow = new MainWindow { DataContext = viewModel };
+            _mainWindow.Closed += (_, _) =>
+            {
+                viewModel.Dispose();
+                _mainWindow = null;
+            };
             _mainWindow.Show();
         }
 
@@ -70,5 +75,6 @@ public sealed partial class CompanionApp : Application
         ? MainWindowViewModel.DesignInstance
         : new MainWindowViewModel(
             _services.GetRequiredService<IPlatformInfo>(),
-            _services.GetRequiredService<IPlatformPaths>());
+            _services.GetRequiredService<IPlatformPaths>(),
+            _services.GetService<IGameLocator>());
 }
