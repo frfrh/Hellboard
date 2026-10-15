@@ -22,6 +22,7 @@ public sealed partial class CompanionApp : Application
 {
     private readonly IServiceProvider? _services;
     private MainWindow? _mainWindow;
+    private bool _openingMainWindow;
 
     /// <summary>Used by the XAML previewer only.</summary>
     public CompanionApp()
@@ -68,21 +69,40 @@ public sealed partial class CompanionApp : Application
         }
     }
 
-    private void ShowMainWindow()
+    /// <summary>Opens the status window, or brings it to the front if it is already open.</summary>
+    public void ShowMainWindow()
     {
-        if (_mainWindow is null)
+        if (_mainWindow is not null)
+        {
+            _mainWindow.Activate();
+            return;
+        }
+
+        // Creating the window for the first time takes a moment, and Avalonia processes window
+        // messages meanwhile: the second click of a double-click on the tray icon arrives here.
+        if (_openingMainWindow)
+        {
+            return;
+        }
+
+        _openingMainWindow = true;
+        try
         {
             var viewModel = CreateMainWindowViewModel();
-            _mainWindow = new MainWindow { DataContext = viewModel };
-            _mainWindow.Closed += (_, _) =>
+            var window = new MainWindow { DataContext = viewModel };
+            window.Closed += (_, _) =>
             {
                 viewModel.Dispose();
                 _mainWindow = null;
             };
-            _mainWindow.Show();
+            _mainWindow = window;
+            window.Show();
+            window.Activate();
         }
-
-        _mainWindow.Activate();
+        finally
+        {
+            _openingMainWindow = false;
+        }
     }
 
     private MainWindowViewModel CreateMainWindowViewModel() => _services is null

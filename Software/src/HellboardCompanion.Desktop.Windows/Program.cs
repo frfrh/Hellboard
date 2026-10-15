@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using Avalonia;
+using Avalonia.Threading;
 using HellboardCompanion.App;
 using HellboardCompanion.Core;
 using HellboardCompanion.Core.Catalog;
@@ -18,6 +19,12 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        using var instance = SingleInstance.TryAcquire();
+        if (instance is null)
+        {
+            return 0;   // already running; that instance shows its window
+        }
+
         var paths = PlatformPaths.FromEnvironment();
         Directory.CreateDirectory(paths.LogDirectory);
 
@@ -42,9 +49,15 @@ internal static class Program
         services.GetRequiredService<LoadoutPipeline>().Start();
         services.GetRequiredService<ManualTriggerService>().Start();
 
+        CompanionApp? app = null;
+        instance.OnShowRequested(() => Dispatcher.UIThread.Post(() => app?.ShowMainWindow()));
+
         try
         {
-            return BuildAvaloniaApp(services).StartWithClassicDesktopLifetime(args);
+            return AppBuilder.Configure(() => app = new CompanionApp(services))
+                .UsePlatformDetect()
+                .LogToTrace()
+                .StartWithClassicDesktopLifetime(args);
         }
         catch (Exception ex)
         {
@@ -60,11 +73,6 @@ internal static class Program
     /// <summary>Entry point for the Avalonia XAML previewer (Rider / Visual Studio).</summary>
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure(() => new CompanionApp())
-            .UsePlatformDetect()
-            .LogToTrace();
-
-    private static AppBuilder BuildAvaloniaApp(IServiceProvider services) =>
-        AppBuilder.Configure(() => new CompanionApp(services))
             .UsePlatformDetect()
             .LogToTrace();
 }
