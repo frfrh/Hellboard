@@ -15,6 +15,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IPlatformInfo, WindowsPlatformInfo>();
         services.AddSingleton<IGameLocator, Win32GameLocator>();
+        services.AddSingleton<IFrameSource, DesktopDuplicationFrameSource>();
         return services;
     }
 }

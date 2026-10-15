@@ -54,7 +54,7 @@ The program is a read-only observer of the screen. It does not read or modify ga
 |-|-|-|
 | Language / runtime | **C# / .NET 10** (LTS, supported until Nov 2028) | First-class Win32 + WinRT interop, runs on Linux as well, single-file self-contained publish, good performance. |
 | UI | **Avalonia UI 12** (incl. its built-in `TrayIcon`) | WPF-like XAML, MVVM (`CommunityToolkit.Mvvm`), compiled bindings; cross-platform, so the UI does not block a later Linux port (§3.1). |
-| Screen capture | **Windows.Graphics.Capture (WGC)** via `Vortice.Direct3D11` / CsWinRT; fallback **DXGI Desktop Duplication** | Event-driven frame delivery (no polling gap), per-monitor capture; Desktop Duplication covers exclusive fullscreen. |
+| Screen capture | **DXGI Desktop Duplication** via `Vortice.Direct3D11` / `Vortice.DXGI` (MIT); Windows.Graphics.Capture only if a need arises (e.g. capturing an occluded window) | Works for borderless/fullscreen games without a capture border on all Windows versions, no WinRT interop; the device is created on the adapter that owns the monitor. Verified 2026-10-15 with Helldivers 2 (borderless, AMD RX 6800 XT): ~65 frames/s available, readback ~7 ms. |
 | Image processing | **OpenCvSharp4** (runtime package per platform: `OpenCvSharp4.runtime.win`, later `…runtime.linux-x64` / Ubuntu) | Template matching, color conversion. |
 | Hellboard transport | `System.IO.Ports` (USB CDC serial) | MicroPython on the RP2040 already exposes a USB CDC serial port next to HID. |
 | Config | JSON (`System.Text.Json`) + JSON schema | Human editable, validated on load. |
@@ -77,7 +77,7 @@ Portability of the parts:
 | Hellboard serial (`System.IO.Ports`) | ✔ `COMx` | ✔ `/dev/ttyACM0` (user needs `dialout` group) |
 | Serial port discovery by USB VID/PID | SetupAPI / WMI | `/sys/class/tty/*/device/../idVendor` |
 | Game window / monitor detection (§6.1) | Win32 | X11: `_NET_WM_PID` + XRandR. Wayland: not possible for other apps' windows → user selects the monitor once |
-| Screen capture (§6.2) | WGC / DXGI | X11: XShm / XComposite. Wayland: `xdg-desktop-portal` ScreenCast + PipeWire (one-time permission dialog) |
+| Screen capture (§6.2) | DXGI Desktop Duplication | X11: XShm / XComposite. Wayland: `xdg-desktop-portal` ScreenCast + PipeWire (one-time permission dialog) |
 | Autostart, global hotkeys, notifications, DPI | Registry `Run` key, `RegisterHotKey`, toast, PerMonitorV2 manifest | `~/.config/autostart/*.desktop`, portal/X11 hotkeys, `libnotify` |
 
 Design rules that follow from this:
@@ -94,7 +94,7 @@ Design rules that follow from this:
 | Version | Support |
 |-|-|
 | **Windows 11** | **Full support** – all features are developed and tested on Windows 11. |
-| Windows 10 (2004 / build 19041 or newer) | Best effort: supported only as far as it does not block or complicate the implementation. Known limitation: the yellow capture border of Windows.Graphics.Capture cannot be disabled on all Windows 10 builds. No Windows-10-specific workarounds are implemented. |
+| Windows 10 (2004 / build 19041 or newer) | Best effort: supported only as far as it does not block or complicate the implementation. No Windows-10-specific workarounds are implemented. (The capture-border limitation of Windows.Graphics.Capture no longer applies, since Desktop Duplication is used.) |
 
 The target framework `net10.0-windows10.0.19041.0` keeps Windows 10 technically possible; Windows-11-only APIs are used freely where they simplify the implementation (with a graceful fallback or a clear message on Windows 10).
 
@@ -208,12 +208,13 @@ Edge cases: different resolutions / scaling per monitor, monitors with negative 
 
 ### 6.2 FrameSource – capture
 
-- **WGC monitor capture** (`GraphicsCaptureItem.CreateForMonitor`) cropped to the client rect. Frames arrive event-driven (`FrameArrived`), so no frame is missed due to a polling interval.
-- `IsBorderRequired = false`, `IsCursorCaptureEnabled = false`.
-- Only the ROIs of the loadout screen are copied from GPU to CPU (`CopySubresourceRegion` into a staging texture).
-- **Fallback: DXGI Desktop Duplication** for exclusive fullscreen / black frames; warn and recommend borderless mode.
-- **Adaptive rate** (see §6.5): 2 fps while no loadout screen is visible (only the small anchor ROI is read back), up to 30 fps while the loadout screen is visible.
-- **Ring buffer** of the last ~2 s of ROI crops (timestamped), used to re-evaluate frames right before the loadout screen disappeared (§6.5).
+- **`IFrameSource.Capture(monitor, region, timeout)`** (Core) – pull-based, the caller decides the rate; returns a platform-neutral `Frame` (BGRA, tightly packed, screen bounds, timestamp).
+- **`DesktopDuplicationFrameSource`** (Platform.Windows): keeps one duplication session per monitor open, copies each new desktop image into a staging texture and reads back only the requested region. If no new image arrives within the timeout (static screen), the last image in the staging texture is used. The session is recreated when the monitor changes or the access is lost (display mode change, secure desktop, UAC).
+- **`GameFrameGrabber`** (Core) combines `IGameLocator` and `IFrameSource`: captures the game's client area, or nothing while the game is not running or minimized.
+- **Black-frame detection** (`Frame.IsBlack`, sparse sample) → warning in the UI with the advice to use borderless window mode (exclusive fullscreen may deliver black images).
+- Measured (P2): full 2560×1440 client area at 2 frames/s: 14 ms per capture on average, 0.25 % CPU summed over all cores (24 logical cores).
+- Later optimizations, only if needed: copy only the ROIs (`CopySubresourceRegion`), reuse pixel buffers, adaptive rate (P4).
+- Frame-sequence recording for replay tests moves to the manual trigger (§6.13, `saveSnapshotOnTrigger`).
 
 ### 6.3 Loadout screen layout
 
@@ -586,7 +587,7 @@ Further points:
 |-|-|-|
 | **P0 – Setup** ✔ | Solution, projects (Core, Platform.Windows, App, Desktop.Windows host, Core.Tests), first platform interfaces (`IPlatformPaths`, `IPlatformInfo`), DI composition, `.gitignore`, DPI-aware manifest, Serilog file logging, Avalonia tray skeleton, `build.ps1` incl. `linux-x64` build guard and portability tests. The Simulator project is created in P5. | `build.ps1` succeeds: build without warnings, all tests pass, Core/App/Core.Tests also build for `linux-x64`; app starts as tray icon and writes its log. |
 | **P1 – Game & monitor detection** ✔ | `IGameLocator` + `GameSnapshot`/`GameLocation` model in Core, monitor selection and window-mode rules (unit tested), `Win32GameLocator` with WinEvent hooks and 1 s polling on a per-monitor-DPI-aware thread, game section in the status window. | With 2+ monitors: correct monitor reported when the game starts, after dragging the window to another monitor and after changing resolution; game exit/restart detected. *Accepted 2026-10-15* by manual test with two monitors (2560×1440 @ 125 % primary, 1920×1080 at negative coordinates): fullscreen/borderless and windowed, monitor change, focus, minimize, resolution change, exit and restart. |
-| **P2 – Capture & recording** | WGC monitor capture, ROI readback, Desktop Duplication fallback, snapshot + record in the debug view. | Snapshots match the game monitor at native resolution; ≤ 3 % CPU at idle rate; works in borderless and windowed mode. |
+| **P2 – Capture** ✔ | `Frame`, `IFrameSource`, `GameFrameGrabber` in Core; `DesktopDuplicationFrameSource`; live preview (2 frames/s while the status window is open), black-frame warning, "Save snapshot" (PNG to `%LOCALAPPDATA%\HellboardCompanion\snapshots`) and "Open snapshot folder" in the status window. | Snapshots match the game monitor at native resolution; ≤ 3 % CPU at 2 frames/s; works in borderless and windowed mode. *Accepted 2026-10-15:* 0.25 % CPU; preview, snapshot and snapshot folder checked by the user in borderless and windowed mode, incl. minimize and monitor change; no black frames. |
 | **P3 – Test data & layout** | Curate the screenshots in `tests/testData/local/`, measure ROIs at native resolution, build `loadout-v1.json`, generate synthetic test sets (720p, 900p, 1080p, 4K) from the 1440p captures. Capture the stratagem template library with the template tool. Add real captures of further resolutions, player counts and states when available. | Layout verified on native 1440p captures; synthetic sets 720p–4K generated; templates for all stratagems in `macro.py`. |
 | **P4 – Recognition & lock-in** | Screen detector, slot classifier, ready-status detector, `LoadoutTracker`, history, **manual trigger and offline image analysis (§6.13)** – built early in this phase to simplify testing. | Offline: 100 % correct slot classification and screen detection on native and synthetic test sets **from 720p to 4K** at default thresholds, no false lock-in outside the loadout screen. Replay of "last player confirms" sequences locks in the correct loadout every time; Ready→Prepare→Ready sequences with a changed loadout produce a second transfer, without a change no second transfer. Lock-in latency within targets (§6.5) at 4K. Manual trigger: hotkey on the loadout screen shows the correct loadout within 500 ms; test mode sends nothing. |
 | **P5 – Hellboard link (PC side)** | `IHellboardLink`, dry-run, serial transport, simulator, protocol spec `hellboard-protocol.md`. | End-to-end with simulator: locked loadout is transferred and acknowledged; reconnect re-sends the last loadout. |

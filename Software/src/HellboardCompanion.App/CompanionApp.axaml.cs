@@ -6,6 +6,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using HellboardCompanion.App.ViewModels;
 using HellboardCompanion.App.Views;
+using HellboardCompanion.Core.Capture;
 using HellboardCompanion.Core.Platform;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -76,5 +77,6 @@ public sealed partial class CompanionApp : Application
         : new MainWindowViewModel(
             _services.GetRequiredService<IPlatformInfo>(),
             _services.GetRequiredService<IPlatformPaths>(),
-            _services.GetService<IGameLocator>());
+            _services.GetService<IGameLocator>(),
+            new CapturePreviewViewModel(_services.GetService<GameFrameGrabber>(), _services.GetRequiredService<IPlatformPaths>()));
 }

@@ -23,8 +23,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _gameWindowMode = "–";
 
-    public MainWindowViewModel(IPlatformInfo platform, IPlatformPaths paths, IGameLocator? gameLocator)
+    public MainWindowViewModel(IPlatformInfo platform, IPlatformPaths paths, IGameLocator? gameLocator, CapturePreviewViewModel capture)
     {
+        Capture = capture;
         OperatingSystem = platform.OperatingSystem;
         SupportNote = platform.SupportNote;
         ConfigDirectory = paths.ConfigDirectory;
@@ -54,12 +55,17 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public string LogDirectory { get; }
 
+    public CapturePreviewViewModel Capture { get; }
+
     /// <summary>Instance with placeholder values for the XAML previewer.</summary>
     public static MainWindowViewModel DesignInstance =>
-        new(new DesignPlatformInfo(), new PlatformPaths(@"C:\Users\Design\AppData\Roaming", @"C:\Users\Design\AppData\Local"), null);
+        new(new DesignPlatformInfo(), DesignPaths, null, new CapturePreviewViewModel(null, DesignPaths));
+
+    private static PlatformPaths DesignPaths => new(@"C:\Users\Design\AppData\Roaming", @"C:\Users\Design\AppData\Local");
 
     public void Dispose()
     {
+        Capture.Dispose();
         if (_gameLocator is not null)
         {
             _gameLocator.Changed -= OnGameChanged;

@@ -5,53 +5,83 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:HellboardCompanion.App.ViewModels"
         mc:Ignorable="d"
-        d:DesignWidth="560" d:DesignHeight="480"
+        d:DesignWidth="1200" d:DesignHeight="600"
         x:Class="HellboardCompanion.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/hellboard.ico"
         Title="{Binding Title}"
-        Width="560" Height="480"
+        Width="1200" Height="600"
         WindowStartupLocation="CenterScreen">
 
   <Design.DataContext>
     <x:Static Member="vm:MainWindowViewModel.DesignInstance" />
   </Design.DataContext>
 
-  <StackPanel Margin="24" Spacing="16">
-    <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="SemiBold" />
+  <ScrollViewer>
+    <Grid Margin="24" ColumnDefinitions="440,*" ColumnSpacing="24">
 
-    <Border IsVisible="{Binding HasSupportNote}"
-            Background="#33FFC107" BorderBrush="#FFC107" BorderThickness="1"
-            CornerRadius="4" Padding="12">
-      <TextBlock Text="{Binding SupportNote}" TextWrapping="Wrap" />
-    </Border>
+      <StackPanel Grid.Column="0" Spacing="16">
+        <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="SemiBold" />
 
-    <TextBlock Text="Helldivers 2" FontSize="16" FontWeight="SemiBold" />
-    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
-      <TextBlock Grid.Row="0" Grid.Column="0" Text="Status" Opacity="0.7" />
-      <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding GameStatus}" />
+        <Border IsVisible="{Binding HasSupportNote}"
+                Background="#33FFC107" BorderBrush="#FFC107" BorderThickness="1"
+                CornerRadius="4" Padding="12">
+          <TextBlock Text="{Binding SupportNote}" TextWrapping="Wrap" />
+        </Border>
 
-      <TextBlock Grid.Row="1" Grid.Column="0" Text="Monitor" Opacity="0.7" />
-      <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding GameMonitor}" />
+        <TextBlock Text="Helldivers 2" FontSize="16" FontWeight="SemiBold" />
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+          <TextBlock Grid.Row="0" Grid.Column="0" Text="Status" Opacity="0.7" />
+          <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding GameStatus}" />
 
-      <TextBlock Grid.Row="2" Grid.Column="0" Text="Game area" Opacity="0.7" />
-      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding GameClientArea}" />
+          <TextBlock Grid.Row="1" Grid.Column="0" Text="Monitor" Opacity="0.7" />
+          <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding GameMonitor}" />
 
-      <TextBlock Grid.Row="3" Grid.Column="0" Text="Window mode" Opacity="0.7" />
-      <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding GameWindowMode}" />
+          <TextBlock Grid.Row="2" Grid.Column="0" Text="Game area" Opacity="0.7" />
+          <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding GameClientArea}" />
+
+          <TextBlock Grid.Row="3" Grid.Column="0" Text="Window mode" Opacity="0.7" />
+          <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding GameWindowMode}" />
+        </Grid>
+
+        <TextBlock Text="Application" FontSize="16" FontWeight="SemiBold" />
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+          <TextBlock Grid.Row="0" Grid.Column="0" Text="Operating system" Opacity="0.7" />
+          <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding OperatingSystem}" />
+
+          <TextBlock Grid.Row="1" Grid.Column="0" Text="Configuration" Opacity="0.7" />
+          <SelectableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ConfigDirectory}" TextWrapping="Wrap" />
+
+          <TextBlock Grid.Row="2" Grid.Column="0" Text="Logs" Opacity="0.7" />
+          <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LogDirectory}" TextWrapping="Wrap" />
+        </Grid>
+      </StackPanel>
+
+      <StackPanel Grid.Column="1" Spacing="12">
+        <TextBlock Text="Capture" FontSize="16" FontWeight="SemiBold" />
+
+        <Border Background="#20000000" CornerRadius="4" MinHeight="200">
+          <Image Source="{Binding Capture.Preview}" Stretch="Uniform" MaxHeight="400" />
+        </Border>
+
+        <TextBlock Text="{Binding Capture.CaptureInfo}" Opacity="0.7" />
+
+        <Border IsVisible="{Binding Capture.IsBlack}"
+                Background="#33F44336" BorderBrush="#F44336" BorderThickness="1"
+                CornerRadius="4" Padding="12">
+          <TextBlock TextWrapping="Wrap"
+                     Text="The captured image is black. The game probably runs in exclusive fullscreen – switch to borderless window mode." />
+        </Border>
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="Save snapshot" Command="{Binding Capture.SaveSnapshotCommand}" />
+          <Button Content="Open snapshot folder" Click="OnOpenSnapshotFolderClicked" />
+        </StackPanel>
+
+        <SelectableTextBlock Text="{Binding Capture.LastSnapshot}" TextWrapping="Wrap" Opacity="0.7" />
+      </StackPanel>
+
     </Grid>
-
-    <TextBlock Text="Application" FontSize="16" FontWeight="SemiBold" />
-    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
-      <TextBlock Grid.Row="0" Grid.Column="0" Text="Operating system" Opacity="0.7" />
-      <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding OperatingSystem}" />
-
-      <TextBlock Grid.Row="1" Grid.Column="0" Text="Configuration" Opacity="0.7" />
-      <SelectableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ConfigDirectory}" TextWrapping="Wrap" />
-
-      <TextBlock Grid.Row="2" Grid.Column="0" Text="Logs" Opacity="0.7" />
-      <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LogDirectory}" TextWrapping="Wrap" />
-    </Grid>
-  </StackPanel>
+  </ScrollViewer>
 
 </Window>
