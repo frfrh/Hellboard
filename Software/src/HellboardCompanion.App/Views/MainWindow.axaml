@@ -1,0 +1,41 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:HellboardCompanion.App.ViewModels"
+        mc:Ignorable="d"
+        d:DesignWidth="560" d:DesignHeight="320"
+        x:Class="HellboardCompanion.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/hellboard.ico"
+        Title="{Binding Title}"
+        Width="560" Height="320"
+        WindowStartupLocation="CenterScreen">
+
+  <Design.DataContext>
+    <x:Static Member="vm:MainWindowViewModel.DesignInstance" />
+  </Design.DataContext>
+
+  <StackPanel Margin="24" Spacing="16">
+    <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="SemiBold" />
+
+    <Border IsVisible="{Binding HasSupportNote}"
+            Background="#33FFC107" BorderBrush="#FFC107" BorderThickness="1"
+            CornerRadius="4" Padding="12">
+      <TextBlock Text="{Binding SupportNote}" TextWrapping="Wrap" />
+    </Border>
+
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+      <TextBlock Grid.Row="0" Grid.Column="0" Text="Operating system" Opacity="0.7" />
+      <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding OperatingSystem}" />
+
+      <TextBlock Grid.Row="1" Grid.Column="0" Text="Configuration" Opacity="0.7" />
+      <SelectableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ConfigDirectory}" TextWrapping="Wrap" />
+
+      <TextBlock Grid.Row="2" Grid.Column="0" Text="Logs" Opacity="0.7" />
+      <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LogDirectory}" TextWrapping="Wrap" />
+    </Grid>
+  </StackPanel>
+
+</Window>

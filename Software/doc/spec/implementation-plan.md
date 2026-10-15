@@ -53,14 +53,14 @@ The program is a read-only observer of the screen. It does not read or modify ga
 | Concern | Choice | Reason |
 |-|-|-|
 | Language / runtime | **C# / .NET 10** (LTS, supported until Nov 2028) | First-class Win32 + WinRT interop, runs on Linux as well, single-file self-contained publish, good performance. |
-| UI | **Avalonia UI 11** (incl. its built-in `TrayIcon`) | WPF-like XAML, MVVM (`CommunityToolkit.Mvvm`); cross-platform, so the UI does not block a later Linux port (§3.1). |
+| UI | **Avalonia UI 12** (incl. its built-in `TrayIcon`) | WPF-like XAML, MVVM (`CommunityToolkit.Mvvm`), compiled bindings; cross-platform, so the UI does not block a later Linux port (§3.1). |
 | Screen capture | **Windows.Graphics.Capture (WGC)** via `Vortice.Direct3D11` / CsWinRT; fallback **DXGI Desktop Duplication** | Event-driven frame delivery (no polling gap), per-monitor capture; Desktop Duplication covers exclusive fullscreen. |
 | Image processing | **OpenCvSharp4** (runtime package per platform: `OpenCvSharp4.runtime.win`, later `…runtime.linux-x64` / Ubuntu) | Template matching, color conversion. |
 | Hellboard transport | `System.IO.Ports` (USB CDC serial) | MicroPython on the RP2040 already exposes a USB CDC serial port next to HID. |
 | Config | JSON (`System.Text.Json`) + JSON schema | Human editable, validated on load. |
 | SVG rendering | **Svg.Skia** (SkiaSharp, cross-platform) | Renders the stratagem SVG icons into matching templates (§6.11). |
 | Logging | `Microsoft.Extensions.Logging` + Serilog file sink | Rolling logs in the per-user data directory (Windows `%LOCALAPPDATA%\HellboardCompanion\logs`, Linux `~/.local/share/HellboardCompanion/logs`). |
-| Tests | xUnit + **AwesomeAssertions** (Apache-2.0 fork of FluentAssertions) | Offline tests on recorded screenshots. FluentAssertions ≥ 8 is not used because of its commercial license. |
+| Tests | **xUnit v3** on Microsoft.Testing.Platform (`global.json` → `"test": {"runner": "Microsoft.Testing.Platform"}`, required by the .NET 10 SDK) + **AwesomeAssertions** (Apache-2.0 fork of FluentAssertions) | Offline tests on recorded screenshots. FluentAssertions ≥ 8 is not used because of its commercial license. |
 
 **Alternative considered:** Python (mss + OpenCV + pywin32, PyInstaller). Consistent with the MicroPython firmware, but weaker WGC support and more fragile Win32 interop. Rejected for the main program; Python may still be used for offline tooling.
 
@@ -82,11 +82,11 @@ Portability of the parts:
 
 Design rules that follow from this:
 
-1. **Project split**: `HellboardCompanion.Core` and `HellboardCompanion.App` target plain **`net10.0`** and must not reference Windows-only APIs (no `System.Windows.*`, no `Microsoft.Win32.Registry`, no P/Invoke). All Win32/WinRT code lives in **`HellboardCompanion.Platform.Windows`** (`net10.0-windows10.0.19041.0`).
-2. **Platform interfaces** in `Core/Platform/`: `IGameLocator`, `IFrameSource`, `ISerialPortDiscovery`, `IAutostart`, `IGlobalHotkeys`, `INotifier`, `IPlatformPaths`. The App composes them via dependency injection (`Microsoft.Extensions.DependencyInjection`); the platform project registers its implementations with one `AddWindowsPlatform()` call.
+1. **Project split**: `HellboardCompanion.Core` and `HellboardCompanion.App` target plain **`net10.0`** and must not reference Windows-only APIs (no `System.Windows.*`, no `Microsoft.Win32.Registry`, no P/Invoke). All Win32/WinRT code lives in **`HellboardCompanion.Platform.Windows`** (`net10.0-windows10.0.19041.0`). The executable is a thin **host project per platform** (`HellboardCompanion.Desktop.Windows` → `HellboardCompanion.exe`), which composes Core, App and the platform project; a Linux port would add `HellboardCompanion.Desktop.Linux`.
+2. **Platform interfaces** in `Core/Platform/`: `IPlatformPaths`, `IPlatformInfo` (P0), later `IGameLocator`, `IFrameSource`, `ISerialPortDiscovery`, `IAutostart`, `IGlobalHotkeys`, `INotifier` – each interface is added in the phase that implements it, so its shape follows the real implementation. The host composes them via dependency injection (`Microsoft.Extensions.DependencyInjection`); the platform project registers its implementations with one `AddWindowsPlatform()` call.
 3. **Platform-neutral data types**: frames are passed as OpenCV `Mat` / own `Frame` record, rectangles and monitor info as own records (`Rect`, `MonitorInfo`) – no `HWND`/`HMONITOR` outside the platform project (the `GameLocation` record carries opaque `nint` handles only for the platform code).
 4. **Paths** via `Environment.GetFolderPath` / `IPlatformPaths`, never hard-coded `%APPDATA%`; file names are case-sensitive-safe (Linux file systems).
-5. **Build guard**: the build script additionally builds `Core`, `App` and `Core.Tests` with `-r linux-x64` (no Linux runtime test needed); the recognition and tracker tests run platform-independent on recorded images. This keeps the portable part portable over time.
+5. **Build guard**: `build.ps1` additionally builds `Core`, `App` and `Core.Tests` with `--runtime linux-x64` (separate artifacts path, no Linux runtime test needed), and `PortabilityTests` fail if Core or App target a platform-specific framework or reference Windows assemblies. The recognition and tracker tests run platform-independent on recorded images.
 6. A Linux port would then consist of a new `HellboardCompanion.Platform.Linux` project (window/monitor detection, capture, discovery, autostart, hotkeys) – estimated as a separate phase, not planned.
 
 ### 3.2 Supported Windows versions
@@ -120,41 +120,52 @@ License notation: every source file starts with `// SPDX-License-Identifier: GPL
 
 ## 4. Directory Layout
 
+Entries marked *(P0)* exist; the others are added in the phase that needs them.
+
 ```
 Software/
 ├── doc/
 │   └── spec/
-│       ├── implementation-plan.md      ← this document
+│       ├── implementation-plan.md      ← this document (P0)
 │       └── hellboard-protocol.md       ← (P5) PC ↔ Hellboard protocol, basis for the firmware work
 ├── src/
-│   ├── HellboardCompanion.sln
-│   ├── HellboardCompanion.Core/          ← net10.0, platform-neutral, no UI dependencies
-│   │   ├── Platform/                   ← platform interfaces (IGameLocator, IFrameSource, …)
+│   ├── HellboardCompanion.Core/        ← (P0) net10.0, platform-neutral, no UI dependencies
+│   │   ├── Platform/                   ← (P0) platform interfaces (IPlatformPaths, IPlatformInfo, later IGameLocator, IFrameSource, …)
 │   │   ├── Capture/                    ← frame ring buffer, frame model
 │   │   ├── Layout/                     ← loadout screen layout (ROIs), resolution scaling
 │   │   ├── Recognition/                ← screen detector, slot classifier, ready-status detector
 │   │   ├── Loadout/                    ← loadout state machine, lock-in, history
-│   │   ├── Hellboard/                  ← protocol, serial transport, simulator, stratagem mapping
+│   │   ├── Catalog/                    ← stratagem catalog, updater (§6.11)
+│   │   ├── Hellboard/                  ← protocol, serial transport, simulator link, firmware updater
 │   │   ├── Configuration/
 │   │   └── Pipeline/                   ← orchestration
-│   ├── HellboardCompanion.Platform.Windows/ ← net10.0-windows: Win32 game/monitor detection, WGC + DXGI capture,
-│   │                                      serial discovery, autostart, hotkeys, notifications
-│   ├── HellboardCompanion.App/           ← net10.0, Avalonia tray app, status/debug UI, template tool
-│   └── HellboardCompanion.Simulator/     ← console app emulating a Hellboard on a virtual COM port / named pipe
+│   ├── HellboardCompanion.Platform.Windows/ ← (P0) net10.0-windows: platform info; later Win32 game/monitor
+│   │                                      detection, WGC + DXGI capture, serial discovery, autostart, hotkeys, notifications
+│   ├── HellboardCompanion.App/         ← (P0) net10.0, Avalonia tray app, status/debug UI, template tool
+│   ├── HellboardCompanion.Desktop.Windows/ ← (P0) Windows host → HellboardCompanion.exe, DI composition, logging,
+│   │                                      DPI-aware manifest
+│   └── HellboardCompanion.Simulator/   ← (P5) console app emulating a Hellboard on a virtual COM port / named pipe
 ├── tests/
-│   ├── HellboardCompanion.Core.Tests/
+│   ├── HellboardCompanion.Core.Tests/  ← (P0) unit tests incl. portability guard
 │   └── testData/
 │       ├── local/                      ← original screenshots provided by the user – local only, never committed
-│       └── <resolution>/               ← curated scenes + expected results
+│       └── <resolution>/               ← generated scenes + expected results (free of game assets)
 ├── assets/
-│   ├── templates/stratagems/           ← one PNG per stratagem + catalog.json
-│   └── templates/screen/               ← anchors for the loadout screen and ready button
+│   └── catalog.seed.json               ← (P6) seed catalog: names, groups, input sequences
 ├── config/
 │   └── default.config.json
-├── LICENSE                             ← license of Hellboard Companion (§3.3)
-├── .gitignore                          ← Software-local ignores (bin/, obj/, publish/, .idea/, tests/testData/local/)
-└── README.md
+├── HellboardCompanion.slnx             ← (P0) solution (XML format)
+├── Directory.Build.props               ← (P0) common settings (nullable, warnings as errors, product info)
+├── Directory.Packages.props            ← (P0) central NuGet package versions
+├── global.json                         ← (P0) SDK version and test runner
+├── .editorconfig                       ← (P0) code style, SPDX file header
+├── build.ps1                           ← (P0) build + test + linux-x64 guard
+├── LICENSE                             ← (P0) GPL-3.0 (§3.3)
+├── .gitignore                          ← (P0) bin/, obj/, artifacts/, .idea/, tests/testData/local/
+└── README.md                           ← (P0)
 ```
+
+Captured in-game templates and rendered SVG templates are stored in the user data directory, not in the repository (§3.3, §6.11).
 
 ## 5. Architecture Overview
 
@@ -573,7 +584,7 @@ Further points:
 
 | Phase | Content | Acceptance criteria |
 |-|-|-|
-| **P0 – Setup** | Solution, projects (Core, Platform.Windows, App, Simulator, tests), platform interfaces, DI composition, `.gitignore`, DPI-aware manifest, logging, Avalonia tray skeleton, build script incl. `linux-x64` build guard. | `dotnet build` and `dotnet test` succeed; Core/App/Core.Tests also build for `linux-x64`; app starts as tray icon. |
+| **P0 – Setup** ✔ | Solution, projects (Core, Platform.Windows, App, Desktop.Windows host, Core.Tests), first platform interfaces (`IPlatformPaths`, `IPlatformInfo`), DI composition, `.gitignore`, DPI-aware manifest, Serilog file logging, Avalonia tray skeleton, `build.ps1` incl. `linux-x64` build guard and portability tests. The Simulator project is created in P5. | `build.ps1` succeeds: build without warnings, all tests pass, Core/App/Core.Tests also build for `linux-x64`; app starts as tray icon and writes its log. |
 | **P1 – Game & monitor detection** | `GameLocator`, WinEvent hooks, status page. | With 2+ monitors: correct monitor reported at game start, after moving the window and after resolution change; game exit/restart detected. |
 | **P2 – Capture & recording** | WGC monitor capture, ROI readback, Desktop Duplication fallback, snapshot + record in the debug view. | Snapshots match the game monitor at native resolution; ≤ 3 % CPU at idle rate; works in borderless and windowed mode. |
 | **P3 – Test data & layout** | Curate the screenshots in `tests/testData/local/`, measure ROIs at native resolution, build `loadout-v1.json`, generate synthetic test sets (720p, 900p, 1080p, 4K) from the 1440p captures. Capture the stratagem template library with the template tool. Add real captures of further resolutions, player counts and states when available. | Layout verified on native 1440p captures; synthetic sets 720p–4K generated; templates for all stratagems in `macro.py`. |

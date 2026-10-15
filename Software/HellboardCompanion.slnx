@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HellboardCompanion.App/HellboardCompanion.App.csproj" />
+    <Project Path="src/HellboardCompanion.Core/HellboardCompanion.Core.csproj" />
+    <Project Path="src/HellboardCompanion.Desktop.Windows/HellboardCompanion.Desktop.Windows.csproj" />
+    <Project Path="src/HellboardCompanion.Platform.Windows/HellboardCompanion.Platform.Windows.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HellboardCompanion.Core.Tests/HellboardCompanion.Core.Tests.csproj" />
+  </Folder>
+</Solution>
