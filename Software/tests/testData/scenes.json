@@ -1,0 +1,67 @@
+{
+  "$comment": "Expected recognition results for the screenshots in testData/local/. The images are game content and stay local (never committed); this file only holds the expectations. Tests skip scenes whose image is missing. Stratagem ids are slugs of the icon repository names (stratagem-names-de.md); 'empty' = unassigned slot.",
+  "scenes": [
+    {
+      "file": "snapshot-20261015-220846-254-2560x1440.png",
+      "description": "Fori Prime, empty loadout, slot 1 focused",
+      "loadoutScreen": true,
+      "readyStatus": "Prepare",
+      "playerSlots": [ "empty", "empty", "empty", "empty" ],
+      "optionalMissionSlots": [ "empty", "empty", "empty", "empty" ]
+    },
+    {
+      "file": "with_stratagem.png",
+      "description": "Fori Prime, full loadout",
+      "loadoutScreen": true,
+      "readyStatus": "Prepare",
+      "playerSlots": [ "eagle_500kg_bomb", "grenade_launcher", "supply_pack", "mortar_sentry" ],
+      "optionalMissionSlots": [ "empty", "empty", "empty", "empty" ]
+    },
+    {
+      "file": "with_stratagem_small.png",
+      "description": "Same as with_stratagem.png, lower render resolution",
+      "loadoutScreen": true,
+      "readyStatus": "Prepare",
+      "playerSlots": [ "eagle_500kg_bomb", "grenade_launcher", "supply_pack", "mortar_sentry" ],
+      "optionalMissionSlots": [ "empty", "empty", "empty", "empty" ]
+    },
+    {
+      "file": "snapshot-20261015-221602-386-2560x1440.png",
+      "description": "Partion, full loadout, one optional mission stratagem",
+      "loadoutScreen": true,
+      "readyStatus": "Prepare",
+      "playerSlots": [ "eagle_strafing_run", "anti_materiel_rifle", "directional_shield", "machine_gun_sentry" ],
+      "optionalMissionSlots": [ "hellbomb", "empty", "empty", "empty" ]
+    },
+    {
+      "file": "snapshot-20261015-221618-113-2560x1440.png",
+      "description": "Partion, full loadout, ready",
+      "loadoutScreen": true,
+      "readyStatus": "Ready",
+      "playerSlots": [ "eagle_strafing_run", "anti_materiel_rifle", "directional_shield", "machine_gun_sentry" ],
+      "optionalMissionSlots": [ "hellbomb", "empty", "empty", "empty" ]
+    },
+    {
+      "file": "1920x1200.png",
+      "description": "Fori Prime, 16:10 window capture incl. 1 px window border",
+      "client": { "x": 1, "y": 0, "width": 1920, "height": 1200 },
+      "loadoutScreen": true,
+      "readyStatus": "Prepare",
+      "playerSlots": [ "empty", "empty", "empty", "empty" ],
+      "optionalMissionSlots": [ "empty", "empty", "empty", "empty" ]
+    },
+    { "file": "snapshot-20261015-220948-274-1920x1080.png", "description": "Settings menu", "loadoutScreen": false },
+    { "file": "snapshot-20261015-222021-693-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },
+    { "file": "snapshot-20261015-222029-867-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },
+    { "file": "snapshot-20261015-222036-150-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },
+    { "file": "snapshot-20261015-222043-379-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },
+    { "file": "snapshot-20261015-222049-770-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },
+    { "file": "snapshot-20261015-222056-457-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },
+    { "file": "snapshot-20261015-222103-610-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },
+    { "file": "snapshot-20261015-222109-861-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },
+    { "file": "snapshot-20261015-222118-710-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },
+    { "file": "snapshot-20261015-222125-167-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },
+    { "file": "snapshot-20261015-222131-943-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },
+    { "file": "snapshot-20261015-222137-561-2560x1440.png", "description": "Ship management list", "loadoutScreen": false }
+  ]
+}

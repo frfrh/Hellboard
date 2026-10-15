@@ -38,6 +38,34 @@ public sealed class Frame
     public DateTimeOffset Timestamp { get; }
 
     /// <summary>
+    /// Share (0…1) of pixels in <paramref name="area"/> (frame-relative, clipped to the frame) for
+    /// which <paramref name="predicate"/>(blue, green, red) is true.
+    /// </summary>
+    public double Share(PixelRect area, Func<byte, byte, byte, bool> predicate)
+    {
+        var clipped = area.Intersect(new PixelRect(0, 0, Width, Height));
+        if (clipped.IsEmpty)
+        {
+            return 0;
+        }
+
+        long hits = 0;
+        for (var y = clipped.Y; y < clipped.Bottom; y++)
+        {
+            var index = (y * Stride) + (clipped.X * BytesPerPixel);
+            for (var x = 0; x < clipped.Width; x++, index += BytesPerPixel)
+            {
+                if (predicate(Bgra[index], Bgra[index + 1], Bgra[index + 2]))
+                {
+                    hits++;
+                }
+            }
+        }
+
+        return (double)hits / clipped.Area;
+    }
+
+    /// <summary>
     /// True if the frame is (almost) completely black, which indicates that the content could not
     /// be captured (e.g. exclusive fullscreen or protected content). Uses a sparse pixel sample.
     /// </summary>
