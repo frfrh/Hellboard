@@ -5,12 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:HellboardCompanion.App.ViewModels"
         mc:Ignorable="d"
-        d:DesignWidth="1200" d:DesignHeight="600"
+        d:DesignWidth="1200" d:DesignHeight="820"
         x:Class="HellboardCompanion.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/hellboard.ico"
         Title="{Binding Title}"
-        Width="1200" Height="600"
+        Width="1200" Height="820"
         WindowStartupLocation="CenterScreen">
 
   <Design.DataContext>
@@ -42,6 +42,30 @@
 
           <TextBlock Grid.Row="3" Grid.Column="0" Text="Window mode" Opacity="0.7" />
           <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding GameWindowMode}" />
+        </Grid>
+
+        <TextBlock Text="Loadout" FontSize="16" FontWeight="SemiBold" />
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+          <TextBlock Grid.Row="0" Grid.Column="0" Text="Screen" Opacity="0.7" />
+          <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Loadout.Screen}" TextWrapping="Wrap" />
+
+          <TextBlock Grid.Row="1" Grid.Column="0" Text="Ready button" Opacity="0.7" />
+          <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Loadout.ReadyStatus}" />
+
+          <TextBlock Grid.Row="2" Grid.Column="0" Text="Stratagems" Opacity="0.7" />
+          <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Loadout.PlayerStratagems}" TextWrapping="Wrap" />
+
+          <TextBlock Grid.Row="3" Grid.Column="0" Text="Mission" Opacity="0.7" />
+          <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Loadout.MissionStratagems}" TextWrapping="Wrap" />
+
+          <TextBlock Grid.Row="4" Grid.Column="0" Text="Tracker" Opacity="0.7" />
+          <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Loadout.TrackerState}" />
+
+          <TextBlock Grid.Row="5" Grid.Column="0" Text="Last locked" Opacity="0.7" />
+          <SelectableTextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Loadout.LastLocked}" TextWrapping="Wrap" />
+
+          <TextBlock Grid.Row="6" Grid.Column="0" Text="Icons" Opacity="0.7" />
+          <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Loadout.Icons}" />
         </Grid>
 
         <TextBlock Text="Application" FontSize="16" FontWeight="SemiBold" />

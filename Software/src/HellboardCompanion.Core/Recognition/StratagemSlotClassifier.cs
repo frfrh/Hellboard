@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using System.Collections.Concurrent;
 using HellboardCompanion.Core.Capture;
 using HellboardCompanion.Core.Catalog;
 using HellboardCompanion.Core.Platform;
@@ -57,7 +58,15 @@ public sealed class StratagemSlotClassifier : IDisposable
     /// <summary>Tolerated misalignment in canonical pixels.</summary>
     private const int ShiftTolerance = 3;
 
+    /// <summary>Candidates from the coarse pass that are compared at full resolution.</summary>
+    private const int FineCandidates = 6;
+
+    /// <summary>Mean absolute pixel difference below which a slot counts as unchanged.</summary>
+    private const double UnchangedThreshold = 3.0;
+
     private readonly Dictionary<string, Mat> _templates;
+    private readonly Dictionary<string, Mat> _coarseTemplates;
+    private readonly ConcurrentDictionary<PixelRect, (Mat Canonical, SlotResult Result)> _cache = new();
     private readonly int _inset;
     private readonly double _minScore;
     private readonly double _minMargin;
@@ -76,6 +85,7 @@ public sealed class StratagemSlotClassifier : IDisposable
                 using var full = SvgRenderer.Render(g.First().SvgPath, CanonicalSize, iconSize, style.Background);
                 return new Mat(full, content).Clone();
             });
+        _coarseTemplates = _templates.ToDictionary(t => t.Key, t => Half(t.Value));
     }
 
     public int TemplateCount => _templates.Count;
@@ -93,6 +103,29 @@ public sealed class StratagemSlotClassifier : IDisposable
         var size = CanonicalSize + (2 * ShiftTolerance);
         Cv2.Resize(crop, canonical, new Size(size, size), interpolation: crop.Width > size ? InterpolationFlags.Area : InterpolationFlags.Cubic);
 
+        // The slot content rarely changes between frames: reuse the last result for the same position.
+        if (_cache.TryGetValue(slot, out var cached) && MeanAbsDiff(cached.Canonical, canonical) < UnchangedThreshold)
+        {
+            return cached.Result;
+        }
+
+        var result = ClassifyCanonical(canonical, size);
+        if (_cache.Count > 64)
+        {
+            ClearCache();
+        }
+
+        if (_cache.TryRemove(slot, out var previous))
+        {
+            previous.Canonical.Dispose();
+        }
+
+        _cache[slot] = (canonical.Clone(), result);
+        return result;
+    }
+
+    private SlotResult ClassifyCanonical(Mat canonical, int size)
+    {
         if (IsEmpty(canonical))
         {
             return new SlotResult(SlotState.Empty, null, 0, 0, null);
@@ -100,8 +133,14 @@ public sealed class StratagemSlotClassifier : IDisposable
 
         // Search area: the slot content (without frame) plus the shift tolerance on each side.
         using var searchArea = new Mat(canonical, new Rect(_inset, _inset, size - (2 * _inset), size - (2 * _inset)));
-        var ranking = _templates
-            .Select(t => (Id: t.Key, Score: Match(searchArea, t.Value)))
+
+        // Coarse pass at half resolution over all templates, fine pass with full shift search on the best few.
+        using var coarseSearchArea = Half(searchArea);
+        var ranking = _coarseTemplates
+            .Select(t => (Id: t.Key, Score: Match(coarseSearchArea, t.Value)))
+            .OrderByDescending(r => r.Score)
+            .Take(FineCandidates)
+            .Select(r => (r.Id, Score: Match(searchArea, _templates[r.Id])))
             .OrderByDescending(r => r.Score)
             .Take(2)
             .ToList();
@@ -115,10 +154,38 @@ public sealed class StratagemSlotClassifier : IDisposable
 
     public void Dispose()
     {
-        foreach (var template in _templates.Values)
+        foreach (var template in _templates.Values.Concat(_coarseTemplates.Values))
         {
             template.Dispose();
         }
+
+        ClearCache();
+    }
+
+    private void ClearCache()
+    {
+        foreach (var key in _cache.Keys)
+        {
+            if (_cache.TryRemove(key, out var entry))
+            {
+                entry.Canonical.Dispose();
+            }
+        }
+    }
+
+    private static double MeanAbsDiff(Mat a, Mat b)
+    {
+        using var diff = new Mat();
+        Cv2.Absdiff(a, b, diff);
+        var mean = Cv2.Mean(diff);
+        return (mean.Val0 + mean.Val1 + mean.Val2) / 3;
+    }
+
+    private static Mat Half(Mat image)
+    {
+        var half = new Mat();
+        Cv2.Resize(image, half, new Size(image.Width / 2, image.Height / 2), interpolation: InterpolationFlags.Area);
+        return half;
     }
 
     private static double Match(Mat image, Mat template)

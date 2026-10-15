@@ -1,0 +1,108 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+using HellboardCompanion.Core.Capture;
+using HellboardCompanion.Core.Catalog;
+using HellboardCompanion.Core.Layout;
+using HellboardCompanion.Core.Platform;
+
+namespace HellboardCompanion.Core.Recognition;
+
+/// <summary>Content of one slot as used for comparisons (equality = same content).</summary>
+public readonly record struct SlotValue(SlotState State, string? StratagemId)
+{
+    public static SlotValue Empty { get; } = new(SlotState.Empty, null);
+
+    public static SlotValue From(SlotResult result) => result.State switch
+    {
+        SlotState.Recognized => new(SlotState.Recognized, result.StratagemId),
+        SlotState.Empty => Empty,
+        _ => new(SlotState.Unknown, null),
+    };
+
+    public override string ToString() => State switch
+    {
+        SlotState.Recognized => StratagemId!,
+        SlotState.Empty => "empty",
+        _ => "?",
+    };
+}
+
+/// <summary>The loadout shown on the screen: 4 player stratagems and 4 optional mission stratagems.</summary>
+public sealed record LoadoutSnapshot(IReadOnlyList<SlotValue> PlayerSlots, IReadOnlyList<SlotValue> MissionSlots)
+{
+    public bool Equals(LoadoutSnapshot? other) =>
+        other is not null && PlayerSlots.SequenceEqual(other.PlayerSlots) && MissionSlots.SequenceEqual(other.MissionSlots);
+
+    public override int GetHashCode() => HashCode.Combine(PlayerSlots.Count, PlayerSlots.FirstOrDefault(), MissionSlots.FirstOrDefault());
+
+    public override string ToString() => $"{string.Join(", ", PlayerSlots)} | mission: {string.Join(", ", MissionSlots)}";
+}
+
+/// <summary>Result of analyzing one frame (implementation plan §6.4).</summary>
+public sealed record LoadoutObservation(
+    DateTimeOffset Timestamp,
+    LoadoutScreenResult Screen,
+    ReadyStatus Status,
+    LoadoutSnapshot? Loadout,
+    TimeSpan Duration)
+{
+    public bool ScreenVisible => Screen.IsVisible;
+}
+
+/// <summary>
+/// Analyzes a frame of the game: loadout screen visible? ready status? which stratagems?
+/// Stops after the cheap screen check when the loadout screen is not shown.
+/// </summary>
+public sealed class LoadoutRecognizer : IDisposable
+{
+    private readonly LoadoutLayout _layout;
+    private readonly LoadoutScreenDetector _screenDetector;
+    private readonly ReadyStatusDetector _readyDetector;
+    private readonly StratagemSlotClassifier _playerClassifier;
+    private readonly StratagemSlotClassifier _missionClassifier;
+
+    public LoadoutRecognizer(LoadoutLayout layout, IReadOnlyList<StratagemIcon> icons)
+    {
+        _layout = layout;
+        _screenDetector = new LoadoutScreenDetector(layout);
+        _readyDetector = new ReadyStatusDetector(layout);
+        _playerClassifier = new StratagemSlotClassifier(icons, SlotStyle.PlayerSlot);
+        _missionClassifier = new StratagemSlotClassifier(icons, SlotStyle.MissionSlot);
+    }
+
+    /// <param name="frame">Capture of the game's client area.</param>
+    public LoadoutObservation Recognize(Frame frame)
+    {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        var screen = _screenDetector.Detect(frame);
+        if (!screen.IsVisible)
+        {
+            return new LoadoutObservation(frame.Timestamp, screen, ReadyStatus.Unknown, null, System.Diagnostics.Stopwatch.GetElapsedTime(started));
+        }
+
+        var status = _readyDetector.Detect(frame, screen.Offset).Status;
+        var scaler = new LayoutScaler(_layout, new PixelRect(0, 0, frame.Width, frame.Height));
+        PixelRect Locate(LayoutRect slot)
+        {
+            var rect = scaler.ToScreen(slot);
+            return rect with { X = rect.X + screen.Offset.X, Y = rect.Y + screen.Offset.Y };
+        }
+
+        // The slots are independent; classify them in parallel (templates are only read).
+        var jobs = _layout.PlayerSlots.Select(s => (Classifier: _playerClassifier, Rect: Locate(s)))
+            .Concat(_layout.OptionalMissionSlots.Select(s => (Classifier: _missionClassifier, Rect: Locate(s))))
+            .ToArray();
+        var values = new SlotValue[jobs.Length];
+        Parallel.For(0, jobs.Length, i => values[i] = SlotValue.From(jobs[i].Classifier.Classify(frame, jobs[i].Rect)));
+        var player = values[.._layout.PlayerSlots.Count];
+        var mission = values[_layout.PlayerSlots.Count..];
+
+        return new LoadoutObservation(frame.Timestamp, screen, status, new LoadoutSnapshot(player, mission), System.Diagnostics.Stopwatch.GetElapsedTime(started));
+    }
+
+    public void Dispose()
+    {
+        _playerClassifier.Dispose();
+        _missionClassifier.Dispose();
+    }
+}

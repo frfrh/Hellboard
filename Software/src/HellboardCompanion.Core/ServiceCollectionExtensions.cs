@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using HellboardCompanion.Core.Capture;
+using HellboardCompanion.Core.Catalog;
+using HellboardCompanion.Core.Loadout;
+using HellboardCompanion.Core.Pipeline;
 using HellboardCompanion.Core.Platform;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,6 +20,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(paths);
         services.AddSingleton(new GameLocatorOptions());
         services.AddSingleton<GameFrameGrabber>();
+        services.AddSingleton<StratagemIconStore>();
+        services.AddSingleton<LoadoutHistory>();
+        services.AddSingleton<LoadoutPipeline>();
         return services;
     }
 }

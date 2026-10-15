@@ -3,6 +3,8 @@
 using Avalonia;
 using HellboardCompanion.App;
 using HellboardCompanion.Core;
+using HellboardCompanion.Core.Catalog;
+using HellboardCompanion.Core.Pipeline;
 using HellboardCompanion.Core.Platform;
 using HellboardCompanion.Platform.Windows;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,6 +38,8 @@ internal static class Program
         var log = services.GetRequiredService<ILoggerFactory>().CreateLogger("HellboardCompanion");
         log.LogInformation("{Product} {Version} starting", AppInfo.ProductName, AppInfo.Version);
         services.GetRequiredService<IGameLocator>().Start();
+        _ = services.GetRequiredService<StratagemIconStore>().UpdateAsync();
+        services.GetRequiredService<LoadoutPipeline>().Start();
 
         try
         {
