@@ -1,0 +1,24 @@
+{
+  "$comment": "Loadout screen layout (implementation plan §6.3). Reference 1920x1080, anchored top-left, scaled by min(width / 1920, height / 1080). Measured on native 2560x1440 captures (values / 4 * 3) and verified on a 1920x1200 capture, 2026-10-15.",
+  "version": 1,
+  "referenceWidth": 1920,
+  "referenceHeight": 1080,
+  "readyButton": { "x": 54.75, "y": 927, "width": 420, "height": 42 },
+  "playerSlots": [
+    { "x": 60, "y": 842.25, "width": 70, "height": 70 },
+    { "x": 144.75, "y": 842.25, "width": 70, "height": 70 },
+    { "x": 229.5, "y": 842.25, "width": 70, "height": 70 },
+    { "x": 315, "y": 842.25, "width": 70, "height": 70 }
+  ],
+  "fixedMissionSlots": [
+    { "x": 60, "y": 777.75, "width": 45, "height": 45 },
+    { "x": 120.75, "y": 777.75, "width": 45, "height": 45 },
+    { "x": 181.5, "y": 777.75, "width": 45, "height": 45 }
+  ],
+  "optionalMissionSlots": [
+    { "x": 242.25, "y": 777.75, "width": 45, "height": 45 },
+    { "x": 303, "y": 777.75, "width": 45, "height": 45 },
+    { "x": 363.75, "y": 777.75, "width": 45, "height": 45 },
+    { "x": 424.5, "y": 777.75, "width": 45, "height": 45 }
+  ]
+}
