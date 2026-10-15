@@ -40,6 +40,7 @@ internal static class Program
         services.GetRequiredService<IGameLocator>().Start();
         _ = services.GetRequiredService<StratagemIconStore>().UpdateAsync();
         services.GetRequiredService<LoadoutPipeline>().Start();
+        services.GetRequiredService<ManualTriggerService>().Start();
 
         try
         {

@@ -1,0 +1,22 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Small notification shown over the game; never takes the focus (implementation plan §6.13). -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="HellboardCompanion.App.Views.ToastWindow"
+        SystemDecorations="None"
+        Topmost="True"
+        ShowActivated="False"
+        ShowInTaskbar="False"
+        CanResize="False"
+        SizeToContent="WidthAndHeight"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent">
+
+  <Border Background="#E61A1A1A" BorderBrush="#FFE800" BorderThickness="2" CornerRadius="6" Padding="16,12" MaxWidth="520">
+    <StackPanel Spacing="4">
+      <TextBlock x:Name="TitleText" FontWeight="SemiBold" FontSize="15" Foreground="#FFE800" />
+      <TextBlock x:Name="BodyText" TextWrapping="Wrap" Foreground="White" />
+    </StackPanel>
+  </Border>
+
+</Window>

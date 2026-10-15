@@ -42,12 +42,23 @@ public sealed partial class CompanionApp : Application
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         }
 
+        if (_services?.GetService<ManualTriggerService>() is { } trigger)
+        {
+            trigger.Completed += (_, result) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                var (title, body) = ManualRecognitionText.Describe(result);
+                ToastWindow.Show(title, body);
+            });
+        }
+
         base.OnFrameworkInitializationCompleted();
     }
 
     private void OnTrayIconClicked(object? sender, EventArgs e) => ShowMainWindow();
 
     private void OnOpenClicked(object? sender, EventArgs e) => ShowMainWindow();
+
+    private void OnRecognizeNowClicked(object? sender, EventArgs e) => _ = _services?.GetService<ManualTriggerService>()?.TriggerAsync();
 
     private void OnExitClicked(object? sender, EventArgs e)
     {
@@ -81,5 +92,6 @@ public sealed partial class CompanionApp : Application
             _services.GetRequiredService<IPlatformPaths>(),
             _services.GetService<IGameLocator>(),
             new CapturePreviewViewModel(_services.GetService<GameFrameGrabber>(), _services.GetRequiredService<IPlatformPaths>()),
-            new LoadoutStatusViewModel(_services.GetService<LoadoutPipeline>(), _services.GetService<StratagemIconStore>()));
+            new LoadoutStatusViewModel(_services.GetService<LoadoutPipeline>(), _services.GetService<StratagemIconStore>()),
+            new ManualRecognitionViewModel(_services.GetService<ManualTriggerService>(), _services.GetService<LoadoutPipeline>(), _services.GetService<RecognitionOptions>()));
 }

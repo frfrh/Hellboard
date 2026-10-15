@@ -71,11 +71,13 @@ public sealed class LoadoutRecognizer : IDisposable
     }
 
     /// <param name="frame">Capture of the game's client area.</param>
-    public LoadoutObservation Recognize(Frame frame)
+    /// <param name="force">Classify the slots at their layout positions even if the loadout screen is not
+    /// detected (manual trigger and file analysis, implementation plan §6.13).</param>
+    public LoadoutObservation Recognize(Frame frame, bool force = false)
     {
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var screen = _screenDetector.Detect(frame);
-        if (!screen.IsVisible)
+        if (!screen.IsVisible && !force)
         {
             return new LoadoutObservation(frame.Timestamp, screen, ReadyStatus.Unknown, null, System.Diagnostics.Stopwatch.GetElapsedTime(started));
         }

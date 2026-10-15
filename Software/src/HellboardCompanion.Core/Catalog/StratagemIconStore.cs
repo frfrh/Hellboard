@@ -35,6 +35,12 @@ public sealed class StratagemIconStore(IPlatformPaths paths, ILogger<StratagemIc
             logger.LogWarning(ex, "Stratagem icons could not be updated, using the local copy");
         }
 
+        LoadLocal();
+    }
+
+    /// <summary>Loads the icons that are already in <see cref="Directory"/>, without network access.</summary>
+    public void LoadLocal()
+    {
         var icons = System.IO.Directory.Exists(Directory) ? StratagemIcon.LoadDirectory(Directory) : [];
         logger.LogInformation("Stratagem icons available: {Count}", icons.Count);
         _icons = icons;

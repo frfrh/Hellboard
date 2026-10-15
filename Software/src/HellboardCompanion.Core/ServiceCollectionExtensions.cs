@@ -22,7 +22,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GameFrameGrabber>();
         services.AddSingleton<StratagemIconStore>();
         services.AddSingleton<LoadoutHistory>();
+        services.AddSingleton(new RecognitionOptions());
         services.AddSingleton<LoadoutPipeline>();
+        services.AddSingleton(sp => new ManualTriggerService(
+            sp.GetRequiredService<LoadoutPipeline>(),
+            sp.GetRequiredService<RecognitionOptions>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ManualTriggerService>>(),
+            sp.GetService<IGlobalHotkeys>()));
         return services;
     }
 }

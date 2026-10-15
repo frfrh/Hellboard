@@ -17,6 +17,7 @@
         <TrayIcon.Menu>
           <NativeMenu>
             <NativeMenuItem Header="Open" Click="OnOpenClicked" />
+            <NativeMenuItem Header="Recognize loadout now" Click="OnRecognizeNowClicked" />
             <NativeMenuItemSeparator />
             <NativeMenuItem Header="Exit" Click="OnExitClicked" />
           </NativeMenu>

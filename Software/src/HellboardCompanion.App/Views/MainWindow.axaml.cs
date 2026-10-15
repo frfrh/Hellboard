@@ -14,6 +14,26 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
     }
 
+    private async void OnAnalyzeImageFileClicked(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Analyze image file",
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp"] }],
+        });
+
+        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
+        {
+            await viewModel.Manual.AnalyzeFileAsync(path);
+        }
+    }
+
     private async void OnOpenSnapshotFolderClicked(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel)

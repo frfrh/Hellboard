@@ -103,6 +103,14 @@
         </StackPanel>
 
         <SelectableTextBlock Text="{Binding Capture.LastSnapshot}" TextWrapping="Wrap" Opacity="0.7" />
+
+        <TextBlock Text="Manual recognition" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
+        <TextBlock Text="{Binding Manual.HotkeyInfo}" Opacity="0.7" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="Recognize now" Command="{Binding Manual.RecognizeNowCommand}" />
+          <Button Content="Analyze image file…" Click="OnAnalyzeImageFileClicked" />
+        </StackPanel>
+        <SelectableTextBlock Text="{Binding Manual.Result}" TextWrapping="Wrap" />
       </StackPanel>
 
     </Grid>

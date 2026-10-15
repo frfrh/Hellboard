@@ -162,6 +162,18 @@ internal static partial class NativeMethods
     [LibraryImport("kernel32.dll")]
     public static partial uint GetCurrentThreadId();
 
+    public const uint WM_HOTKEY = 0x0312;
+    public const uint WM_APP = 0x8000;
+    public const uint MOD_NOREPEAT = 0x4000;
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool RegisterHotKey(nint hWnd, int id, uint fsModifiers, uint vk);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool UnregisterHotKey(nint hWnd, int id);
+
     public static readonly nint DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
 
     [LibraryImport("user32.dll")]
