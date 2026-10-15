@@ -31,20 +31,43 @@ button_1_2 = Hellbutton(b1_2, Macros.Resupply)
 button_1_3 = Hellbutton(b1_3, Macros.Reinforce)
 button_1_4 = Hellbutton(b1_4, Macros.CYCLE)
 
+# Macros.GrenadeLauncher
+# Macros.SupplyPack
+# Macros.ExpendableAntiTank
+# Macros.Eagle500KGBomb
+
+# Macros.Stalwart
+# Macros.AntiMaterialRifle
+# Macros.Autocannon
+# Macros.QuasarCannon
+# Macros.GuardDogRover
+# Macros.ShieldGeneratorPack
+# Macros.GatlingSentry
+# Macros.MortarSentry
+# Macros.AutocannonSentry
+# Macros.EagleClusterBomb
+# Macros.Orbital380MMHEBarrage
+# Macros.Commando
+
 button_2_1 = Hellbutton(b2_1, Macros.GrenadeLauncher)
-button_2_2 = Hellbutton(b2_2, Macros.ShieldGeneratorPack)
-button_2_3 = Hellbutton(b2_3, Macros.MortarSentry)
+button_2_2 = Hellbutton(b2_2, Macros.SupplyPack)
+button_2_3 = Hellbutton(b2_3, Macros.GasMortarSentry)
 button_2_4 = Hellbutton(b2_4, Macros.Eagle500KGBomb)
 
 row1List = []
 row1List.append (Macros.SOSBeacon)
 row1List.append (Macros.EagleRearm)
-row1List.append (Macros.SuperEarthFlag)
+# row1List.append (Macros.SuperEarthFlag)
 row1List.append (Macros.SEAFArtilery)
-row1List.append (Macros.UploadData)
-row1List.append (Macros.SeismicProbe)
-row1List.append (Macros.Hellbomb)
-row1List.append (Macros.OrbitalIlluminationFlare)
+# row1List.append (Macros.OrbitalEMSStrike)
+# row1List.append (Macros.UploadData)
+# row1List.append (Macros.SeismicProbe)
+# row1List.append (Macros.Hellbomb)
+# row1List.append (Macros.OrbitalIlluminationFlare)
+# row1List.append (Macros.OrbitalGasStrike)
+
+# row1List.append (Macros.Autocannon)
+# row1List.append (Macros.EagleStrafingRun)
 
 colors = {}
 
