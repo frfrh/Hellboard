@@ -127,7 +127,8 @@ Software/
 ├── doc/
 │   └── spec/
 │       ├── implementation-plan.md      ← this document (P0)
-│       └── hellboard-protocol.md       ← (P5) PC ↔ Hellboard protocol, basis for the firmware work
+│       ├── hellboard-protocol.md       ← PC ↔ Hellboard protocol v1 (basis for the firmware work)
+│       └── stratagem-names-de.md       ← English ↔ German stratagem names
 ├── src/
 │   ├── HellboardCompanion.Core/        ← (P0) net10.0, platform-neutral, no UI dependencies
 │   │   ├── Platform/                   ← (P0) platform interfaces (IPlatformPaths, IPlatformInfo, later IGameLocator, IFrameSource, …)
@@ -145,6 +146,8 @@ Software/
 │   ├── HellboardCompanion.Desktop.Windows/ ← (P0) Windows host → HellboardCompanion.exe, DI composition, logging,
 │   │                                      DPI-aware manifest
 │   └── HellboardCompanion.Simulator/   ← (P5) console app emulating a Hellboard on a virtual COM port / named pipe
+├── tools/
+│   └── board-spike/                    ← checks MicroPython capabilities on the real board (raw REPL, no flash writes)
 ├── tests/
 │   ├── HellboardCompanion.Core.Tests/  ← (P0) unit tests incl. portability guard
 │   └── testData/
@@ -392,18 +395,7 @@ interface IHellboardLink {
   - `DryRunHellboardLink` (default until the extended firmware exists): logs what would be sent.
   - `SerialHellboardLink`: USB CDC serial; finds the board by USB VID/PID (RP2040 MicroPython: `2E8A:0005`) or a configured COM port; reconnects automatically.
   - `SimulatorHellboardLink` + `HellboardCompanion.Simulator`: emulates the firmware's responses for end-to-end tests.
-- **Draft protocol** – only a starting point; transport, message format and data model are open firmware decisions (§6.9) and are finalized in `Software/doc/spec/hellboard-protocol.md`. Draft: newline-delimited JSON:
-
-```
-PC → board:  {"v":1,"cmd":"setLoadout","id":42,
-              "stratagems":["GrenadeLauncher","SupplyPack","GasMortarSentry","Eagle500KGBomb"],
-              "missionStratagems":["SEAFArtilery","Hellbomb"]}
-board → PC:  {"v":1,"ack":42,"ok":true}
-PC → board:  {"v":1,"cmd":"ping","id":43}
-board → PC:  {"v":1,"ack":43,"ok":true,"fw":"1.x"}
-```
-
-  In this draft the names are the attribute names of `Macros` in `Firmware/libs/macro.py` (resolved with `getattr(Macros, name)`). Alternative to be discussed (F2): the PC sends the full stratagem definition (name, color, input sequence), so the firmware needs no stratagem table at all. Unknown names → `ok:false` with the list of unknown entries.
+- **Protocol**: specified in **[hellboard-protocol.md](hellboard-protocol.md)** (version 1, 2026-10-16): newline-delimited JSON over USB CDC, requests with `id`/`ack`, commands `ping`, `setLoadout` (complete stratagem definitions: name, color, arrow sequence – F2), `getState`, `setConfig` (F7), `saveDefault` (flash write only on "Set as default" – F3), `enterUpdateMode` (F8), event `hello`. Before the firmware work starts, the capabilities of MicroPython v1.17 on the real board are verified with the board spike (`tools/board-spike/`).
 
 - **Button mapping** (target behavior of the extended firmware; based on the current `Firmware/main.py`, may change with the firmware decisions):
 
@@ -604,7 +596,7 @@ Further points:
 | **P4 – Recognition & lock-in** *(recognition, tracker, pipeline, history, manual trigger and file analysis implemented; automatic lock-in **live-tested in the game (solo) on 2026-10-15**; open: live test of the manual trigger; Ready→Prepare→Ready only covered by unit/replay tests – live test needs a multiplayer session)* | Screen detector, slot classifier, ready-status detector, `LoadoutTracker`, history, **manual trigger and offline image analysis (§6.13)** – built early in this phase to simplify testing. | Offline: 100 % correct slot classification and screen detection on native and synthetic test sets **from 720p to 4K** at default thresholds, no false lock-in outside the loadout screen. Replay of "last player confirms" sequences locks in the correct loadout every time; Ready→Prepare→Ready sequences with a changed loadout produce a second transfer, without a change no second transfer. Lock-in latency within targets (§6.5) at 4K. Manual trigger: hotkey on the loadout screen shows the correct loadout within 500 ms; test mode sends nothing. |
 | **P5 – Hellboard link (PC side)** | `IHellboardLink`, dry-run, serial transport, simulator, protocol spec `hellboard-protocol.md`. | End-to-end with simulator: locked loadout is transferred and acknowledged; reconnect re-sends the last loadout. |
 | **P6 – Polish & release** | Catalog updater (§6.11) incl. SVG rendering and seed catalog, third-party notices, history page, settings, autostart, single-file self-contained publish, README. | `HellboardCompanion.exe` runs on a clean Windows 11 machine without installed .NET (Windows 10: best effort, §3.2); a new SVG in the repository appears in the catalog after the next start; changed icons are re-rendered; offline start works with the cached catalog. |
-| **P7 – Firmware extension & updater** *(runs alongside P5, §2.1)* | On the existing MicroPython v1.17 build (decisions F1–F9 agreed, §6.9): first a short spike on the real board (non-blocking `sys.stdin` with `select.poll`, `hashlib.sha256`, `machine.bootloader()` on v1.17), finalize `hellboard-protocol.md`, implement the firmware side (protocol handling, button assignment, display/LED feedback, "Set as default" persistence (F3), `hid` module as the only user of the HID API (prepares P7b)), firmware updater (§6.10) with bundle/manifest, verification and rollback, update the firmware setup instructions. | End-to-end with the real Hellboard: locked loadout appears on the buttons and the display within 1 s; re-sent after reconnect; the updater installs a new firmware bundle, verifies it and rolls back on a simulated failure (interrupted transfer, wrong hash); all agreed decisions implemented. Changes in `Firmware/` only after the respective decision was agreed. |
+| **P7 – Firmware extension & updater** *(runs alongside P5, §2.1)* | On the existing MicroPython v1.17 build (decisions F1–F9 agreed, §6.9; **board spike passed 2026-10-16**, see hellboard-protocol.md §8): finalize `hellboard-protocol.md`, implement the firmware side (protocol handling, button assignment, display/LED feedback, "Set as default" persistence (F3), `hid` module as the only user of the HID API (prepares P7b)), firmware updater (§6.10) with bundle/manifest, verification and rollback, update the firmware setup instructions. | End-to-end with the real Hellboard: locked loadout appears on the buttons and the display within 1 s; re-sent after reconnect; the updater installs a new firmware bundle, verifies it and rolls back on a simulated failure (interrupted transfer, wrong hash); all agreed decisions implemented. Changes in `Firmware/` only after the respective decision was agreed. |
 | **P7b – MicroPython switch (F10)** *(isolated, after P7)* | Own branch and own firmware bundle. Build/obtain the official MicroPython UF2 for RP2040, port the `hid` module to `usb-device-keyboard`, keep everything else unchanged. Test plan on the real board: (1) HID and CDC enumerate together on Windows, (2) every stratagem macro works in the game incl. modifier hold/toggle and key timing, (3) protocol, "Set as default", display and LEDs unchanged, (4) unplug/replug and PC sleep/resume, (5) updater: install the new UF2 + files and **roll back to v1.17** (old UF2 kept in the bundle; BOOTSEL recovery documented). | All tests of the checklist pass on the user's board; v1.17 rollback verified; only then the new build becomes the default in the firmware bundle. |
 | **P8 – Input sequence editor** *(last phase)* | Editor for input sequences of new stratagems (§6.12), overrides that survive catalog updates, validation, optional export/import. | A stratagem added to the catalog without sequence can be given a sequence in the UI, becomes transferable and is sent to the Hellboard. |
 
