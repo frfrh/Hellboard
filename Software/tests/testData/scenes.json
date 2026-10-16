@@ -51,6 +51,7 @@
       "optionalMissionSlots": [ "empty", "empty", "empty", "empty" ]
     },
     { "file": "snapshot-20261015-220948-274-1920x1080.png", "description": "Settings menu", "loadoutScreen": false },
+    { "file": "snapshot-20261016-181256-805-2560x1440.png", "description": "Screen after a mission (single player): yellow 'back to ship' button at the ready button position, no mission frames", "loadoutScreen": false },
     { "file": "snapshot-20261015-222021-693-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },
     { "file": "snapshot-20261015-222029-867-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },
     { "file": "snapshot-20261015-222036-150-2560x1440.png", "description": "Ship management list", "loadoutScreen": false },

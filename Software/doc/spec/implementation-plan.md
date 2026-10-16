@@ -235,7 +235,7 @@ Measured positions in the **reference resolution 1920×1080** – measured on na
 |-|-|-|-|-|-|-|
 | `readyButton` | 54.75 | 927 | 420 | 42 | 73, 1236, 560×56 | Ready button (`Prepare` / `Ready`, §6.4); primary screen anchor. |
 | `playerSlots[0..3]` | 60 / 144.75 / 229.5 / 315 | 842.25 | 70 | 70 | x 80 / 193 / 306 / 420, y 1123, 93–94 px | Inner area of the 4 player stratagem slots. |
-| `fixedMissionSlots[0..2]` | 60 / 120.75 / 181.5 | 777.75 | 45 | 45 | x 80 / 161 / 242, y 1037, 60 px | Reinforce, SOS Beacon, Resupply (beige frame incl.); supporting evidence only (§6.4). |
+| `fixedMissionSlots[0..2]` | 60 / 120.75 / 181.5 | 777.75 | 45 | 45 | x 80 / 161 / 242, y 1037, 60 px | Reinforce, SOS Beacon, Resupply (beige frame incl.); required cue D of the screen detection (§6.4). |
 | `optionalMissionSlots[0..3]` | 242.25 / 303 / 363.75 / 424.5 | 777.75 | 45 | 45 | x 323 / 404 / 485 / 566, y 1037, 60 px | Optional mission stratagems (same frame style as the fixed ones when present). |
 
 Visual observations (unmasked screenshots, status `Prepare`):
@@ -299,12 +299,12 @@ Per frame, three steps with early exit:
    |-|-|-|
    | **A – Ready button** | In a search window of ±2 % of the client height around the expected position: rows/columns that are mostly yellow give the button rectangle (Prepare: yellow outline, Ready: yellow fill). Score = min(size match, pattern), pattern = diagonal stripes (block-wise, direction-independent, so label and key symbol do not matter) or yellow fill ≥ 60 %. | required (≥ 0.6) |
    | **B – Slot raster** | Uniform neutral gray (≈ 47, 47, 47) along the inner edge of all 4 player slots – present for empty and filled slots. *The gaps between the slots are transparent (animated background), so they are not used.* | required (≥ 0.4) |
-   | **D – Fixed mission icons** | Beige frames of Reinforce / SOS Beacon / Resupply. | supporting |
+   | **D – Fixed mission icons** | Beige frames of Reinforce / SOS Beacon / Resupply (present in every mission): share of points along the frame edges with a beige pixel within a small band (≥ 2 px) across the edge, so the ~1 px blended frame at 720p still counts. | required (≥ 0.6) |
    | *C – Card frame* | *Not implemented – A and B separate clearly; added only if needed.* | – |
 
-   - The loadout screen counts as visible when **A and B** match, or when one of them is strong (≥ 0.85) and D matches.
+   - The loadout screen counts as visible when **D** matches and either **A and B** match or one of them is strong (≥ 0.85). D became required in P6 (2026-10-16): the screen after a mission has a yellow "back to ship" button at the ready button position (A ≈ 0.9) and, with its player menu open, gray rows where the slots are (B) – it led to locked empty loadouts and false "not recognized" problems.
    - **Offset correction**: derived from the **center** of the found button (the Ready fill is ~3 px smaller per side than the Prepare outline at 1440p). All ROIs are shifted by it; verified with artificially shifted captures (±20 px).
-   - **Measured** on all local scenes at 720p, 900p, 1080p, native and 2160p incl. 16:10: loadout screen button 0.86–1.00 / raster 0.61–0.99; other screens (settings menu, 12 ship management screens, black frame) button 0.00 / raster ≤ 0.05.
+   - **Measured** on all local scenes at 720p, 900p, 1080p, native and 2160p incl. 16:10: loadout screen button 0.86–1.00 / raster 0.61–0.99 / mission frames 0.71–1.00; other screens (settings menu, 12 ship management screens, screen after a mission, black frame) button 0.00 / raster ≤ 0.05 / mission frames ≤ 0.24 (screen after a mission: button 0.86–0.93, mission frames 0.00).
    - Cheap path: when no loadout screen is visible, only cue A is evaluated (a single small ROI), 2 fps.
 
 2. **Slot classification** *(implemented: `StratagemSlotClassifier`)*: each slot (offset-corrected) is cropped with a small margin, scaled to a **canonical size of 64 px** (+ 3 px shift tolerance per side) and compared with `TM_CCOEFF_NORMED` against templates **rendered from the SVG icons** (Svg.Skia) – no captured game images are needed:

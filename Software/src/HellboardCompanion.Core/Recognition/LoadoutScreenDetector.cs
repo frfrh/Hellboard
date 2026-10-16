@@ -10,7 +10,7 @@ namespace HellboardCompanion.Core.Recognition;
 /// <param name="Offset">Position correction of the layout, found via the ready button.</param>
 /// <param name="ButtonScore">Cue A: ready button geometry and stripe pattern (0…1).</param>
 /// <param name="GridScore">Cue B: player slot raster – gray slot edges and black gaps (0…1).</param>
-/// <param name="MissionFrameScore">Cue D: beige frames of the fixed mission stratagems (0…1, supporting).</param>
+/// <param name="MissionFrameScore">Cue D: beige frames of the fixed mission stratagems (0…1, required).</param>
 public sealed record LoadoutScreenResult(
     bool IsVisible,
     PixelOffset Offset,
@@ -25,7 +25,8 @@ public sealed record LoadoutScreenResult(
 /// Decides whether the loadout screen is visible, using only structural cues that do not depend on
 /// the selected stratagems, the mission or the game language (implementation plan §6.4):
 /// A – ready button (yellow outline or fill, diagonal stripes), B – player slot raster,
-/// D – beige frames of the fixed mission stratagems (supporting only).
+/// D – beige frames of the fixed mission stratagems (Reinforce, SOS Beacon, Resupply; present in every
+/// mission and required, because the screen after a mission matches A and partly B).
 /// </summary>
 public sealed class LoadoutScreenDetector(LoadoutLayout layout)
 {
@@ -33,7 +34,9 @@ public sealed class LoadoutScreenDetector(LoadoutLayout layout)
     public const double SearchMargin = 0.02;
 
     // Measured on all local scenes, 720p-4K (P4): loadout screen button 0.86-1.00 / grid 0.61-0.99,
-    // other screens button 0.00 / grid <= 0.05.
+    // other screens button 0.00 / grid <= 0.05. Mission frames (P6, 720p-4K): loadout screen 0.71-1.00,
+    // other screens <= 0.24; the screen after a mission reaches button 0.93 (yellow "back to ship" button)
+    // but mission 0.00.
     private const double ButtonThreshold = 0.6;
     private const double GridThreshold = 0.4;
     private const double MissionFrameThreshold = 0.6;
@@ -50,8 +53,12 @@ public sealed class LoadoutScreenDetector(LoadoutLayout layout)
         var gridScore = EvaluateGrid(frame, scaler, offset);
         var missionScore = EvaluateMissionFrames(frame, scaler, offset);
 
-        var visible = (buttonScore >= ButtonThreshold && gridScore >= GridThreshold)
-            || ((buttonScore >= StrongCueThreshold || gridScore >= StrongCueThreshold) && missionScore >= MissionFrameThreshold);
+        // The beige frames of the fixed mission stratagems are required: the screen after a mission has a
+        // yellow button at the same place and gray menu rows where the slots are, but no mission frames.
+        var visible = missionScore >= MissionFrameThreshold
+            && ((buttonScore >= ButtonThreshold && gridScore >= GridThreshold)
+                || buttonScore >= StrongCueThreshold
+                || gridScore >= StrongCueThreshold);
 
         return new LoadoutScreenResult(visible, offset, buttonScore, gridScore, missionScore);
     }
@@ -181,10 +188,72 @@ public sealed class LoadoutScreenDetector(LoadoutLayout layout)
 
     private double EvaluateMissionFrames(Frame frame, LayoutScaler scaler, PixelOffset offset)
     {
-        var thickness = Math.Max(1, (int)Math.Round(2 * scaler.Scale));
+        // The frame is ~2 px at 1080p and only ~1 px (blended) at 720p, so every point along the edges
+        // counts as hit if a beige pixel lies within a small band around the expected edge.
+        var band = Math.Max(2, (int)Math.Round(2 * scaler.Scale));
         return layout.FixedMissionSlots
-            .Select(s => RingShare(frame, Shift(scaler.ToScreen(s), offset), thickness, IsBeige))
+            .Select(s => EdgeBandShare(frame, Shift(scaler.ToScreen(s), offset), band, IsBeige))
             .Average();
+    }
+
+    /// <summary>
+    /// Share of points along the four edges of <paramref name="rect"/> that have a matching pixel within
+    /// <paramref name="band"/> pixels across the edge (inside or outside).
+    /// </summary>
+    private static double EdgeBandShare(Frame frame, PixelRect rect, int band, Func<byte, byte, byte, bool> predicate)
+    {
+        var hits = 0;
+        var total = 0;
+        for (var x = rect.X; x < rect.Right; x++)
+        {
+            hits += AnyInColumn(x, rect.Y) + AnyInColumn(x, rect.Bottom - 1);
+            total += 2;
+        }
+
+        for (var y = rect.Y; y < rect.Bottom; y++)
+        {
+            hits += AnyInRow(rect.X, y) + AnyInRow(rect.Right - 1, y);
+            total += 2;
+        }
+
+        return total == 0 ? 0 : (double)hits / total;
+
+        int AnyInColumn(int x, int centerY)
+        {
+            for (var y = centerY - band; y <= centerY + band; y++)
+            {
+                if (Matches(x, y))
+                {
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        int AnyInRow(int centerX, int y)
+        {
+            for (var x = centerX - band; x <= centerX + band; x++)
+            {
+                if (Matches(x, y))
+                {
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        bool Matches(int x, int y)
+        {
+            if (x < 0 || y < 0 || x >= frame.Width || y >= frame.Height)
+            {
+                return false;
+            }
+
+            var i = (y * frame.Stride) + (x * Frame.BytesPerPixel);
+            return predicate(frame.Bgra[i], frame.Bgra[i + 1], frame.Bgra[i + 2]);
+        }
     }
 
     // ---- Helpers --------------------------------------------------------------------------
