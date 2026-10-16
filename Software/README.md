@@ -46,6 +46,19 @@ Core and App must not use Windows-only APIs; this is checked by `PortabilityTest
 
 Screenshots of the game are copyrighted game content. Put them into `tests/testData/local/` – this folder is ignored by git and is never committed.
 
+## Knowledge base
+
+Reference pages for development and for extending the stratagem catalog (input codes, names, designations). They are looked up **manually** by developers; the software never queries them.
+
+| Source | Content | Notes |
+|-|-|-|
+| [DiversHub – Stratagems](https://divershub.app/de/database/stratagems) | 111 stratagems with input code, cooldown and full designation (German UI) | Most complete source (checked 2026-10-16). Suspicious: Cremator and GL-28 share a code, Reinforcement Pods share the code of Upload Data. |
+| [Helldivers Wiki (Fandom) – Stratagem Codes](https://helldivers.fandom.com/wiki/Stratagem_Codes) | 81 stratagems with input code, cooldown and designation | Missing newer Warbonds. SSSD Delivery differs from DiversHub. |
+| [Icon repository nvigneux/Helldivers-2-Stratagems-icons-svg](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg) | Stratagem SVG icons, the ids and English names of the catalog | Downloaded at runtime by the catalog updater (implementation plan §6.11). |
+| [`doc/spec/stratagem-names-de.md`](doc/spec/stratagem-names-de.md) | English ↔ German names read from the game | Own notes. |
+
+Before taking a code into `assets/catalog.seed.json`, compare the sources with each other and with `Firmware/libs/macro.py`; when they disagree, check the code in the game.
+
 ## License
 
 Hellboard Companion is licensed under the [GNU General Public License v3.0 or later](LICENSE) (`GPL-3.0-or-later`). Third-party components keep their own licenses; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
