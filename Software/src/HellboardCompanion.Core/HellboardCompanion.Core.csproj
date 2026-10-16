@@ -7,7 +7,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\..\assets\layouts\loadout-v1.json" LogicalName="HellboardCompanion.Core.Layout.loadout-v1.json" />
-    <EmbeddedResource Include="..\..\assets\catalog.seed.json" LogicalName="HellboardCompanion.Core.Hellboard.catalog.seed.json" />
+    <!-- Single source of the stratagem input codes, shared with the firmware (repository root). -->
+    <EmbeddedResource Include="..\..\..\doc\stratagems.json" LogicalName="HellboardCompanion.Core.Hellboard.stratagems.json" Link="stratagems.json" />
   </ItemGroup>
 
   <ItemGroup>

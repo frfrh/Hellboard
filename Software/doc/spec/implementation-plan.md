@@ -153,7 +153,7 @@ Software/
 │       ├── local/                      ← original screenshots provided by the user – local only, never committed
 │       └── <resolution>/               ← generated scenes + expected results (free of game assets)
 ├── assets/
-│   └── catalog.seed.json               ← (P6) seed catalog: names, groups, input sequences
+│   └── (seed catalog = ../doc/stratagems.json in the repository root, embedded)
 ├── config/
 │   └── default.config.json
 ├── HellboardCompanion.slnx             ← (P0) solution (XML format)
@@ -506,7 +506,7 @@ Further points:
 
 ### 6.11 Stratagem catalog and automatic update
 
-> **Input codes – single source (decided 2026-10-16):** all stratagem input codes of the project are maintained in [`doc/stratagems.md`](../../../doc/stratagems.md) in the repository root (115 stratagems, ids = icon ids of this catalog). The seed catalog sequences and the firmware macros are derived from that list and are not edited directly. Not wired up yet: a generator/check that builds `catalog.seed.json` sequences and the firmware table from the list (firmware part to be agreed with the user, §6.9). Web pages with codes are looked up manually only; the software never queries them.
+> **Input codes – single source (decided 2026-10-16):** all stratagem input codes of the project are maintained in [`doc/stratagems.json`](../../../doc/stratagems.json) in the repository root (115 stratagems, ids = icon ids of this catalog, codes as U/D/L/R, category → LED color table; format described in [`doc/stratagems.md`](../../../doc/stratagems.md)). JSON was chosen over a Markdown table so that the firmware can read it directly with MicroPython's `json` module. The software embeds the file and builds its seed catalog from it (`StratagemCatalog.Parse`: names, category, LED color, codes; the file is validated, invalid content fails the unit tests); `assets/catalog.seed.json` was removed. The firmware table is not derived from it yet (to be agreed with the user, §6.9; until then `macro.py` is kept in line by hand). Web pages with codes are looked up manually only; the software never queries them.
 
 Source: the icon repository **`nvigneux/Helldivers-2-Stratagems-icons-svg`** on GitHub (already referenced in the root README), branch `master`.
 
@@ -518,7 +518,7 @@ Repository structure (checked 2026-10-15, 111 files):
 - The repository contains **no input sequences** and no machine-readable metadata – input sequences are maintained by this project (§6.12).
 - The repository declares **no license** → icons are downloaded at runtime into the user's data directory and are **not** committed to this repository or bundled in the release (see open questions).
 
-Catalog model (`catalog.json` in the user data directory, seeded from `assets/catalog.seed.json` shipped with the program):
+Catalog model (`catalog.json` in the user data directory, seeded from the embedded `doc/stratagems.json`):
 
 ```json
 {
@@ -532,7 +532,7 @@ Catalog model (`catalog.json` in the user data directory, seeded from `assets/ca
 }
 ```
 
-- The **seed** contains all stratagems known at build time incl. input sequences, initially taken from `Firmware/libs/macro.py` (read only). Name differences between the firmware and the repository (e.g. `SEAF Artilery` vs. `SEAF Artillery`, `Recoiless Rifle`) are resolved by an alias table in the seed.
+- The **seed** is `doc/stratagems.json` (repository root, embedded): all stratagems known at build time incl. input sequences. Firmware macro names are listed there per stratagem, so name differences to the firmware (e.g. `SEAF Artilery`) need no alias table.
 
 Update procedure (`CatalogUpdater`):
 

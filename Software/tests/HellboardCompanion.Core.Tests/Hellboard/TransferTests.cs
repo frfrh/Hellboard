@@ -34,8 +34,9 @@ public sealed class TransferTests
     [Fact]
     public void Empty_and_unknown_slots_are_sent_as_null_and_reported()
     {
+        var catalog = new StratagemCatalog(Catalog.Entries.Select(e => e.Id == "td_110_maelstrom" ? e with { Sequence = null } : e));
         var transfer = LoadoutTransferBuilder.Build(
-            Locked(["eagle_500kg_bomb", null, "td_110_maelstrom", "not_in_catalog"], []), Catalog, new MultiFunctionOptions());
+            Locked(["eagle_500kg_bomb", null, "td_110_maelstrom", "not_in_catalog"], []), catalog, new MultiFunctionOptions());
 
         transfer.Loadout.Stratagems.Select(s => s?.Name).Should().Equal("Eagle 500KG Bomb", null, null, null);
         transfer.NotTransferable.Should().Equal("td_110_maelstrom", "not_in_catalog");
