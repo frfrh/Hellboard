@@ -506,6 +506,8 @@ Further points:
 
 ### 6.11 Stratagem catalog and automatic update
 
+> **Input codes – single source (decided 2026-10-16):** all stratagem input codes of the project are maintained in [`doc/stratagems.md`](../../../doc/stratagems.md) in the repository root (115 stratagems, ids = icon ids of this catalog). The seed catalog sequences and the firmware macros are derived from that list and are not edited directly. Not wired up yet: a generator/check that builds `catalog.seed.json` sequences and the firmware table from the list (firmware part to be agreed with the user, §6.9). Web pages with codes are looked up manually only; the software never queries them.
+
 Source: the icon repository **`nvigneux/Helldivers-2-Stratagems-icons-svg`** on GitHub (already referenced in the root README), branch `master`.
 
 Repository structure (checked 2026-10-15, 111 files):

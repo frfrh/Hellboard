@@ -58,7 +58,7 @@ Reference pages for development and for extending the stratagem catalog (input c
 | [Icon repository nvigneux/Helldivers-2-Stratagems-icons-svg](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg) | Stratagem SVG icons, the ids and English names of the catalog | Downloaded at runtime by the catalog updater (implementation plan §6.11). |
 | [`doc/spec/stratagem-names-de.md`](doc/spec/stratagem-names-de.md) | English ↔ German names read from the game | Own notes. |
 
-Before taking a code into `assets/catalog.seed.json`, compare the sources with each other and with `Firmware/libs/macro.py`; when they disagree, check the code in the game.
+The input codes used by the project are maintained in one place only: [`doc/stratagems.md`](../doc/stratagems.md) in the repository root. New or corrected codes go there first (compare the sources above; when they disagree, check the code in the game and note decisions there); the software and the firmware take their codes from that list.
 
 ## License
 
