@@ -212,6 +212,6 @@ public sealed partial class StratagemCatalog
 
     private sealed record StratagemList(int Version, Dictionary<string, string>? Categories, List<StratagemItem>? Stratagems);
 
-    /// <summary>One line of the list; <c>designation</c>, <c>firmwareMacro</c> and <c>notes</c> are not needed here.</summary>
+    /// <summary>One line of the list; <c>designation</c> and <c>notes</c> are not needed here.</summary>
     private sealed record StratagemItem(string? Id, string? Name, string? Category, string? Code);
 }

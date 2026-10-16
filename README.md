@@ -21,13 +21,13 @@ Project is based on KiCad 8.0.2.
 
 ## Configuration
 
-Currently the configuration of the board is hardcoded. This is meant to change in (near) future.
+The board is configured in [`Firmware/config.json`](Firmware/config.json); the stratagems and their input codes come from [`doc/stratagems.json`](doc/stratagems.json), the single list used by the firmware and the Companion software (format: [`doc/stratagems.md`](doc/stratagems.md)).
 
-You can change the stratagems assigned to the buttons at the top on [main.py](https://github.com/frfrh/Hellboard/blob/master/Firmware/main.py) by replacing the macros for `button_2_1`, `button_2_2`, `button_2_3` and `button_2_4`.
+- `fixed`, `loadout`, `multiFunction`: stratagems of the buttons `1_1`/`1_2`, row 2 and the multi-function button `1_3` (cycled with `1_4`), by their `id`.
+- `modifierKey`: HID usage id of the stratagem key ([scancodes](https://deskthority.net/wiki/Scancode), e.g. 6 = `C`, 224 = left Ctrl). `modifierToggle: true` presses it once to open the menu, `false` keeps it pressed while the code is entered.
+- `directionKeys`: `arrows` or `wasd`; `keyDelayMs`: delay between key events; `brightness`: LED brightness (0-255).
 
-You can change the directional keys in https://github.com/frfrh/Hellboard/blob/master/Firmware/libs/macro.py.
-
-You can change the modifyer key in https://github.com/frfrh/Hellboard/blob/master/Firmware/libs/helldiver.py. `modifierUseToggle = True` means that the button will only be pressed once to open the menue, `modifierUseToggle = False` means that the button stay pressed while entering the macro.
+Upload the changed `config.json` to the board (see Setup). With the Hellboard Companion (`Software/`), the loadout is taken from the game automatically.
 
 ## Build your own
 
@@ -52,19 +52,15 @@ You can find icons for the buttons [here](https://github.com/nvigneux/Helldivers
 
 ## Setup
 
-1. Install [Visual Studio Code](https://code.visualstudio.com/).
-2. Install the [MicroPico extension](https://marketplace.visualstudio.com/items?itemName=paulober.pico-w-go).
-3. Flash the firmware onto the RP2040:
+1. Flash MicroPython with HID support onto the RP2040 (only needed once):
     1. Press the button (`Boot`) and connect the Board to a PC.
     2. Copy the [UF2-file](https://github.com/frfrh/Hellboard/blob/master/Firmware/libs/3rd/firmware_with_HID_support.v.1.17.uf2) into the drive `RPI-RP2`.
     3. Re-Connect the board.
-4. Load the following Python files into the board. In Visual Studio Code left click on the file, then right click the file and select `Upload current file to Pico`.
-    - `Firmware/libs/3rd/keyboard.py`
-    - `Firmware/libs/3rd/ssd1306.py`
-    - `Firmware/libs/helldiver.py`
-    - `Firmware/libs/macro.py`
-    - `Firmware/main.py`
+2. Install the firmware files. [`Firmware/manifest.json`](Firmware/manifest.json) lists every file and its name on the board (all files go into the board's root directory, including the stratagem list [`doc/stratagems.json`](doc/stratagems.json)).
+    - **With the upload tool** (needs the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)): from the `Software` folder run `dotnet run tools/hellboard-upload/hellboard-upload.cs`. It finds the board, installs and verifies all files and restarts the board – see [`Software/tools/hellboard-upload`](Software/tools/hellboard-upload/README.md).
+    - **By hand** with [Visual Studio Code](https://code.visualstudio.com/) and the [MicroPico extension](https://marketplace.visualstudio.com/items?itemName=paulober.pico-w-go): upload every file listed in the manifest under its target name (`Upload current file to Pico`).
+3. Choose your stratagems in [`Firmware/config.json`](Firmware/config.json) (before uploading): buttons `1_1`/`1_2`, the loadout (row 2) and the multi-function list, referenced by their `id` in [`doc/stratagems.json`](doc/stratagems.json); `modifierKey` is the HID usage id of your stratagem key. With the Hellboard Companion (`Software/`), the loadout is set automatically from the game.
 
 [^levelshifter]: I got them by desoldering them from a level shifter I had lying around. [link](https://de.aliexpress.com/item/1005006068381598.html)
-[^eeprom]: The EEPROM is currently optional. This is meant for future configuration of the loaded stratagems, currently those are hardcoded.
+[^eeprom]: The EEPROM is optional and currently not used: the configuration is stored in the RP2040's own flash (`config.json`).
 [^buttoncaps]: I used the button caps from [here](https://de.aliexpress.com/item/1005003992982246.html) but replaced the internals with the ones from `Hardware/Kailh-Cap.stl` as the original ones are not translucent. Any button caps compatible with Kailh boxed switches should do.

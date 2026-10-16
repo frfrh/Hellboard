@@ -2,7 +2,7 @@
 
 [`stratagems.json`](stratagems.json) is the **single source of truth for the stratagem input codes of the Hellboard project.** The firmware (`Firmware/`) and the companion software (`Software/`) take their stratagem data from this file only. A stratagem or code is added or corrected there and nowhere else.
 
-> Status: the companion software embeds `stratagems.json` at build time and builds its stratagem catalog (names, LED colors, codes) from it; its unit tests fail if the file is invalid. The firmware does not use it yet – until then `Firmware/libs/macro.py` must be kept in line by hand. Planned (decision F11): the file is copied unchanged onto the Hellboard and read there line by line.
+> Status: the companion software embeds `stratagems.json` at build time and builds its stratagem catalog (names, LED colors, codes) from it; its unit tests fail if the file is invalid. The firmware gets the file unchanged on the board (`Firmware/manifest.json`) and reads it line by line; its `config.json` refers to stratagems by `id` (decision F11).
 
 ## User list (no new release needed)
 
@@ -17,7 +17,7 @@ UTF-8 JSON, **exactly one stratagem object per line**. This is a hard rule, not 
   "version": 1,
   "categories": {"Orbital": "red", "Eagle": "red", ...},
   "stratagems": [
-    {"id": "eagle_500kg_bomb", "name": "Eagle 500KG Bomb", "designation": "Eagle 500kg Bomb", "category": "Eagle", "code": "URDDD", "firmwareMacro": "Eagle500KGBomb", "notes": null},
+    {"id": "eagle_500kg_bomb", "name": "Eagle 500KG Bomb", "designation": "Eagle 500kg Bomb", "category": "Eagle", "code": "URDDD", "notes": null},
     ...
   ]
 }
@@ -32,7 +32,6 @@ UTF-8 JSON, **exactly one stratagem object per line**. This is a hard rule, not 
 | `designation` | Full in-game designation, for reference. |
 | `category` | `Orbital`, `Eagle`, `Support weapon`, `Backpack`, `Vehicle`, `Defensive` or `Mission`. |
 | `code` | Input code as letters `U` `D` `L` `R` (↑ ↓ ← →), 1–10 arrows; `null` if not known yet – the software then shows the stratagem but cannot send it to the Hellboard. |
-| `firmwareMacro` | Name of the current macro in `Firmware/libs/macro.py`, `null` if the firmware has none yet. |
 | `notes` | Unverified or disputed codes, missing icons and other remarks; `null` if the code agrees in every source that lists it. |
 
 ## Rules

@@ -67,7 +67,7 @@ Assigns the locked loadout (F2, F5). Applied immediately, **kept in RAM only** (
 | `stratagems` | Exactly 4 entries, in slot order → `button_2_1 … button_2_4`. `null` = slot empty or not recognized: the button does nothing and its LED is off. |
 | `missionStratagems` | 0–16 entries → list of the multi-function button `button_1_3`, cycled with `button_1_4` (F5). The index restarts at 0. Empty list → button disabled, LED off, display "–". |
 | `name` | The **full display name**, 1–64 characters, UTF-8 (e.g. `"Eagle 500KG Bomb"`, `"StA-X3 W.A.S.P. Launcher"`). The PC **never shortens** names. |
-| `color` | `yellow`, `red`, `green`, `blue` or `white` (LED color category, as `Color` in `macro.py`). |
+| `color` | `yellow`, `red`, `green`, `blue` or `white` (LED color category, as `categories` in `doc/stratagems.json`). |
 | `sequence` | 1–10 characters of `U`, `D`, `L`, `R` (arrow directions). The keys actually sent depend on the configuration (§4.4). |
 
 Errors: `invalid_loadout` (with `message` naming the field).
@@ -132,10 +132,20 @@ Prepares the firmware update (F8, implementation plan §6.10): releases all keys
 
 After the response, the PC continues with the raw REPL (Ctrl-A). Fallback if the board does not answer: Ctrl-C.
 
+### 4.7 `getLog`
+
+Returns the last log entries kept in RAM (up to 32, oldest first), so the PC also sees messages from before it connected (decision F12).
+
+```json
+→ {"v":1,"id":7,"cmd":"getLog"}
+← {"v":1,"ack":7,"ok":true,"entries":[{"level":"info","t":812,"msg":"Firmware 2.0.0 started"}]}
+```
+
 ## 5. Events
 
 | Event | When | Content |
 |-|-|-|
+| `log` | Whenever the firmware logs something (decision F12) | `{"v":1,"event":"log","level":"info","t":12345,"msg":"Loadout received"}` – `level`: `debug`, `info`, `warn`, `error`; `t`: milliseconds since boot; `msg`: ≤ 200 characters. Sent even when no PC listens (USB CDC drops it). |
 | `hello` | After power-up / soft reset, once the main loop runs | `{"v":1,"event":"hello","fw":"2.0.0","protocol":1}` – the PC re-sends the last locked loadout. |
 
 ## 6. Error codes

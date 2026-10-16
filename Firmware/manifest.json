@@ -1,10 +1,16 @@
 {
-  "$comment": "Files installed on the Hellboard by the upload tool / firmware updater (Software/doc/spec/implementation-plan.md §6.10). source: relative to this file; target: file name on the board (all files live in the board's root directory).",
+  "$comment": "Files installed on the Hellboard by the upload tool / firmware updater (Software/doc/spec/implementation-plan.md §6.10). source: relative to this file; target: file name on the board (all files live in the board's root directory). saved.json (written by 'Set as default') is never part of the bundle.",
   "files": [
     { "source": "libs/3rd/keyboard.py", "target": "keyboard.py" },
     { "source": "libs/3rd/ssd1306.py", "target": "ssd1306.py" },
-    { "source": "libs/helldiver.py", "target": "helldiver.py" },
-    { "source": "libs/macro.py", "target": "macro.py" },
+    { "source": "libs/log.py", "target": "log.py" },
+    { "source": "libs/config.py", "target": "config.py" },
+    { "source": "libs/stratagems.py", "target": "stratagems.py" },
+    { "source": "libs/hid.py", "target": "hid.py" },
+    { "source": "libs/leds.py", "target": "leds.py" },
+    { "source": "libs/display.py", "target": "display.py" },
+    { "source": "libs/app.py", "target": "app.py" },
+    { "source": "config.json", "target": "config.json" },
     { "source": "../doc/stratagems.json", "target": "stratagems.json" },
     { "source": "main.py", "target": "main.py" }
   ]
