@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\..\assets\layouts\loadout-v1.json" LogicalName="HellboardCompanion.Core.Layout.loadout-v1.json" />
+    <EmbeddedResource Include="..\..\assets\catalog.seed.json" LogicalName="HellboardCompanion.Core.Hellboard.catalog.seed.json" />
   </ItemGroup>
 
   <ItemGroup>
@@ -15,6 +16,7 @@
     <PackageReference Include="OpenCvSharp4" />
     <PackageReference Include="SkiaSharp" />
     <PackageReference Include="Svg.Skia" />
+    <PackageReference Include="System.IO.Ports" />
   </ItemGroup>
 
 </Project>

@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using HellboardCompanion.App;
 using HellboardCompanion.Core;
 using HellboardCompanion.Core.Catalog;
+using HellboardCompanion.Core.Hellboard;
 using HellboardCompanion.Core.Pipeline;
 using HellboardCompanion.Core.Platform;
 using HellboardCompanion.Platform.Windows;
@@ -46,7 +47,11 @@ internal static class Program
         log.LogInformation("{Product} {Version} starting", AppInfo.ProductName, AppInfo.Version);
         services.GetRequiredService<IGameLocator>().Start();
         _ = services.GetRequiredService<StratagemIconStore>().UpdateAsync();
-        services.GetRequiredService<LoadoutPipeline>().Start();
+        var pipeline = services.GetRequiredService<LoadoutPipeline>();
+        var hellboard = services.GetRequiredService<HellboardLink>();
+        pipeline.LoadoutLocked += (_, loadout) => hellboard.Submit(loadout);
+        hellboard.Start();
+        pipeline.Start();
         services.GetRequiredService<ManualTriggerService>().Start();
 
         CompanionApp? app = null;

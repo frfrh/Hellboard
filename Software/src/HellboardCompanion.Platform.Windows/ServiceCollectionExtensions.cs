@@ -17,6 +17,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IGameLocator, Win32GameLocator>();
         services.AddSingleton<IFrameSource, DesktopDuplicationFrameSource>();
         services.AddSingleton<IGlobalHotkeys, Win32GlobalHotkeys>();
+        services.AddSingleton<ISerialPortDiscovery, RegistrySerialPortDiscovery>();
         return services;
     }
 }

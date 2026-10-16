@@ -2,6 +2,7 @@
 
 using HellboardCompanion.Core.Capture;
 using HellboardCompanion.Core.Catalog;
+using HellboardCompanion.Core.Hellboard;
 using HellboardCompanion.Core.Loadout;
 using HellboardCompanion.Core.Pipeline;
 using HellboardCompanion.Core.Platform;
@@ -23,6 +24,15 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<StratagemIconStore>();
         services.AddSingleton<LoadoutHistory>();
         services.AddSingleton(new RecognitionOptions());
+        services.AddSingleton(StratagemCatalog.LoadSeed());
+        services.AddSingleton(new HellboardOptions());
+        services.AddSingleton(new MultiFunctionOptions());
+        services.AddSingleton(sp => new HellboardLink(
+            sp.GetRequiredService<HellboardOptions>(),
+            sp.GetRequiredService<MultiFunctionOptions>(),
+            sp.GetRequiredService<StratagemCatalog>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HellboardLink>>(),
+            sp.GetService<ISerialPortDiscovery>()));
         services.AddSingleton<LoadoutPipeline>();
         services.AddSingleton(sp => new ManualTriggerService(
             sp.GetRequiredService<LoadoutPipeline>(),

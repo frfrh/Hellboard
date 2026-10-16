@@ -19,6 +19,7 @@
     <PackageVersion Include="SkiaSharp" Version="3.119.4" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="3.119.4" />
     <PackageVersion Include="Svg.Skia" Version="5.1.1" />
+    <PackageVersion Include="System.IO.Ports" Version="10.0.12" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageVersion Include="Vortice.Direct3D11" Version="3.8.3" />
     <PackageVersion Include="Vortice.DXGI" Version="3.8.3" />

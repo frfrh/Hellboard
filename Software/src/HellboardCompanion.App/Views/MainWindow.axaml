@@ -5,12 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:HellboardCompanion.App.ViewModels"
         mc:Ignorable="d"
-        d:DesignWidth="1200" d:DesignHeight="820"
+        d:DesignWidth="1200" d:DesignHeight="960"
         x:Class="HellboardCompanion.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/hellboard.ico"
         Title="{Binding Title}"
-        Width="1200" Height="820"
+        Width="1200" Height="960"
         WindowStartupLocation="CenterScreen">
 
   <Design.DataContext>
@@ -67,6 +67,27 @@
           <TextBlock Grid.Row="6" Grid.Column="0" Text="Icons" Opacity="0.7" />
           <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Loadout.Icons}" />
         </Grid>
+
+        <TextBlock Text="Hellboard" FontSize="16" FontWeight="SemiBold" />
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+          <TextBlock Grid.Row="0" Grid.Column="0" Text="Connection" Opacity="0.7" />
+          <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Hellboard.Connection}" TextWrapping="Wrap" />
+
+          <TextBlock Grid.Row="1" Grid.Column="0" Text="Firmware" Opacity="0.7" />
+          <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Hellboard.Firmware}" TextWrapping="Wrap" />
+
+          <TextBlock Grid.Row="2" Grid.Column="0" Text="Last sent" Opacity="0.7" />
+          <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Hellboard.LastSent}" TextWrapping="Wrap" />
+        </Grid>
+        <Border IsVisible="{Binding Hellboard.Warning, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Background="#33FFC107" BorderBrush="#FFC107" BorderThickness="1" CornerRadius="4" Padding="12">
+          <TextBlock Text="{Binding Hellboard.Warning}" TextWrapping="Wrap" />
+        </Border>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="Set as default" Command="{Binding Hellboard.SetAsDefaultCommand}"
+                  ToolTip.Tip="Saves the current loadout and settings in the Hellboard's flash; they are used after power-up." />
+          <TextBlock Text="{Binding Hellboard.DefaultResult}" VerticalAlignment="Center" Opacity="0.7" TextWrapping="Wrap" />
+        </StackPanel>
 
         <TextBlock Text="Application" FontSize="16" FontWeight="SemiBold" />
         <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">

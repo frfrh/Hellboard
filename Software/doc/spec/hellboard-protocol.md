@@ -14,11 +14,12 @@ The Hellboard Companion (PC) sends the locked loadout to the Hellboard and confi
 - The PC finds the port by USB vendor id **`2E8A`** (Raspberry Pi) and checks the board with `ping` (§4.1).
 - While `main.py` runs, it owns `sys.stdin`; it reads lines **non-blocking** (`select.poll`) inside its main loop, so button handling never waits for the PC.
 - **Ctrl-C (0x03) stays enabled** (F8). It never appears in JSON text, so it cannot be triggered by protocol data.
+- **Flow control:** the board's USB receive buffer is small; when the firmware does not read `sys.stdin`, the PC's write blocks (observed with the old firmware, 2026-10-16). A full `setLoadout` (up to ~3 KB) needs several buffer fills. Therefore the firmware **reads `sys.stdin` at least every 100 ms, also while it is sending a stratagem macro** (between the key events), and the PC uses a write timeout of 3 s. A write timeout on the PC side counts as "board does not answer".
 
 ## 2. Framing
 
 - One message per line: **UTF-8 JSON object terminated by `\n`**. `\r\n` is accepted.
-- Maximum line length: **2048 bytes**. Longer lines are discarded and answered with error `line_too_long` (without `id`).
+- Maximum line length: **4096 bytes** (a full `setLoadout` with 4 + 16 stratagems and full names stays below 3 KB). Longer lines are discarded and answered with error `line_too_long` (without `id`).
 - Every message carries the protocol version: `"v": 1`.
 - The board may print other text (debug output). **The PC ignores every line that does not start with `{` and contain `"v":`**; the board never starts debug output with `{`.
 - The board ignores lines that are not valid JSON and answers with error `invalid_json` (without `id`).
@@ -65,11 +66,13 @@ Assigns the locked loadout (F2, F5). Applied immediately, **kept in RAM only** (
 |-|-|
 | `stratagems` | Exactly 4 entries, in slot order → `button_2_1 … button_2_4`. `null` = slot empty or not recognized: the button does nothing and its LED is off. |
 | `missionStratagems` | 0–16 entries → list of the multi-function button `button_1_3`, cycled with `button_1_4` (F5). The index restarts at 0. Empty list → button disabled, LED off, display "–". |
-| `name` | 1–16 characters, printable ASCII (the OLED font). The PC transliterates (ä → ae) and shortens. |
+| `name` | The **full display name**, 1–64 characters, UTF-8 (e.g. `"Eagle 500KG Bomb"`, `"StA-X3 W.A.S.P. Launcher"`). The PC **never shortens** names. |
 | `color` | `yellow`, `red`, `green`, `blue` or `white` (LED color category, as `Color` in `macro.py`). |
 | `sequence` | 1–10 characters of `U`, `D`, `L`, `R` (arrow directions). The keys actually sent depend on the configuration (§4.4). |
 
 Errors: `invalid_loadout` (with `message` naming the field).
+
+**Names are shortened only where it is unavoidable – on the OLED display** (decided 2026-10-16). The firmware keeps the full name in memory, in `getState`, in its log output and in the saved default; only the display module fits it to the 16 characters of a display line (characters the OLED font cannot show are replaced there as well). This keeps hardware logs readable and prepares a later **scrolling text (marquee) with the full name** – not part of the current implementation, but the display module gets a single function that renders a name into a line of limited width, so scrolling can be added there without touching protocol or state.
 
 ### 4.3 `getState`
 
@@ -140,7 +143,7 @@ After the response, the PC continues with the raw REPL (Ctrl-A). Fallback if the
 | Code | Meaning |
 |-|-|
 | `invalid_json` | Line is not a JSON object |
-| `line_too_long` | Line exceeds 2048 bytes |
+| `line_too_long` | Line exceeds 4096 bytes |
 | `unsupported_version` | `v` is missing or not supported |
 | `unknown_command` | `cmd` is unknown |
 | `invalid_loadout` | `setLoadout` parameters violate §4.2 |
