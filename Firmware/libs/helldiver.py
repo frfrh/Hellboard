@@ -20,11 +20,7 @@ STATE_FINISHED = 5
 
 DEBUG_PRINT = False
 
-class Hellbutton():
-    global btnPressed
-    global btnPressedHold
-    global btnPressedTimeStp
-
+class Hellbutton:
     def __init__(self, pin, macro):
         self.macro = macro
         self.pin = pin
@@ -64,9 +60,7 @@ class Hellbutton():
 
         return returnValue
 
-class Hellboard():
-    global returnValue
-
+class Hellboard:
     def __init__(self, keyboard):
         self.k = keyboard
         self.state = STATE_IDLE
@@ -74,7 +68,6 @@ class Hellboard():
         self.macroIndex = 0
 
     def sendMacro (self, macro):
-
         returnValue = False    
 
         if self.state == STATE_IDLE:

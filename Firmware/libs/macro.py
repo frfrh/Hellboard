@@ -4,13 +4,9 @@ class Direction():
 # CONFIG
 # https://deskthority.net/wiki/Scancode
     UP = 0x52
-    Up = 0x52
     RIGHT = 0x4f
-    Right = 0x4f
     DOWN = 0x51
-    Down = 0x51
     LEFT = 0x50
-    Left = 0x50
 
 class Color():
     YELLOW = 1
@@ -41,13 +37,14 @@ class Macro:
 
 class Macros:
     CYCLE = Macro("CYCLE", Color.WHITE, [])
-    # https://helldivers2.game-vault.net/w/images/e/ef/All_Stratagem_Inputs.png
+    # https://helldivers.wiki.gg/wiki/Stratagems
     # Mission Stratagems
     EagleRearm = Macro("Eagle Rearm", Color.YELLOW, [Direction.UP, Direction.UP, Direction.LEFT, Direction.UP, Direction.RIGHT])
     SuperDestroyer = Macro("Call In Super Destroyer", Color.YELLOW, [Direction.UP, Direction.UP, Direction.DOWN, Direction.DOWN, Direction.LEFT, Direction.RIGHT, Direction.LEFT, Direction.RIGHT])
     SOSBeacon = Macro("SOS Beacon", Color.YELLOW, [Direction.UP, Direction.DOWN, Direction.RIGHT, Direction.UP])
     Reinforce = Macro("Reinforce", Color.YELLOW, [Direction.UP, Direction.DOWN, Direction.RIGHT, Direction.LEFT, Direction.UP])
     Resupply = Macro("Resupply", Color.YELLOW, [Direction.DOWN, Direction.DOWN, Direction.UP, Direction.RIGHT])
+    
     SSSDDelivery = Macro("SSSD Delivery", Color.YELLOW, [Direction.DOWN, Direction.DOWN, Direction.DOWN, Direction.UP, Direction.UP])
     SEAFArtilery = Macro("SEAF Artilery", Color.YELLOW, [Direction.RIGHT, Direction.UP, Direction.UP, Direction.DOWN])
     HiveBreakerDrill = Macro("Hive Breaker Drill", Color.YELLOW, [Direction.LEFT, Direction.UP, Direction.DOWN, Direction.RIGHT, Direction.DOWN, Direction.DOWN])
@@ -105,14 +102,14 @@ class Macros:
     # Supply: Backpacks
     SupplyPack = Macro("B-1 Supply Pack", Color.BLUE, [Direction.DOWN, Direction.LEFT, Direction.DOWN, Direction.UP, Direction.UP, Direction.DOWN])
     JumpPack = Macro("LIFT-850 Jump Pack", Color.BLUE, [Direction.DOWN, Direction.UP, Direction.UP, Direction.DOWN, Direction.UP])
-    BallisticShieldBackpack = Macro("Ballistic Shield Backpack", Color.BLUE, [Direction.Down, Direction.Left, Direction.Down, Direction.Down, Direction.Up, Direction.Left])
+    BallisticShieldBackpack = Macro("Ballistic Shield Backpack", Color.BLUE, [Direction.DOWN, Direction.LEFT, Direction.DOWN, Direction.DOWN, Direction.UP, Direction.LEFT])
     GuardDog = Macro("AX/AR-23 Guard Dog", Color.BLUE, [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.UP, Direction.RIGHT, Direction.DOWN])
     Rover = Macro("AX/LAS-5 Rover", Color.BLUE, [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.UP, Direction.RIGHT, Direction.RIGHT])
     ShieldGeneratorPack = Macro("SH-32 Shield Generator Pack", Color.BLUE, [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT, Direction.LEFT, Direction.RIGHT])
     DirectionalShieldBackpack = Macro("SH-51 Directional Shield", Color.BLUE, [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT, Direction.UP, Direction.UP])
     HotDog = Macro("AX/FLAM-75 Hot Dog", Color.BLUE, [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.UP, Direction.LEFT, Direction.LEFT])
     PortableHellbomb = Macro("B-100 Portable Hellbomb", Color.BLUE, [Direction.DOWN, Direction.RIGHT, Direction.UP, Direction.UP, Direction.UP])
-    K9 = Macro("AX/ARC-3 K-9", Color.BLUE, [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.UP, Direction.RIGHT, Direction.LEFT])
+    KNine = Macro("AX/ARC-3 K-9", Color.BLUE, [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.UP, Direction.RIGHT, Direction.LEFT])
     HoverPack = Macro("LIFT-860 Hover Pack", Color.BLUE, [Direction.DOWN, Direction.UP, Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT])
     DogBreath = Macro("AX/TX-13 Dog Breath", Color.BLUE, [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.UP, Direction.RIGHT, Direction.UP])
     WarpPack = Macro("LIFT-182 Warp Pack ", Color.BLUE, [Direction.DOWN, Direction.LEFT, Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.RIGHT])
@@ -137,7 +134,7 @@ class Macros:
     OrbitalSmokeStrike = Macro("Orbital Smoke Strike", Color.RED, [Direction.RIGHT, Direction.RIGHT, Direction.DOWN, Direction.UP])
     OrbitalEMSStrike = Macro("Orbital EMS Strike", Color.RED, [Direction.RIGHT, Direction.RIGHT, Direction.LEFT, Direction.DOWN])
     Orbital380MMHEBarrage = Macro("Orbital 380MM HE Barrage", Color.RED, [Direction.RIGHT, Direction.DOWN, Direction.UP, Direction.UP, Direction.LEFT, Direction.DOWN, Direction.DOWN])
-    OrbitalWalkingBarrage = Macro("Orbital Walking Barrage", Color.RED, [Direction.Right, Direction.Down, Direction.Right, Direction.Down, Direction.Right, Direction.Down])
+    OrbitalWalkingBarrage = Macro("Orbital Walking Barrage", Color.RED, [Direction.RIGHT, Direction.DOWN, Direction.RIGHT, Direction.DOWN, Direction.RIGHT, Direction.DOWN])
     OrbitalLasers = Macro("Orbital Lasers", Color.RED, [Direction.RIGHT, Direction.DOWN, Direction.UP, Direction.RIGHT, Direction.DOWN])
     OrbitalNapalmStrike = Macro("Orbital Napalm Barrage", Color.RED, [Direction.RIGHT, Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.RIGHT, Direction.UP])
     OrbitalRailcannonStrike = Macro("Orbital Railcannon Strike", Color.RED, [Direction.RIGHT, Direction.UP, Direction.DOWN, Direction.DOWN, Direction.RIGHT])

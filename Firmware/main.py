@@ -93,10 +93,12 @@ try:
     oled = SSD1306_I2C(WIDTH, HEIGHT, i2c, addr=0x3C) # Init oled display
     time.sleep_ms(100)
     oled.rotate(1)
-    print("Display initialized")
+    if(DEBUG_PRINT == True):
+        print("Display initialized")
     displayReady = True
 except Exception:
-    print("Display error " + str(Exception))
+    if(DEBUG_PRINT == True):
+        print("Display error " + str(Exception))
 
 # Initialize SPI
 spiLed = SPI(1,
@@ -152,6 +154,231 @@ lastUpdateCtr = 0
 button_1_3_txt = ''
 button_txt_list = []
 
+# ==============================================================================
+# SELEKTOR: MAPPT ID-STRINGS AUF DIE ECHTEN MAKRO-OBJEKTE AUS MACRO.PY
+# ==============================================================================
+def get_macro_by_id(macro_id):
+    """Sucht anhand der dreistelligen ID das passende Makro-Objekt."""
+    if macro_id == "0" or macro_id == "000":
+        return None
+        
+    # Lokale Mappings basierend auf den IDs deiner SVG/PNG-Dateien
+    # Füge hier bei Bedarf weitere IDs hinzu, falls deine Dateien so nummeriert sind
+    # ==============================================================================
+    # VOLLSTÄNDIGES 4K-NORMALISIERTES HELI-ID MAPPING (101 bis 913)
+    # ==============================================================================
+    mapping = {
+        # 100er: Offensiv - Orbitale Angriffe
+        "101": Macros.OrbitalPrecisionStrike,
+        "102": Macros.OrbitalGatlingBarrage,
+        "103": Macros.OrbitalGasStrike,
+        "104": Macros.Orbital120MMHEBarrage,
+        "105": Macros.OrbitalAirburstStrike,
+        "106": Macros.OrbitalSmokeStrike,
+        "107": Macros.OrbitalEMSStrike,
+        "108": Macros.Orbital380MMHEBarrage,
+        "109": Macros.OrbitalWalkingBarrage,
+        "110": Macros.OrbitalLasers,
+        "111": Macros.OrbitalNapalmStrike,
+        "112": Macros.OrbitalRailcannonStrike,
+        #"113": None, "114": None, "115": None, "116": None, "117": None, "118": None, "119": None, "120": None,
+
+        # 200er: Offensiv - Eagle Angriffe
+        "201": Macros.EagleGasAirstrike,
+        "202": Macros.EagleStrafingRun,
+        "203": Macros.EagleAirstrike,
+        "204": Macros.EagleClusterBomb,
+        "205": Macros.EagleSmokeStrike,
+        "206": Macros.EagleNapalmAirstrike,
+        "207": Macros.Eagle110MMRocketPods,
+        "208": Macros.Eagle500KGBomb,
+        #"209": None, "210": None, "211": None, "212": None, "213": None, "214": None, "215": None, "216": None, "217": None, "218": None, "219": None, "220": None,
+
+        # 300er: Versorgung - Taktische Ausrüstung & Support-Waffen
+        "301": Macros.MachineGun,
+        "302": Macros.ExpendableAntiTank,
+        "303": Macros.Stalwart,
+        "304": Macros.LaserCannon,
+        "305": Macros.AntiMaterialRifle,
+        "306": Macros.RecoiledRifle,
+        "307": Macros.GrenadeLauncher,
+        "308": Macros.Flamethrower,
+        "309": Macros.HeavyMg,
+        "310": Macros.Autocannon,
+        "311": Macros.Arcthrower,
+        "312": Macros.QuasarCannon,
+        "313": Macros.AirburstRocketLauncher,
+        "314": Macros.Commando,
+        "315": Macros.Spear,
+        "316": Macros.Railgun,
+        "317": Macros.WaspLauncher,
+        "318": Macros.WarpPack,
+        "319": Macros.Siegehammer,
+        "320": Macros.PlasEpoch,
+        "321": Macros.BulletStorm,
+        "322": Macros.Speargun,
+        "323": Macros.DefoliationTool,
+        "324": Macros.DeEscalator,
+        "325": Macros.ExpendableNapalm,
+        "326": Macros.Sterilizer,
+        "327": Macros.Leveller,
+        "328": Macros.BeltFedGL,
+        "329": Macros.C4Pack,
+        "330": Macros.SoloSilo,
+        "332": Macros.OneTrueFlag,
+        "333": Macros.Cremator,
+        "334": Macros.Maxigun,
+        "335": Macros.Meltagun,
+        #"336": None, "337": None, "338": None, "339": None, "340": None,
+
+        # 400er: Versorgung - Rucksäcke & Drohnen
+        "401": Macros.SupplyPack,
+        "402": Macros.JumpPack,
+        "403": Macros.BallisticShieldBackpack,
+        "404": Macros.GuardDog,
+        "405": Macros.Rover,
+        "406": Macros.ShieldGeneratorPack,
+        "407": Macros.DirectionalShieldBackpack,
+        "408": Macros.HotDog,
+        "409": Macros.PortableHellbomb,
+        "410": Macros.KNine,
+        "411": Macros.HoverPack,
+        "412": Macros.DogBreath,
+        "413": Macros.WarpPack,
+        #"414": None, "415": None, "416": None, "417": None, "418": None, "419": None, "420": None,
+
+        # 500er: Versorgung - Fahrzeuge & Exosuits
+        "501": Macros.SupplyFRV,
+        "502": Macros.Maelstrom,
+        "503": Macros.IncineratorFRV,
+        "504": Macros.PatriotSuitPexo,
+        "505": Macros.PatriotSuitExo,
+        "506": Macros.GunnerFRV,
+        "507": Macros.BastionMKXVI,
+        "508": Macros.BreakthroughExo,
+        "509": Macros.LumbererExo,
+        #"510": None,"511": None, "512": None, "513": None, "514": None, "515": None, "516": None, "517": None, "518": None, "519": None, "520": None,
+
+        # 600er: Defensiv - Geschütze (Sentries)
+        "601": Macros.MachineGunSentry,
+        "602": Macros.GatlingSentry,
+        "603": Macros.AutocannonSentry,
+        "604": Macros.MortarSentry,
+        "605": Macros.RocketSentry,
+        "606": Macros.TeslaTower,
+        "607": Macros.EMSMortarSentry,
+        "608": Macros.LaserSentry,
+        "609": Macros.FlameSentry,
+        "610": Macros.GasMortarSentry,
+        #"611": None, "612": None, "613": None, "614": None, "615": None, "616": None, "617": None, "618": None, "619": None, "620": None,
+
+        # 700er: Defensiv - Minenfelder & Relais-Strukturen
+        "701": Macros.AntiPersonnelMinefield,
+        "702": Macros.IncendiaryMines,
+        "703": Macros.AntiTankMinefield,
+        "704": Macros.ShieldGenerationRelay,
+        "705": Macros.HMGEmplacement,
+        "706": Macros.GrenadierBattlement,
+        "707": Macros.GasMines,
+        "708": Macros.AntiTankEmplacement,
+        #"709": None, "710": None, "711": None, "712": None, "713": None, "714": None, "715": None, "716": None, "717": None, "718": None, "719": None, "720": None,
+
+        # 800er: Spezifische Missionstaktiken & Standard-Abrufe
+        "801": Macros.EagleRearm,
+        "802": Macros.SuperDestroyer,
+        "803": Macros.SOSBeacon,
+        "804": Macros.Reinforce,
+        "805": Macros.Resupply,
+
+        # 900er: Reserve / Zukünftige Taktiken
+        "901": Macros.SSSDDelivery,
+        "902": Macros.SEAFArtilery,
+        "903": Macros.HiveBreakerDrill,
+        "904": Macros.CargoContainer,
+        "905": Macros.TacticalVideoCamera,
+        "906": Macros.UploadData,
+        "907": Macros.SeismicProbe,
+        "908": Macros.SuperEarthFlag,
+        "909": Macros.SSSDDelivery2,
+        "910": Macros.CargoContainer,
+        "911": Macros.DarkFluidVessel,
+        "912": Macros.TectonicDrill,
+        "913": Macros.Hellbomb
+    }
+
+    
+    # Dynamischer Fallback: Falls du Makros anhand des Variablennamens suchst,
+    # prüft diese Schleife alle Attribute der Macros-Klasse aus der macro.py
+    if macro_id in mapping:
+        return mapping[macro_id]
+        
+    for attr in dir(Macros):
+        macro_obj = getattr(Macros, attr)
+        if isinstance(macro_obj, Macro):
+            # Falls deine IDs im Namen stehen oder du das Mapping erweitern willst
+            if attr.lower() == macro_id.lower():
+                return macro_obj
+                
+    return None
+
+def parse_incoming_serial_string(serial_line):
+    """
+    Verarbeitet die vom PC gesendete Zeile (z.B. '101;203;0;0;0;0;0;312;0;413;0\n')
+    Trennt die IDs auf, ordnet sie zu und schaltet das Board live um.
+    """
+    global row1List
+    global index
+    
+    # Bereinigen von Zeilenumbrüchen und Splitten am Semikolon
+    clean_line = serial_line.strip()
+    if not clean_line or clean_line == "0":
+        if(DEBUG_PRINT == True):
+            print("[LINK] Leeres Signal erhalten. Keine Aktion.")
+        return
+
+    ids = clean_line.split(";")
+    if(DEBUG_PRINT == True):
+        print("[LINK] Verarbeite IDs vom COM-Port:", ids)
+
+    # Erwartete Struktur vom PC-Skript:
+    # Indizes 0 bis 6 (max 7 IDs): Obere Reihe (row1List)
+    # Indizes 7 bis 10 (genau 4 IDs): Untere Reihe (button_2_1 bis button_2_4)
+    
+    # 1. OBERE REIHE (row1List) DYNAMISCH NEU BEFÜLLEN
+    new_row1 = []
+    for i in range(0, min(7, len(ids))):
+        macro_obj = get_macro_by_id(ids[i])
+        if macro_obj:
+            new_row1.append(macro_obj)
+            
+    # Falls gültige obere Makros gefunden wurden, überschreiben wir die Liste temporär
+    if new_row1:
+        row1List = new_row1
+        index = 0  # Selektor-Index auf das erste neue Element zurücksetzen
+        button_1_3.setMacro(row1List[index]) # Button 1-3 sofort aktualisieren
+        if(DEBUG_PRINT == True):
+            print(f"[LINK] Obere Reihe mit {len(row1List)} dynamischen Makros aktualisiert.")
+
+    # 2. UNTERE REIHE (Direktzuweisung an die Buttons 2_1 bis 2_4)
+    # Die IDs für unten beginnen im String ab Index 7
+    lower_start_idx = 7
+    lower_buttons = [button_2_1, button_2_2, button_2_3, button_2_4]
+    
+    for btn_idx, button in enumerate(lower_buttons):
+        array_idx = lower_start_idx + btn_idx
+        if array_idx < len(ids):
+            macro_obj = get_macro_by_id(ids[array_idx])
+            if macro_obj:
+                button.setMacro(macro_obj)
+                if(DEBUG_PRINT == True):
+                    print(f"[LINK] Button_2_{btn_idx+1} dynamisch umbelegt auf: {macro_obj.getName()}")
+            else:
+                # Wenn an dieser Stelle eine "0" steht, bleibt das im Boot vordefinierte
+                # Standard-Makro des Buttons unangetastet (wird nicht gelöscht!).
+                if(DEBUG_PRINT == True):
+                    print(f"[LINK] Slot unten {btn_idx+1} ist leer (0). Behalte Standard-Belegung.")
+
+
 def doButtons():
     global ScreenSaverCnt
     global ScreenSaverActive
@@ -169,7 +396,8 @@ def doButtons():
             
             if buttonState == 2:
                 if button.getMacro() == Macros.CYCLE:
-                    print("buttonState: " + str(buttonState))
+                    if(DEBUG_PRINT == True):
+                        print("buttonState: " + str(buttonState))
                     index = index - 1
                     if index < 0:
                         index = len(row1List) - 1
@@ -307,9 +535,9 @@ def doLed(buttonPressed):
     spiLed.write(data)
 
 
-# MAIN 
-
-
+# ==============================================================================
+# MAIN INITIALISIERUNG
+# ==============================================================================
 print (spiLed)
 print ("Brightness set to " + str((BRIGHTNESS * 100) / 255) + "%")
 button_1_3.setMacro(row1List[index])
@@ -322,70 +550,92 @@ colors[Color.WHITE] = (BRIGHTNESS<<16) + (BRIGHTNESS<<8) + (BRIGHTNESS)
 
 drawLogo()
 
-TASK_TIME_MS = 1
-taskTimer = 0
-ShowLogoCnt = time.ticks_ms()
+time.sleep(3)
 
-debugTaskTiming = 0
+# Jetzt erst wird der REPL-Interrupt für die PC-Gui deaktiviert
+import micropython
+micropython.kbd_intr(-1)
 
-avgTaskTime_5ms = -1
-avgTaskTime_10ms = -1
-avgTaskTime_20ms = -1
-avgTaskTime_50ms = -1
-avgTaskTime_100ms = -1
+import sys
+import uselect as select
+spoll = select.poll()
+spoll.register(sys.stdin, select.POLLIN)
 
-lastTaskTime_5ms = -1
-lastTaskTime_10ms = -1
-lastTaskTime_20ms = -1
+serial_buffer = "" # Speicher für die eintreffenden Zeichenfragmente
+
 lastTaskTime_50ms = -1
 lastTaskTime_100ms = -1
 
-taskTimer_5ms = 5
-taskTimer_10ms = 10
-taskTimer_20ms = 20
 taskTimer_50ms = 50
 taskTimer_100ms = 100
 
 pressed = False
 
+serial_buffer = ""
+is_collecting = False
+
 while True:
     taskTimer = time.ticks_ms()
 
+    # 1. KUGELSICHERER ENERGETISCHER SERIAL-EMPFÄNGER
+    while spoll.poll(0):
+        char = sys.stdin.read(1)
+        
+        # FALL A: Das Startzeichen der Helldivers-GUI trifft ein
+        if char == "#":
+            serial_buffer = ""      # Alten Puffer leeren
+            is_collecting = True    # Modus: "Ich sammle die ID-Kette" aktivieren
+            continue
+            
+        # FALL B: Wir befinden uns im aktiven Sammel-Modus
+        if is_collecting:
+            if char == "\n" or char == "\r":
+                # Sobald das ERSTE Trennzeichen kommt, prüfen wir, ob wir Daten haben
+                clean_packet = "".join([c for c in serial_buffer if ord(c) > 31]).strip()
+                
+                if len(clean_packet) > 0:
+                    # Paket ist vollständig! Wir schalten das Sammeln erst NACH der Verarbeitung ab
+                    is_collecting = False
+                    try:
+                        parse_incoming_serial_string(clean_packet)
+                        pressed = True  # Löst das Bestätigungs-Blinken aus!
+                    except Exception as err:
+                        try:
+                            with open("error_log.txt", "w") as log:
+                                sys.print_exception(err, log)
+                        except:
+                            pass
+                    
+                    serial_buffer = "" # Puffer leeren
+                else:
+                    # Falls es ein doppeltes Steuerzeichen (\n nach \r) war, 
+                    # ignorieren wir es einfach und sammeln weiter, falls noch was kommt.
+                    pass
+            else:
+                # Normales Zeichen an die Kette hängen
+                serial_buffer += char
+            continue
+            
+        # FALL C: Es kommt kein '#' und wir sammeln nicht -> VS-Code / IDE-Befehl!
+        else:
+            # Erlaubt weiterhin ein sauberes Abbrechen in VS-Code, 
+            # ignoriert aber isolierte, nachlaufende Newlines (\n)
+            if char not in ["\n", "\r", "\x00"]:
+                micropython.kbd_intr(3)  # REPL-Interrupts reaktivieren
+                raise KeyboardInterrupt
+        
+    # 2. REGULÄRER TASTATUR-BETRIEB
     if ((ShowLogoCnt + SHOWLOGO_MSEC) < taskTimer):    
 
         if doButtons() == True:
             pressed = True
-        # if((lastTaskTime_5ms + taskTimer_5ms) < taskTimer):
 
-        #     avgTaskTime_5ms = (avgTaskTime_5ms + (taskTimer - lastTaskTime_5ms))/2
-        #     lastTaskTime_5ms = taskTimer
-
-        # if((lastTaskTime_10ms + taskTimer_10ms) < taskTimer):
-
-        #     avgTaskTime_10ms = (avgTaskTime_10ms + (taskTimer - lastTaskTime_10ms))/2
-        #     lastTaskTime_10ms = taskTimer
-
-        # if((lastTaskTime_20ms + taskTimer_20ms) < taskTimer):
-
-        #     avgTaskTime_20ms = (avgTaskTime_20ms + (taskTimer - lastTaskTime_20ms))/2
-        #     lastTaskTime_20ms = taskTimer
-
-        if((lastTaskTime_50ms + taskTimer_50ms) < taskTimer):
+        if ((lastTaskTime_50ms + taskTimer_50ms) < taskTimer):
             doDisplay()
-
-            avgTaskTime_50ms = (avgTaskTime_50ms + (taskTimer - lastTaskTime_50ms))/2
             lastTaskTime_50ms = taskTimer
 
-        if((lastTaskTime_100ms + taskTimer_100ms) < taskTimer):
+        if ((lastTaskTime_100ms + taskTimer_100ms) < taskTimer):
             doScreenSaver()
             doLed(pressed)
             pressed = False
-
-            avgTaskTime_100ms = (avgTaskTime_100ms + (taskTimer - lastTaskTime_100ms))/2
             lastTaskTime_100ms = taskTimer
-
-    # if ((debugTaskTiming + 10000) < time.ticks_ms()):
-    #     print ("Average Task Timings [5ms; 10ms; 20ms; 50ms; 100ms]:  [" + str(avgTaskTime_5ms) + "; " + str(avgTaskTime_10ms) + "; " + str(avgTaskTime_20ms) + "; " + str(avgTaskTime_50ms) + "; " + str(avgTaskTime_100ms) + "]")
-    #     debugTaskTiming = time.ticks_ms()
-    #time.sleep_ms(TASK_TIME_MS)
-    #taskTimer = taskTimer + TASK_TIME_MS
