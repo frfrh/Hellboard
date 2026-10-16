@@ -10,8 +10,10 @@ WASD = {'U': 0x1a, 'D': 0x16, 'L': 0x04, 'R': 0x07}
 
 
 class Hid:
-    def __init__(self, config):
+    def __init__(self, config, idle=None):
+        """idle() is called between key events, e.g. to keep reading the serial port (protocol section 1)."""
         self._keyboard = keyboard.Keyboard()
+        self._idle = idle
         self.configure(config)
 
     def configure(self, config):
@@ -24,20 +26,25 @@ class Hid:
         """Opens the stratagem menu with the modifier key and enters the code (U/D/L/R)."""
         k = self._keyboard
         k.press(self._modifier)
-        time.sleep_ms(self._delay)
+        self._wait()
         if self._toggle:
             k.release(self._modifier)
-            time.sleep_ms(self._delay)
+            self._wait()
 
         for direction in code:
             key = self._keys[direction]
             k.press(key)
-            time.sleep_ms(self._delay)
+            self._wait()
             k.release(key)
-            time.sleep_ms(self._delay)
+            self._wait()
 
         if not self._toggle:
             k.release(self._modifier)
+
+    def _wait(self):
+        if self._idle:
+            self._idle()
+        time.sleep_ms(self._delay)
 
     def release_all(self):
         self._keyboard.release_all()

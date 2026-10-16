@@ -5,6 +5,9 @@
 import json
 
 PATH = 'stratagems.json'
+COLORS = ('red', 'green', 'blue', 'yellow', 'white')
+MAX_NAME = 64
+MAX_CODE = 10
 
 
 class Stratagem:
@@ -16,6 +19,30 @@ class Stratagem:
 
     def __str__(self):
         return '%s (%s)' % (self.name, self.code)
+
+    def to_dict(self):
+        """Definition as in the protocol (hellboard-protocol.md section 4.2)."""
+        result = {'name': self.name, 'color': self.color, 'sequence': self.code}
+        if self.id:
+            result['id'] = self.id
+        return result
+
+
+def from_definition(definition):
+    """Stratagem from a protocol definition; raises ValueError if it is invalid."""
+    if not isinstance(definition, dict):
+        raise ValueError('stratagem must be an object')
+    name = definition.get('name')
+    color = definition.get('color')
+    code = definition.get('sequence')
+    if not isinstance(name, str) or not 1 <= len(name) <= MAX_NAME:
+        raise ValueError('invalid name')
+    if color not in COLORS:
+        raise ValueError('invalid color for %s' % name)
+    if not isinstance(code, str) or not 1 <= len(code) <= MAX_CODE or any(c not in 'UDLR' for c in code):
+        raise ValueError('invalid sequence for %s' % name)
+    id = definition.get('id')
+    return Stratagem(id if isinstance(id, str) else None, name, color, code)
 
 
 def load(ids, path=PATH):

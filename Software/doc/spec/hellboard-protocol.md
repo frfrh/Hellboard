@@ -4,7 +4,7 @@
 |-|-|
 | Status | Draft, version 1 |
 | Date | 2026-10-16 |
-| Decisions | F1–F9 in [implementation-plan.md](implementation-plan.md) §6.9 |
+| Decisions | F1–F13 in [implementation-plan.md](implementation-plan.md) §6.9 |
 
 The Hellboard Companion (PC) sends the locked loadout to the Hellboard and configures it. This document is the contract between the PC software and the firmware; both sides implement exactly this.
 
@@ -84,6 +84,7 @@ Returns what the board currently uses – for the PC status display and after re
    "stratagems":[…as in setLoadout…],
    "missionStratagems":[…],
    "config":{…as in setConfig…},
+   "configSaved":true,
    "source":"pc"}
 ```
 
@@ -91,32 +92,40 @@ Returns what the board currently uses – for the PC status display and after re
 
 ### 4.4 `setConfig`
 
-Changes settings (F7). Applied immediately, kept in RAM only. All fields are optional; omitted fields stay unchanged.
+Changes the board configuration (F7, F13). Applied immediately, kept in RAM only; `saveConfig` (§4.5) makes it permanent. All fields are optional; omitted fields stay unchanged. The Companion sends its complete configuration after every connect and on every change.
 
 ```json
 → {"v":1,"id":4,"cmd":"setConfig","config":{
+     "fixed":{"1_1":{"id":"reinforce","name":"Reinforce","color":"yellow","sequence":"UDRLU"},
+              "1_2":{"id":"resupply","name":"Resupply","color":"yellow","sequence":"DDUR"}},
      "modifierKey":224, "modifierToggle":false, "keyDelayMs":50,
-     "directionKeys":"arrows", "brightness":80}}
-← {"v":1,"ack":4,"ok":true,"config":{…complete config after the change…}}
+     "directionKeys":"arrows", "brightness":80, "logLevel":"info"}}
+← {"v":1,"ack":4,"ok":true,"config":{…complete config after the change…},"configSaved":false}
 ```
 
 | Field | Meaning | Range | Default |
 |-|-|-|-|
-| `modifierKey` | HID usage id of the stratagem key (e.g. 224 = left Ctrl) | 4–231 | current `helldiver.py` value |
+| `fixed` | Stratagems of the fixed buttons `1_1` and `1_2`: definitions as in §4.2 plus an optional `id`, or `null` (button off) | – | Reinforce, Resupply |
+| `modifierKey` | HID usage id of the stratagem key (e.g. 224 = left Ctrl, 6 = C) | 4–231 | 6 |
 | `modifierToggle` | `true`: press once to open the menu; `false`: hold while entering | – | `false` |
 | `keyDelayMs` | Delay between key down/up events | 20–200 | 50 |
 | `directionKeys` | `arrows` or `wasd` | – | `arrows` |
 | `brightness` | LED brightness | 0–255 | 80 |
+| `logLevel` | Lowest level sent as `log` event (F12) | `debug`, `info`, `warn`, `error` | `info` |
+
+`configSaved` (also in `getState`): `true` when the configuration in RAM equals the one saved in flash.
 
 Errors: `invalid_config`.
 
-### 4.5 `saveDefault`
+### 4.5 `saveDefault` and `saveConfig`
 
-Writes the **current** loadout and configuration to the flash (JSON file in the MicroPython filesystem) as the power-up default (F3). Sent **only** when the user presses "Set as default" in the Companion – never automatically, to keep flash writes to a minimum.
+`saveDefault` writes the **current loadout** (`stratagems`, `missionStratagems`) to the flash as the power-up default (F3); `saveConfig` writes the **current configuration** (§4.4, F13). Both go into `saved.json` in the MicroPython filesystem, which overrides the shipped `config.json`. They are sent **only** when the user presses "Set as default" respectively "Save configuration on the Hellboard" in the Companion – never automatically, to keep flash writes to a minimum.
 
 ```json
 → {"v":1,"id":5,"cmd":"saveDefault"}
 ← {"v":1,"ack":5,"ok":true}
+→ {"v":1,"id":6,"cmd":"saveConfig"}
+← {"v":1,"ack":6,"ok":true,"configSaved":true}
 ```
 
 The file is written to a temporary name and renamed afterwards, so a power loss never leaves a broken default. Errors: `storage_error`.
@@ -158,12 +167,12 @@ Returns the last log entries kept in RAM (up to 32, oldest first), so the PC als
 | `unknown_command` | `cmd` is unknown |
 | `invalid_loadout` | `setLoadout` parameters violate §4.2 |
 | `invalid_config` | `setConfig` parameters violate §4.4 |
-| `storage_error` | Writing the default to flash failed |
+| `storage_error` | Writing `saved.json` to flash failed |
 
 ## 7. Hardware constraints
 
 - No EEPROM is populated; only the RP2040-Zero's RAM and flash are used (implementation plan §6.9).
-- Flash writes happen only through `saveDefault` and the firmware updater.
+- Flash writes happen only through `saveDefault`, `saveConfig` and the firmware updater.
 
 ## 8. Verification on the real board
 

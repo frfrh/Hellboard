@@ -9,9 +9,11 @@
     { "source": "libs/hid.py", "target": "hid.py" },
     { "source": "libs/leds.py", "target": "leds.py" },
     { "source": "libs/display.py", "target": "display.py" },
+    { "source": "libs/protocol.py", "target": "protocol.py" },
     { "source": "libs/app.py", "target": "app.py" },
     { "source": "config.json", "target": "config.json" },
     { "source": "../doc/stratagems.json", "target": "stratagems.json" },
     { "source": "main.py", "target": "main.py" }
-  ]
+  ],
+  "obsolete": ["helldiver.py", "macro.py"]
 }

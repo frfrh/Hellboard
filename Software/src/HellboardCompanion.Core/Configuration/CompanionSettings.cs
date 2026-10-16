@@ -23,6 +23,8 @@ public sealed class CompanionSettings
 
     public MultiFunctionOptions MultiFunction { get; set; } = new();
 
+    public BoardOptions Board { get; set; } = new();
+
     public UiOptions Ui { get; set; } = new();
 }
 

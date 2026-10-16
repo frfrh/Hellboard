@@ -1,6 +1,9 @@
-# Hellboard application: button handling, display and LEDs (decision F6). Loadout and button
-# assignment come from config.json / saved.json, the stratagem data from stratagems.json (F11).
+# Hellboard application: button handling, display, LEDs and the protocol to the Companion
+# (decisions F6, F11, F13). The initial assignment comes from config.json / saved.json, the
+# Companion replaces loadout and configuration at runtime (RAM only until it asks to save).
 
+import json
+import sys
 import time
 from machine import Pin
 
@@ -10,6 +13,7 @@ import stratagems
 from display import Display
 from hid import Hid
 from leds import Leds
+from protocol import Protocol, ProtocolError, VERSION as PROTOCOL_VERSION, send
 
 FIRMWARE_VERSION = '2.0.0-dev'
 
@@ -17,40 +21,67 @@ FIRMWARE_VERSION = '2.0.0-dev'
 PINS = {'1_4': 0, '1_3': 1, '1_2': 2, '1_1': 3, '2_1': 29, '2_2': 28, '2_3': 27, '2_4': 26}
 # Order of the buttons (and their LEDs in the chain); buttons are handled in this order.
 ORDER = ('1_4', '1_3', '1_2', '1_1', '2_1', '2_2', '2_3', '2_4')
+FIXED = ('1_1', '1_2')
 LOADOUT = ('2_1', '2_2', '2_3', '2_4')
 CYCLE = '1_4'
 MULTI = '1_3'
 CYCLE_DEBOUNCE_MS = 300
 LOOP_MS = 50
+MAX_MISSION = 16
+LOG_LEVELS = ('debug', 'info', 'warn', 'error')
+
+
+def _copy(value):
+    return json.loads(json.dumps(value))
 
 
 class App:
     def __init__(self):
-        cfg, problems = config.load()
+        cfg, problems, saved_keys = config.load()
         log.set_level(cfg['logLevel'])
         log.info('Firmware %s starting' % FIRMWARE_VERSION)
         for name in problems:
             log.error('%s is not valid JSON, ignored' % name)
 
-        fixed = cfg['fixed']
-        ids = [fixed.get('1_1'), fixed.get('1_2')] + list(cfg['loadout']) + list(cfg['multiFunction'])
+        fixed = cfg['fixed'] if isinstance(cfg['fixed'], dict) else {}
+        values = [fixed.get(b) for b in FIXED] + list(cfg['loadout']) + list(cfg['multiFunction'])
         try:
-            table = stratagems.load(ids)
+            table = stratagems.load([v for v in values if isinstance(v, str)])
         except OSError:
             log.error('stratagems.json not found - no stratagems available')
             table = {}
-        for id in ids:
-            if id and id not in table:
-                log.warn('Unknown stratagem id: %s' % id)
 
-        self.slots = {'1_1': table.get(fixed.get('1_1')), '1_2': table.get(fixed.get('1_2'))}
+        def resolve(value):
+            if isinstance(value, str):
+                if value not in table:
+                    log.warn('Unknown stratagem id: %s' % value)
+                return table.get(value)
+            if isinstance(value, dict):
+                try:
+                    return stratagems.from_definition(value)
+                except ValueError as e:
+                    log.warn('Invalid stratagem in configuration: %s' % e)
+            return None
+
+        self.slots = {}
+        for button in FIXED:
+            self.slots[button] = resolve(fixed.get(button))
         loadout = list(cfg['loadout']) + [None] * 4
-        for i, name in enumerate(LOADOUT):
-            self.slots[name] = table.get(loadout[i])
-        self.multi = [table[id] for id in cfg['multiFunction'] if id in table]
+        for i, button in enumerate(LOADOUT):
+            self.slots[button] = resolve(loadout[i])
+        self.multi = [s for s in (resolve(v) for v in cfg['multiFunction']) if s]
         self.index = 0
+        self.source = 'default' if 'loadout' in saved_keys or 'multiFunction' in saved_keys else 'builtin'
 
-        self.hid = Hid(cfg)
+        self.config = {}
+        for key in config.CONFIG_KEYS:
+            self.config[key] = cfg[key]
+        self.config['fixed'] = self._fixed_definitions()
+        self.persisted = _copy(self.config)
+        self.running = True
+
+        self.protocol = Protocol(self.handle_request)
+        self.hid = Hid(cfg, idle=self.protocol.receive)
         self.leds = Leds(cfg['brightness'])
         self.display = Display()
         if not self.display.ready:
@@ -66,9 +97,11 @@ class App:
         return self.slots.get(button)
 
     def run(self):
-        log.info('Ready: %s' % ', '.join(s.name if s else '-' for s in (self.stratagem(b) for b in LOADOUT)))
-        while True:
+        log.info('Ready: %s' % self._describe())
+        send({'v': PROTOCOL_VERSION, 'event': 'hello', 'fw': FIRMWARE_VERSION, 'protocol': PROTOCOL_VERSION})
+        while self.running:
             try:
+                self.protocol.poll()
                 pressed = self.handle_buttons()
                 self.draw()
                 if pressed:
@@ -80,6 +113,13 @@ class App:
                 self.hid.release_all()
                 time.sleep_ms(1000)
             time.sleep_ms(LOOP_MS)
+
+        # enterUpdateMode: leave everything off and return to the REPL.
+        self.hid.release_all()
+        self.leds.show([None] * len(ORDER))
+        self.display.show(((24, 'Update...'),))
+
+    # ---- buttons, display, LEDs --------------------------------------------------------------
 
     def handle_buttons(self):
         pressed = False
@@ -119,3 +159,122 @@ class App:
             (44, name('2_3')),
             (54, name('2_4')),
         ))
+
+    # ---- protocol (hellboard-protocol.md section 4) --------------------------------------------
+
+    def handle_request(self, command, request):
+        if command == 'ping':
+            return {'board': 'hellboard', 'fw': FIRMWARE_VERSION, 'protocol': PROTOCOL_VERSION,
+                    'micropython': '.'.join(str(x) for x in sys.implementation.version)}
+        if command == 'getState':
+            return {'stratagems': [self._definition(self.slots[b]) for b in LOADOUT],
+                    'missionStratagems': [s.to_dict() for s in self.multi],
+                    'config': self.config, 'configSaved': self.config == self.persisted, 'source': self.source}
+        if command == 'setLoadout':
+            return self._set_loadout(request)
+        if command == 'setConfig':
+            return self._set_config(request.get('config'))
+        if command == 'saveDefault':
+            self._save({'loadout': [self._definition(self.slots[b]) for b in LOADOUT],
+                        'multiFunction': [s.to_dict() for s in self.multi]})
+            log.info('Loadout saved as default')
+            return {}
+        if command == 'saveConfig':
+            self._save(self.config)
+            self.persisted = _copy(self.config)
+            log.info('Configuration saved')
+            return {'configSaved': True}
+        if command == 'getLog':
+            return {'entries': log.entries()}
+        if command == 'enterUpdateMode':
+            log.info('Entering update mode')
+            self.running = False
+            return {}
+        raise ProtocolError('unknown_command', str(command))
+
+    def _set_loadout(self, request):
+        items = request.get('stratagems')
+        mission = request.get('missionStratagems')
+        if not isinstance(items, list) or len(items) != 4:
+            raise ProtocolError('invalid_loadout', 'stratagems must have 4 entries')
+        if not isinstance(mission, list) or len(mission) > MAX_MISSION:
+            raise ProtocolError('invalid_loadout', 'missionStratagems must have 0-%d entries' % MAX_MISSION)
+        try:
+            loadout = [stratagems.from_definition(s) if s is not None else None for s in items]
+            multi = [stratagems.from_definition(s) for s in mission]
+        except ValueError as e:
+            raise ProtocolError('invalid_loadout', str(e))
+
+        for i, button in enumerate(LOADOUT):
+            self.slots[button] = loadout[i]
+        self.multi = multi
+        self.index = 0
+        self.source = 'pc'
+        log.info('Loadout received: %s' % self._describe())
+        return {}
+
+    def _set_config(self, changes):
+        if not isinstance(changes, dict):
+            raise ProtocolError('invalid_config', 'config missing')
+        try:
+            fixed = None
+            if 'fixed' in changes:
+                fixed = {}
+                given = changes['fixed'] or {}
+                for button in FIXED:
+                    value = given.get(button, self.config['fixed'].get(button))
+                    fixed[button] = stratagems.from_definition(value) if value is not None else None
+            checks = (
+                ('modifierKey', lambda v: isinstance(v, int) and 4 <= v <= 231),
+                ('modifierToggle', lambda v: isinstance(v, bool)),
+                ('keyDelayMs', lambda v: isinstance(v, int) and 20 <= v <= 200),
+                ('directionKeys', lambda v: v in ('arrows', 'wasd')),
+                ('brightness', lambda v: isinstance(v, int) and 0 <= v <= 255),
+                ('logLevel', lambda v: v in LOG_LEVELS),
+            )
+            for key, valid in checks:
+                if key in changes and not valid(changes[key]):
+                    raise ValueError('invalid %s' % key)
+        except ValueError as e:
+            raise ProtocolError('invalid_config', str(e))
+
+        changed = []
+        for key, valid in checks:
+            if key in changes and self.config[key] != changes[key]:
+                self.config[key] = changes[key]
+                changed.append(key)
+        if fixed is not None:
+            for button in FIXED:
+                self.slots[button] = fixed[button]
+            definitions = self._fixed_definitions()
+            if definitions != self.config['fixed']:
+                self.config['fixed'] = definitions
+                changed.append('fixed')
+
+        self.hid.configure(self.config)
+        self.leds.set_brightness(self.config['brightness'])
+        log.set_level(self.config['logLevel'])
+        if changed:
+            log.info('Configuration changed: %s' % ', '.join(changed))
+        return {'config': self.config, 'configSaved': self.config == self.persisted}
+
+    def _save(self, values):
+        try:
+            config.save(values)
+        except OSError as e:
+            log.error('Saving failed: %s' % e)
+            raise ProtocolError('storage_error', str(e))
+
+    def _fixed_definitions(self):
+        result = {}
+        for button in FIXED:
+            result[button] = self._definition(self.slots.get(button))
+        return result
+
+    @staticmethod
+    def _definition(stratagem):
+        return stratagem.to_dict() if stratagem else None
+
+    def _describe(self):
+        names = ', '.join(s.name if s else '-' for s in (self.stratagem(b) for b in LOADOUT))
+        return names + ' | ' + (', '.join(s.name for s in self.multi) or '-')

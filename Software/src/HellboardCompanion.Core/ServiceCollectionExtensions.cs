@@ -33,12 +33,14 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<StratagemCatalog>>()));
         services.AddSingleton(settings.Settings.Hellboard);
         services.AddSingleton(settings.Settings.MultiFunction);
+        services.AddSingleton(settings.Settings.Board);
         services.AddSingleton(sp => new HellboardLink(
             sp.GetRequiredService<HellboardOptions>(),
             sp.GetRequiredService<MultiFunctionOptions>(),
             sp.GetRequiredService<StratagemCatalog>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HellboardLink>>(),
-            sp.GetService<ISerialPortDiscovery>()));
+            sp.GetService<ISerialPortDiscovery>(),
+            board: sp.GetRequiredService<BoardOptions>()));
         services.AddSingleton(sp => new LoadoutPipeline(
             sp.GetRequiredService<GameFrameGrabber>(),
             sp.GetRequiredService<StratagemIconStore>(),

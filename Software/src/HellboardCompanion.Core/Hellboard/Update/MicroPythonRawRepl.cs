@@ -26,8 +26,12 @@ public sealed class MicroPythonRawRepl(IReplPort port, TimeSpan timeout, TimeSpa
 
     private readonly List<byte> _pending = [];
 
+    /// <summary>
+    /// 30 s answer timeout: renaming files can take several seconds when LittleFS compacts its
+    /// metadata (observed 2026-10-16); a too short timeout lets a late answer mix with the next one.
+    /// </summary>
     public MicroPythonRawRepl(IReplPort port)
-        : this(port, TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(10))
+        : this(port, TimeSpan.FromSeconds(30), TimeSpan.FromMilliseconds(10))
     {
     }
 

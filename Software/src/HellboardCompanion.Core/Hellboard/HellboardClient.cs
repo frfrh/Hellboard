@@ -31,8 +31,8 @@ public sealed class HellboardClient : IDisposable
         _connection.LineReceived += OnLineReceived;
     }
 
-    /// <summary>Unsolicited events of the board, e.g. <c>hello</c> after a restart.</summary>
-    public event EventHandler<string>? EventReceived;
+    /// <summary>Unsolicited events of the board, e.g. <c>hello</c> after a restart or <c>log</c> (protocol §5).</summary>
+    public event EventHandler<JsonObject>? EventReceived;
 
     public string Description => _connection.Description;
 
@@ -55,9 +55,22 @@ public sealed class HellboardClient : IDisposable
     public Task<JsonObject> SetConfigAsync(JsonObject config, CancellationToken cancellationToken = default) =>
         SendAsync("setConfig", request => request["config"] = config.DeepClone(), cancellationToken);
 
-    /// <summary>Writes the current loadout and configuration to the board's flash ("Set as default", F3).</summary>
+    /// <summary>Writes the current loadout to the board's flash ("Set as default", F3).</summary>
     public Task SaveDefaultAsync(CancellationToken cancellationToken = default) =>
         SendAsync("saveDefault", null, cancellationToken);
+
+    /// <summary>Writes the current configuration to the board's flash ("Save configuration on the Hellboard", F13).</summary>
+    public Task<JsonObject> SaveConfigAsync(CancellationToken cancellationToken = default) =>
+        SendAsync("saveConfig", null, cancellationToken);
+
+    /// <summary>Log entries the board keeps in RAM (F12), oldest first.</summary>
+    public async Task<IReadOnlyList<HellboardLogEntry>> GetLogAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await SendAsync("getLog", null, cancellationToken).ConfigureAwait(false);
+        return response["entries"] is JsonArray entries
+            ? entries.OfType<JsonObject>().Select(e => HellboardLogEntry.FromJson(e, DateTimeOffset.Now)).ToList()
+            : [];
+    }
 
     public Task EnterUpdateModeAsync(CancellationToken cancellationToken = default) =>
         SendAsync("enterUpdateMode", null, cancellationToken);
@@ -149,9 +162,9 @@ public sealed class HellboardClient : IDisposable
                 completion.TrySetResult(message);
             }
         }
-        else if (message["event"]?.GetValue<string>() is { } eventName)
+        else if (message["event"] is not null)
         {
-            EventReceived?.Invoke(this, eventName);
+            EventReceived?.Invoke(this, message);
         }
     }
 }

@@ -106,6 +106,13 @@ public sealed class FirmwareInstaller(MicroPythonRawRepl repl)
             RemoveNewFiles(bundle);
             throw new FirmwareInstallException($"Activating the new files failed, old files restored: {ex.Message}", ex);
         }
+
+        // Leftovers of older firmware versions; best effort, the new firmware does not use them.
+        foreach (var name in bundle.Obsolete)
+        {
+            TryExecute($"_rm('{name}')");
+            TryExecute($"_rm('{name}.bak')");
+        }
     }
 
     private void Write(FirmwareFile file)

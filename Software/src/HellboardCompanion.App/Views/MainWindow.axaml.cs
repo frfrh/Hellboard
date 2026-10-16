@@ -43,6 +43,14 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private async void OnCopyHellboardLogClicked(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel && Clipboard is { } clipboard)
+        {
+            await clipboard.SetTextAsync(viewModel.HellboardTab.LogText());
+        }
+    }
+
     private async void OnOpenSnapshotFolderClicked(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel)

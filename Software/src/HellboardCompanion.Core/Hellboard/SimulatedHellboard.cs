@@ -18,8 +18,16 @@ public sealed class SimulatedHellboard : IHellboardConnection
     private JsonNode? _missionStratagems = new JsonArray();
     private JsonObject _config = new()
     {
-        ["modifierKey"] = 6, ["modifierToggle"] = false, ["keyDelayMs"] = 50, ["directionKeys"] = "arrows", ["brightness"] = 80,
+        ["fixed"] = new JsonObject
+        {
+            ["1_1"] = new JsonObject { ["id"] = "reinforce", ["name"] = "Reinforce", ["color"] = "yellow", ["sequence"] = "UDRLU" },
+            ["1_2"] = new JsonObject { ["id"] = "resupply", ["name"] = "Resupply", ["color"] = "yellow", ["sequence"] = "DDUR" },
+        },
+        ["modifierKey"] = 6, ["modifierToggle"] = false, ["keyDelayMs"] = 50, ["directionKeys"] = "arrows", ["brightness"] = 80, ["logLevel"] = "info",
     };
+
+    private JsonObject _savedConfig = new();
+    private readonly List<JsonObject> _log = [new JsonObject { ["level"] = "info", ["t"] = 10, ["msg"] = "Simulator started" }];
 
     private string _source = "builtin";
 
@@ -34,6 +42,12 @@ public sealed class SimulatedHellboard : IHellboardConnection
     public string? SavedDefault { get; private set; }
 
     public int SaveCount { get; private set; }
+
+    /// <summary>Number of <c>saveConfig</c> requests (flash writes of the configuration).</summary>
+    public int SaveConfigCount { get; private set; }
+
+    /// <summary>Current configuration (protocol §4.4).</summary>
+    public JsonObject Config => _config;
 
     /// <summary>Number of accepted <c>setLoadout</c> requests (repeated ids not counted).</summary>
     public int SetLoadoutCount { get; private set; }
@@ -102,10 +116,13 @@ public sealed class SimulatedHellboard : IHellboardConnection
                     ["stratagems"] = _stratagems?.DeepClone(),
                     ["missionStratagems"] = _missionStratagems?.DeepClone(),
                     ["config"] = _config.DeepClone(),
+                    ["configSaved"] = ConfigSaved,
                     ["source"] = _source,
                 }),
                 "setConfig" => SetConfig(id, request),
                 "saveDefault" => SaveDefault(id),
+                "saveConfig" => SaveConfig(id),
+                "getLog" => Ok(id, new JsonObject { ["entries"] = new JsonArray([.. _log.Select(e => (JsonNode)e.DeepClone())]) }),
                 "enterUpdateMode" => Ok(id, []),
                 _ => Error(id, "unknown_command", request["cmd"]?.ToString()),
             };
@@ -159,8 +176,12 @@ public sealed class SimulatedHellboard : IHellboardConnection
             _config[key] = value?.DeepClone();
         }
 
-        return Ok(id, new JsonObject { ["config"] = _config.DeepClone() });
+        _log.Add(new JsonObject { ["level"] = "info", ["t"] = Environment.TickCount64, ["msg"] = "Configuration changed" });
+
+        return Ok(id, new JsonObject { ["config"] = _config.DeepClone(), ["configSaved"] = ConfigSaved });
     }
+
+    private bool ConfigSaved => JsonNode.DeepEquals(_config, _savedConfig);
 
     private string SaveDefault(int? id)
     {
@@ -168,10 +189,25 @@ public sealed class SimulatedHellboard : IHellboardConnection
         {
             ["stratagems"] = _stratagems?.DeepClone(),
             ["missionStratagems"] = _missionStratagems?.DeepClone(),
-            ["config"] = _config.DeepClone(),
         }.ToJsonString();
         SaveCount++;
         return Ok(id, []);
+    }
+
+    private string SaveConfig(int? id)
+    {
+        _savedConfig = (JsonObject)_config.DeepClone();
+        SaveConfigCount++;
+        return Ok(id, new JsonObject { ["configSaved"] = true });
+    }
+
+    /// <summary>Simulates a firmware log entry (event <c>log</c>, F12).</summary>
+    public void Log(string level, string message)
+    {
+        var entry = new JsonObject { ["level"] = level, ["t"] = Environment.TickCount64, ["msg"] = message };
+        _log.Add(entry);
+        var line = new JsonObject { ["v"] = 1, ["event"] = "log", ["level"] = level, ["t"] = entry["t"]!.GetValue<long>(), ["msg"] = message };
+        LineReceived?.Invoke(this, line.ToJsonString());
     }
 
     private static string Ok(int? id, JsonObject result)

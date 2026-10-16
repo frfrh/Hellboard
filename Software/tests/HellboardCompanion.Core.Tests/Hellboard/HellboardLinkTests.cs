@@ -74,6 +74,57 @@ public sealed class HellboardLinkTests
     }
 
     [Fact]
+    public async Task First_connect_takes_over_the_configuration_of_the_board()
+    {
+        var board = new BoardOptions { ModifierKey = 224, FixedButton2 = "sos_beacon" };
+        var adopted = false;
+        using var link = new HellboardLink(new HellboardOptions { Mode = HellboardConnectionMode.Simulator }, new MultiFunctionOptions(), Catalog, NullLogger<HellboardLink>.Instance, board: board);
+        link.BoardConfigAdopted += (_, _) => adopted = true;
+        link.Start();
+
+        await WaitFor(() => adopted && link.State.ConfigSaved is not null);
+
+        board.Adopted.Should().BeTrue();
+        board.ModifierKey.Should().Be(6, "the simulated board uses C");
+        board.FixedButton2.Should().Be("resupply");
+        link.Simulator!.Config["modifierKey"]!.GetValue<int>().Should().Be(6);
+    }
+
+    [Fact]
+    public async Task Configuration_changes_are_sent_and_saved_only_on_request()
+    {
+        var board = new BoardOptions { Adopted = true, ModifierKey = 224 };
+        using var link = new HellboardLink(new HellboardOptions { Mode = HellboardConnectionMode.Simulator }, new MultiFunctionOptions(), Catalog, NullLogger<HellboardLink>.Instance, board: board);
+        link.Start();
+        await WaitFor(() => link.Simulator?.Config["modifierKey"]?.GetValue<int>() == 224);
+        link.State.ConfigSaved.Should().BeFalse();
+
+        board.FixedButton1 = "eagle_rearm";
+        board.Brightness = 200;
+        link.ApplySettings();
+        await WaitFor(() => link.Simulator!.Config["brightness"]!.GetValue<int>() == 200);
+        link.Simulator!.Config["fixed"]!["1_1"]!["name"]!.GetValue<string>().Should().Be("Eagle Rearm");
+        link.Simulator.SaveConfigCount.Should().Be(0, "configuration changes stay in RAM (F3, F13)");
+
+        await link.SaveBoardConfigAsync();
+
+        link.Simulator.SaveConfigCount.Should().Be(1);
+        link.State.ConfigSaved.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Board_log_entries_are_collected()
+    {
+        using var link = Start(HellboardConnectionMode.Simulator);
+        await WaitFor(() => link.State.Status == HellboardStatus.Connected && link.Log.Count > 0);
+        link.Log[0].Message.Should().Be("Simulator started");
+
+        link.Simulator!.Log("warn", "Display not available");
+
+        await WaitFor(() => link.Log.Any(e => e is { Level: "warn", Message: "Display not available" }));
+    }
+
+    [Fact]
     public async Task Board_without_protocol_is_reported_and_the_port_released()
     {
         var opened = new List<SimulatedHellboard>();

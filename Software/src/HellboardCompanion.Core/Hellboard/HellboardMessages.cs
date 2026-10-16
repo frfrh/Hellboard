@@ -30,6 +30,18 @@ public sealed record HellboardInfo(
     [property: JsonPropertyName("protocol")] int Protocol,
     [property: JsonPropertyName("micropython")] string? MicroPython);
 
+/// <summary>A log entry of the firmware (decision F12, protocol <c>log</c> event and <c>getLog</c>).</summary>
+/// <param name="Received">Time the Companion received it (entries from <c>getLog</c>: time of the request).</param>
+/// <param name="BoardTime">Milliseconds since the board started.</param>
+public sealed record HellboardLogEntry(DateTimeOffset Received, string Level, long BoardTime, string Message)
+{
+    public static HellboardLogEntry FromJson(System.Text.Json.Nodes.JsonObject entry, DateTimeOffset received) => new(
+        received,
+        entry["level"]?.GetValue<string>() ?? "info",
+        entry["t"] is System.Text.Json.Nodes.JsonValue t && t.TryGetValue<long>(out var ms) ? ms : 0,
+        entry["msg"]?.GetValue<string>() ?? string.Empty);
+}
+
 /// <summary>Error answer of the board (hellboard-protocol.md §6).</summary>
 public sealed class HellboardException(string code, string? message)
     : Exception($"Hellboard error '{code}': {message}")

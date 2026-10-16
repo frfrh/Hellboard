@@ -100,8 +100,108 @@
           <StackPanel Orientation="Horizontal" Spacing="10">
             <Button Content="Recognize loadout now" Command="{Binding RecognizeNowCommand}" />
             <Button Content="Set as default on the Hellboard" Command="{Binding HellboardStatus.SetAsDefaultCommand}"
-                    ToolTip.Tip="Saves the current loadout and settings in the Hellboard's flash; they are used after power-up." />
+                    ToolTip.Tip="Saves the current loadout in the Hellboard's flash; it is used after power-up without the Companion." />
             <TextBlock Text="{Binding HellboardStatus.DefaultResult}" VerticalAlignment="Center" Opacity="0.7" TextWrapping="Wrap" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+
+    <!-- ===================================================== Hellboard -->
+    <TabItem Header="Hellboard">
+      <ScrollViewer>
+        <StackPanel Margin="12" Spacing="22" MaxWidth="980" HorizontalAlignment="Left"
+                    DataContext="{Binding HellboardTab}" x:DataType="vm:HellboardViewModel">
+
+          <StackPanel Spacing="10">
+            <TextBlock Text="Connection" FontSize="18" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+              <TextBlock Grid.Row="0" Text="Status" Opacity="0.7" />
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Status.Connection}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="1" Text="Firmware" Opacity="0.7" />
+              <SelectableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Status.Firmware}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="2" Text="Last loadout sent" Opacity="0.7" />
+              <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Status.LastSent}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="3" Text="Default loadout" Opacity="0.7" VerticalAlignment="Center" />
+              <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                <Button Content="Set as default on the Hellboard" Command="{Binding Status.SetAsDefaultCommand}"
+                        ToolTip.Tip="Saves the current loadout in the Hellboard's flash; it is used after power-up without the Companion." />
+                <TextBlock Text="{Binding Status.DefaultResult}" VerticalAlignment="Center" Opacity="0.7" TextWrapping="Wrap" MaxWidth="420" />
+              </StackPanel>
+            </Grid>
+            <TextBlock Text="{Binding Status.Warning}" IsVisible="{Binding Status.Warning, Converter={x:Static ObjectConverters.IsNotNull}}"
+                       Foreground="#FFC107" TextWrapping="Wrap" />
+          </StackPanel>
+
+          <StackPanel Spacing="10">
+            <TextBlock Text="Configuration" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Opacity="0.7" TextWrapping="Wrap"
+                       Text="Changes are sent to the Hellboard immediately and stay in its memory until it restarts. Save them on the Hellboard to keep them without the Companion." />
+            <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="10">
+              <TextBlock Grid.Row="0" Text="Button 1-1" VerticalAlignment="Center" />
+              <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Stratagems}" SelectedItem="{Binding FixedButton1}" MinWidth="320" MaxDropDownHeight="400" />
+
+              <TextBlock Grid.Row="1" Text="Button 1-2" VerticalAlignment="Center" />
+              <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Stratagems}" SelectedItem="{Binding FixedButton2}" MinWidth="320" MaxDropDownHeight="400" />
+
+              <TextBlock Grid.Row="2" Text="Stratagem key (as in the game)" VerticalAlignment="Center" />
+              <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding ModifierKeys}" SelectedItem="{Binding ModifierKey}" MinWidth="320" MaxDropDownHeight="400" />
+
+              <TextBlock Grid.Row="3" Text="Stratagem key mode" VerticalAlignment="Center" />
+              <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding ModifierModes}" SelectedItem="{Binding ModifierMode}" MinWidth="320" />
+
+              <TextBlock Grid.Row="4" Text="Direction keys" VerticalAlignment="Center" />
+              <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding DirectionKeyChoices}" SelectedItem="{Binding DirectionKeys}" MinWidth="320" />
+
+              <TextBlock Grid.Row="5" Text="Delay between key events" VerticalAlignment="Center" />
+              <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <NumericUpDown Value="{Binding KeyDelayMs}" Minimum="{Binding MinKeyDelay}" Maximum="{Binding MaxKeyDelay}" Increment="5" FormatString="0" Width="140" />
+                <TextBlock Text="ms" VerticalAlignment="Center" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="6" Text="LED brightness" VerticalAlignment="Center" />
+              <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                <Slider Value="{Binding Brightness}" Minimum="0" Maximum="255" Width="260" />
+                <TextBlock Text="{Binding BrightnessText}" VerticalAlignment="Center" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="7" Text="Hellboard log level" VerticalAlignment="Center" />
+              <ComboBox Grid.Row="7" Grid.Column="1" ItemsSource="{Binding LogLevels}" SelectedItem="{Binding LogLevel}" MinWidth="320" />
+            </Grid>
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0">
+              <Button Content="Save configuration on the Hellboard" Command="{Binding SaveConfigCommand}"
+                      ToolTip.Tip="Writes this configuration to the Hellboard's flash, so it is used after power-up without the Companion." />
+              <TextBlock Text="{Binding SaveResult}" VerticalAlignment="Center" Opacity="0.7" TextWrapping="Wrap" MaxWidth="460" />
+            </StackPanel>
+            <TextBlock Text="{Binding ConfigState}" Opacity="0.7" TextWrapping="Wrap" />
+          </StackPanel>
+
+          <StackPanel Spacing="10">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="Hellboard log (newest first)" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <ComboBox ItemsSource="{Binding LogFilters}" SelectedItem="{Binding LogFilter}" PlaceholderText="All" MinWidth="200" />
+                <Button Content="Copy" Click="OnCopyHellboardLogClicked" ToolTip.Tip="Copies the visible log lines (for bug reports)" />
+                <Button Content="Clear" Command="{Binding ClearLogCommand}" />
+              </StackPanel>
+            </Grid>
+            <TextBlock Text="No log entries yet – they appear as soon as a Hellboard with the new firmware is connected."
+                       IsVisible="{Binding !HasLog}" Opacity="0.6" TextWrapping="Wrap" />
+            <Border BorderBrush="#40808080" BorderThickness="1" CornerRadius="4" Padding="8" IsVisible="{Binding HasLog}">
+              <ScrollViewer MaxHeight="360">
+                <ItemsControl ItemsSource="{Binding LogLines}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:HellboardLogLineViewModel">
+                      <Grid ColumnDefinitions="70,60,*" Margin="0,1">
+                        <TextBlock Grid.Column="0" Text="{Binding Time}" Opacity="0.7" FontFamily="Consolas,Menlo,monospace" />
+                        <TextBlock Grid.Column="1" Text="{Binding Level}" Foreground="{Binding LevelBrush}" FontFamily="Consolas,Menlo,monospace" />
+                        <SelectableTextBlock Grid.Column="2" Text="{Binding Message}" TextWrapping="Wrap" FontFamily="Consolas,Menlo,monospace" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Border>
           </StackPanel>
         </StackPanel>
       </ScrollViewer>
@@ -302,16 +402,6 @@
               <SelectableTextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Loadout.LastLocked}" TextWrapping="Wrap" />
               <TextBlock Grid.Row="6" Grid.Column="0" Text="Icons" Opacity="0.7" />
               <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Loadout.Icons}" />
-            </Grid>
-
-            <TextBlock Text="Hellboard" FontSize="16" FontWeight="SemiBold" />
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
-              <TextBlock Grid.Row="0" Grid.Column="0" Text="Connection" Opacity="0.7" />
-              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Hellboard.Connection}" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="1" Grid.Column="0" Text="Firmware" Opacity="0.7" />
-              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Hellboard.Firmware}" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="2" Grid.Column="0" Text="Last sent" Opacity="0.7" />
-              <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Hellboard.LastSent}" TextWrapping="Wrap" />
             </Grid>
 
             <TextBlock Text="Application" FontSize="16" FontWeight="SemiBold" />

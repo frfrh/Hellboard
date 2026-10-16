@@ -36,6 +36,20 @@ public sealed class FirmwareInstallerTests
     }
 
     [Fact]
+    public void Obsolete_files_of_older_firmware_are_removed()
+    {
+        _board.Files["macro.py"] = Bytes("old");
+        _board.Files["macro.py.bak"] = Bytes("older");
+        var bundle = new FirmwareBundle([new FirmwareFile("main.py", Bytes("new main"))], ["macro.py"]);
+
+        _repl.Enter();
+        new FirmwareInstaller(_repl).Install(bundle);
+
+        _board.Files.Keys.Should().NotContain(["macro.py", "macro.py.bak"]);
+        _board.Files["main.py"].Should().Equal(Bytes("new main"));
+    }
+
+    [Fact]
     public void A_checksum_mismatch_leaves_the_old_files_untouched()
     {
         _board.CorruptWritesTo = "stratagems.json";

@@ -132,6 +132,7 @@ public sealed partial class CompanionApp : Application
                 _services.GetService<IGameLocator>(), _services.GetService<LoadoutPipeline>(), _services.GetService<HellboardLink>(),
                 catalog, _images, _services.GetService<ManualTriggerService>(), hellboard, _services.GetService<LoadoutHistory>(), _services.GetService<MultiFunctionOptions>()),
             new SettingsViewModel(_services.GetRequiredService<SettingsStore>(), catalog, _images, _services.GetService<ManualTriggerService>(), _services.GetService<IAutostart>()),
-            new HistoryViewModel(_services.GetService<LoadoutHistory>(), _services.GetService<LoadoutPipeline>(), catalog, _images, _services.GetRequiredService<SettingsStore>()));
+            new HistoryViewModel(_services.GetService<LoadoutHistory>(), _services.GetService<LoadoutPipeline>(), catalog, _images, _services.GetRequiredService<SettingsStore>()),
+            new HellboardViewModel(_services.GetRequiredService<SettingsStore>(), _services.GetService<HellboardLink>(), catalog, hellboard));
     }
 }

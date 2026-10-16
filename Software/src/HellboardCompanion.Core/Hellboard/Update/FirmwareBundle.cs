@@ -17,11 +17,14 @@ public sealed record FirmwareFile(string Target, byte[] Content)
 /// source file (relative to the manifest, may point outside <c>Firmware/</c>, e.g. to
 /// <c>../doc/stratagems.json</c>) to its path on the board (implementation plan §6.10, F11).
 /// </summary>
-public sealed partial class FirmwareBundle(IReadOnlyList<FirmwareFile> files)
+public sealed partial class FirmwareBundle(IReadOnlyList<FirmwareFile> files, IReadOnlyList<string>? obsolete = null)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public IReadOnlyList<FirmwareFile> Files { get; } = files;
+
+    /// <summary>Files of older firmware versions that are removed from the board after the installation.</summary>
+    public IReadOnlyList<string> Obsolete { get; } = obsolete ?? [];
 
     /// <exception cref="FormatException">The manifest is invalid or a target name is not allowed.</exception>
     public static FirmwareBundle Load(string manifestPath)
@@ -54,14 +57,20 @@ public sealed partial class FirmwareBundle(IReadOnlyList<FirmwareFile> files)
             throw new FormatException("The manifest lists no files or a target twice.");
         }
 
-        return new FirmwareBundle(files);
+        var obsolete = manifest.Obsolete ?? [];
+        if (obsolete.Any(name => !TargetPattern().IsMatch(name) || files.Any(f => f.Target == name)))
+        {
+            throw new FormatException("Invalid entry in 'obsolete'.");
+        }
+
+        return new FirmwareBundle(files, obsolete);
     }
 
     /// <summary>Plain file names on the board; no quotes or paths, so they can be embedded in Python code.</summary>
     [GeneratedRegex(@"^[A-Za-z0-9_][A-Za-z0-9_.\-]*$")]
     internal static partial Regex TargetPattern();
 
-    private sealed record Manifest(List<ManifestEntry>? Files);
+    private sealed record Manifest(List<ManifestEntry>? Files, List<string>? Obsolete);
 
     private sealed record ManifestEntry(string? Source, string? Target);
 }

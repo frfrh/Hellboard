@@ -70,7 +70,7 @@ public sealed class HellboardClientTests
         var board = new SimulatedHellboard();
         using var client = new HellboardClient(board);
         var events = new List<string>();
-        client.EventReceived += (_, e) => events.Add(e);
+        client.EventReceived += (_, e) => events.Add(e["event"]!.GetValue<string>());
 
         board.Restart();   // sends the hello event
         await client.PingAsync(TestContext.Current.CancellationToken);

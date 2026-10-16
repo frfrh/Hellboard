@@ -51,12 +51,13 @@ internal static class Program
         var pipeline = services.GetRequiredService<LoadoutPipeline>();
         var hellboard = services.GetRequiredService<HellboardLink>();
         pipeline.LoadoutLocked += (_, loadout) => hellboard.Submit(loadout);
+        var settings = services.GetRequiredService<SettingsStore>();
+        hellboard.BoardConfigAdopted += (_, _) => settings.Save();   // first connect: keep the board's configuration (F13)
         hellboard.Start();
         pipeline.Start();
         var trigger = services.GetRequiredService<ManualTriggerService>();
         trigger.Start();
 
-        var settings = services.GetRequiredService<SettingsStore>();
         if (settings.LoadProblem is { } problem)
         {
             log.LogWarning("{Problem}", problem);

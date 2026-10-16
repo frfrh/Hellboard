@@ -26,9 +26,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _gameWindowMode = "–";
 
-    public MainWindowViewModel(IPlatformInfo platform, IPlatformPaths paths, IGameLocator? gameLocator, CapturePreviewViewModel capture, LoadoutStatusViewModel loadout, ManualRecognitionViewModel manual, HellboardStatusViewModel hellboard, OverviewViewModel overview, SettingsViewModel settings, HistoryViewModel history)
+    public MainWindowViewModel(IPlatformInfo platform, IPlatformPaths paths, IGameLocator? gameLocator, CapturePreviewViewModel capture, LoadoutStatusViewModel loadout, ManualRecognitionViewModel manual, HellboardStatusViewModel hellboard, OverviewViewModel overview, SettingsViewModel settings, HistoryViewModel history, HellboardViewModel hellboardTab)
     {
         Overview = overview;
+        HellboardTab = hellboardTab;
         Settings = settings;
         History = history;
         Hellboard = hellboard;
@@ -81,6 +82,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public HistoryViewModel History { get; }
 
+    public HellboardViewModel HellboardTab { get; }
+
     /// <summary>Instance with placeholder values for the XAML previewer.</summary>
     public static MainWindowViewModel DesignInstance
     {
@@ -95,7 +98,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 new ManualRecognitionViewModel(null, null, null), hellboard,
                 new OverviewViewModel(null, null, null, catalog, images, null, hellboard),
                 new SettingsViewModel(designSettings, catalog, images, null, null),
-                new HistoryViewModel(null, null, catalog, images));
+                new HistoryViewModel(null, null, catalog, images),
+                new HellboardViewModel(designSettings, null, catalog, hellboard));
         }
     }
 
@@ -110,6 +114,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         Overview.Dispose();
         Settings.Dispose();
         History.Dispose();
+        HellboardTab.Dispose();
         if (_gameLocator is not null)
         {
             _gameLocator.Changed -= OnGameChanged;

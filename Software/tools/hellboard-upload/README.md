@@ -10,7 +10,7 @@ Installs the Hellboard firmware files onto the board – a replacement for uploa
 4. Only when all files are verified: the old file becomes `name.bak`, the new one takes its place. If anything fails, the `.new` files are removed and already replaced files are restored.
 5. Soft reset – the board starts with the new files.
 
-Files on the board that are not in the manifest (e.g. a saved configuration) are not touched.
+Files on the board that are not in the manifest (e.g. `saved.json`, the configuration saved from the Companion) are not touched; files listed under `obsolete` (leftovers of older firmware versions) are removed.
 
 ## Usage
 
