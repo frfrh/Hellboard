@@ -52,7 +52,8 @@ Reference pages for development and for extending the stratagem catalog (input c
 
 | Source | Content | Notes |
 |-|-|-|
-| [DiversHub – Stratagems](https://divershub.app/de/database/stratagems) | 111 stratagems with input code, cooldown and full designation (German UI) | Most complete source (checked 2026-10-16). Suspicious: Cremator and GL-28 share a code, Reinforcement Pods share the code of Upload Data. |
+| [Helldivers Wiki (wiki.gg) – Stratagems](https://helldivers.wiki.gg/wiki/Stratagems) | 116 stratagems with input code, incl. rare mission objectives (Portable Comms Relay, Tactical Video Camera, E-711 Extraction Drill, Aquifer Drill) | Most complete source (checked 2026-10-16). Lists SSSD Delivery twice (↓↓↓↑↑ and ↓↓↓↓↓↑↑). Reinforcement Pods share the code of Upload Data. |
+| [DiversHub – Stratagems](https://divershub.app/de/database/stratagems) | 111 stratagems with input code, cooldown and full designation (German UI) | Checked 2026-10-16. Differs from wiki.gg for Cremator (DiversHub ↓←↑←↑↑ = code of GL-28, wiki.gg ↓↓→↓↑↑) and TD-110 Maelstrom (DiversHub starts with ↑, wiki.gg with ← like all other vehicles). |
 | [Helldivers Wiki (Fandom) – Stratagem Codes](https://helldivers.fandom.com/wiki/Stratagem_Codes) | 81 stratagems with input code, cooldown and designation | Missing newer Warbonds. SSSD Delivery differs from DiversHub. |
 | [Icon repository nvigneux/Helldivers-2-Stratagems-icons-svg](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg) | Stratagem SVG icons, the ids and English names of the catalog | Downloaded at runtime by the catalog updater (implementation plan §6.11). |
 | [`doc/spec/stratagem-names-de.md`](doc/spec/stratagem-names-de.md) | English ↔ German names read from the game | Own notes. |
