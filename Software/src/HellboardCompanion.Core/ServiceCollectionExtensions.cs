@@ -37,7 +37,14 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<StratagemCatalog>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HellboardLink>>(),
             sp.GetService<ISerialPortDiscovery>()));
-        services.AddSingleton<LoadoutPipeline>();
+        services.AddSingleton(sp => new LoadoutPipeline(
+            sp.GetRequiredService<GameFrameGrabber>(),
+            sp.GetRequiredService<StratagemIconStore>(),
+            sp.GetRequiredService<LoadoutHistory>(),
+            sp.GetRequiredService<RecognitionOptions>(),
+            sp.GetRequiredService<IPlatformPaths>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<LoadoutPipeline>>(),
+            sp.GetRequiredService<StratagemCatalog>()));
         services.AddSingleton(sp => new ManualTriggerService(
             sp.GetRequiredService<LoadoutPipeline>(),
             sp.GetRequiredService<RecognitionOptions>(),

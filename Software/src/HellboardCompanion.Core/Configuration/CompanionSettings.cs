@@ -22,6 +22,22 @@ public sealed class CompanionSettings
     public HellboardOptions Hellboard { get; set; } = new();
 
     public MultiFunctionOptions MultiFunction { get; set; } = new();
+
+    public UiOptions Ui { get; set; } = new();
+}
+
+public enum HistoryFilter
+{
+    /// <summary>Loadouts locked by Ready or manually, and problems – what matters to the user.</summary>
+    Important,
+
+    /// <summary>Everything, including lock-ins when the screen closed.</summary>
+    All,
+}
+
+public sealed class UiOptions
+{
+    public HistoryFilter HistoryFilter { get; set; } = HistoryFilter.Important;
 }
 
 public sealed class GeneralOptions

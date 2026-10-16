@@ -73,7 +73,7 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
         MultiFunctionOptions? multiFunction = null)
     {
         _multiFunction = multiFunction ?? new MultiFunctionOptions();
-        _previousSession = history?.ReadRecent(1).FirstOrDefault();
+        _previousSession = history?.ReadRecentLoadouts(1).FirstOrDefault();
         _game = game;
         _pipeline = pipeline;
         _hellboard = hellboard;

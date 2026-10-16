@@ -4,11 +4,13 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using HellboardCompanion.Core.Capture;
 using HellboardCompanion.Core.Catalog;
+using HellboardCompanion.Core.Hellboard;
 using HellboardCompanion.Core.Layout;
 using HellboardCompanion.Core.Loadout;
 using HellboardCompanion.Core.Platform;
 using HellboardCompanion.Core.Recognition;
 using Microsoft.Extensions.Logging;
+using OpenCvSharp;
 
 namespace HellboardCompanion.Core.Pipeline;
 
@@ -39,7 +41,15 @@ public sealed class LoadoutPipeline : IDisposable
     private readonly CancellationTokenSource _stop = new();
     private readonly ConcurrentQueue<Action<LoadoutRecognizer?>> _requests = new();
     private readonly SemaphoreSlim _wake = new(0);
+    /// <summary>Recognition errors are recorded in the history at most this often (per error type).</summary>
+    private static readonly TimeSpan ErrorReportInterval = TimeSpan.FromMinutes(10);
+
+    private readonly StratagemCatalog? _catalog;
+    private readonly HashSet<string> _reportedWithoutSequence = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, DateTimeOffset> _lastErrorReport = new(StringComparer.Ordinal);
     private LoadoutRecognizer? _recognizer;
+    private Frame? _lastLoadoutFrame;
+    private LoadoutObservation? _lastLoadoutObservation;
     private volatile bool _iconsChanged = true;
     private Task? _loop;
 
@@ -49,8 +59,10 @@ public sealed class LoadoutPipeline : IDisposable
         LoadoutHistory history,
         RecognitionOptions options,
         IPlatformPaths paths,
-        ILogger<LoadoutPipeline> logger)
+        ILogger<LoadoutPipeline> logger,
+        StratagemCatalog? catalog = null)
     {
+        _catalog = catalog;
         _grabber = grabber;
         _iconStore = iconStore;
         _history = history;
@@ -140,6 +152,7 @@ public sealed class LoadoutPipeline : IDisposable
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Loadout recognition failed");
+                ReportError(ex);
             }
 
             var remaining = interval - Stopwatch.GetElapsedTime(started);
@@ -173,6 +186,13 @@ public sealed class LoadoutPipeline : IDisposable
 
         var observation = recognizer.Recognize(frame);
         LastObservation = observation;
+        if (observation is { ScreenVisible: true, Loadout: not null })
+        {
+            // Kept for screenshots of unrecognized slots, also when the lock-in happens after the screen closed.
+            _lastLoadoutFrame = frame;
+            _lastLoadoutObservation = observation;
+        }
+
         Tracker.Process(observation);
         ObservationAvailable?.Invoke(this, observation);
 
@@ -219,9 +239,19 @@ public sealed class LoadoutPipeline : IDisposable
 
         var testMode = !_options.ManualTransfer;
         var locked = !testMode && screenDetected && problem is null;
+        _lastLoadoutFrame = frames[^1];
+        _lastLoadoutObservation = observations[^1] with { Loadout = loadout };
         if (locked)
         {
             Tracker.LockManually(loadout, timestamp);
+        }
+        else if (!screenDetected)
+        {
+            RecordProblem(ProblemKind.ScreenNotDetected, "Manual recognition: the loadout screen was not detected.", SaveOverview(frames[^1], timestamp), null);
+        }
+        else if (problem is not null)
+        {
+            ReportUnrecognizedSlots(recognizer, timestamp);
         }
 
         _logger.LogInformation(
@@ -265,6 +295,126 @@ public sealed class LoadoutPipeline : IDisposable
     {
         _logger.LogInformation("Loadout locked: {Loadout}", loadout.ToString());
         _history.Append(loadout);
+        try
+        {
+            if (!loadout.IsComplete && _recognizer is not null)
+            {
+                ReportUnrecognizedSlots(_recognizer, loadout.Timestamp);
+            }
+
+            ReportMissingSequences(loadout);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Recording the recognition problems failed");
+        }
+
         LoadoutLocked?.Invoke(this, loadout);
+    }
+
+    // ---- Problems for the history (shown in the "important" view) ------------------------
+
+    /// <summary>A screenshot of every slot that is occupied but not recognized.</summary>
+    private void ReportUnrecognizedSlots(LoadoutRecognizer recognizer, DateTimeOffset timestamp)
+    {
+        if (_lastLoadoutFrame is not { } frame || _lastLoadoutObservation is not { Loadout: { } snapshot } observation)
+        {
+            return;
+        }
+
+        void Report(IReadOnlyList<SlotValue> slots, bool mission, string label)
+        {
+            for (var i = 0; i < slots.Count; i++)
+            {
+                if (slots[i].State == SlotState.Unknown)
+                {
+                    var rect = recognizer.GetSlotRect(frame, observation.Screen.Offset, mission, i);
+                    var image = SaveCrop(frame, rect, timestamp, $"{(mission ? "mission" : "slot")}{i + 1}");
+                    RecordProblem(ProblemKind.UnrecognizedStratagem, $"{label} {i + 1}: stratagem not recognized (unknown or new icon).", image, null);
+                }
+            }
+        }
+
+        Report(snapshot.PlayerSlots, false, "Slot");
+        Report(snapshot.MissionSlots, true, "Mission slot");
+    }
+
+    /// <summary>Recognized stratagems that cannot be sent because their input sequence is unknown (once per session).</summary>
+    private void ReportMissingSequences(LockedLoadout loadout)
+    {
+        if (_catalog is null)
+        {
+            return;
+        }
+
+        foreach (var id in loadout.Stratagems.OfType<string>().Concat(loadout.MissionStratagems))
+        {
+            if (_catalog.Find(id) is { IsTransferable: true } || !_reportedWithoutSequence.Add(id))
+            {
+                continue;
+            }
+
+            var name = _catalog.Find(id)?.Name ?? id;
+            RecordProblem(ProblemKind.NoInputSequence, $"{name}: input sequence not known yet – not sent to the Hellboard.", null, id);
+        }
+    }
+
+    private void ReportError(Exception error)
+    {
+        var key = error.GetType().FullName ?? "error";
+        var now = DateTimeOffset.Now;
+        if (_lastErrorReport.TryGetValue(key, out var last) && now - last < ErrorReportInterval)
+        {
+            return;
+        }
+
+        _lastErrorReport[key] = now;
+        RecordProblem(ProblemKind.RecognitionError, $"Recognition error: {error.Message}", null, null);
+    }
+
+    private void RecordProblem(ProblemKind kind, string message, string? imagePath, string? stratagemId)
+    {
+        try
+        {
+            _history.Append(new RecognitionProblem(DateTimeOffset.Now, kind, message, imagePath, stratagemId));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Writing the problem to the history failed");
+        }
+    }
+
+    /// <summary>Saves the slot area (with a small margin) as PNG for the history.</summary>
+    private string? SaveCrop(Frame frame, PixelRect slot, DateTimeOffset timestamp, string suffix)
+    {
+        var margin = slot.Width / 8;
+        var area = new PixelRect(slot.X - margin, slot.Y - margin, slot.Width + (2 * margin), slot.Height + (2 * margin));
+        using var crop = FrameMat.CropBgr(frame, area);
+        return SaveImage(crop, timestamp, suffix);
+    }
+
+    /// <summary>Saves the whole frame, reduced to at most 960 px width.</summary>
+    private string? SaveOverview(Frame frame, DateTimeOffset timestamp)
+    {
+        using var full = FrameMat.CropBgr(frame, new PixelRect(0, 0, frame.Width, frame.Height));
+        using var small = new Mat();
+        var scale = Math.Min(1.0, 960.0 / frame.Width);
+        Cv2.Resize(full, small, new Size((int)(frame.Width * scale), (int)(frame.Height * scale)), interpolation: InterpolationFlags.Area);
+        return SaveImage(small, timestamp, "screen");
+    }
+
+    private string? SaveImage(Mat image, DateTimeOffset timestamp, string suffix)
+    {
+        try
+        {
+            Directory.CreateDirectory(_history.ProblemImageDirectory);
+            var path = Path.Combine(_history.ProblemImageDirectory, $"problem-{timestamp:yyyyMMdd-HHmmss-fff}-{suffix}.png");
+            return Cv2.ImWrite(path, image) ? path : null;
+        }
+        catch (Exception ex) when (ex is IOException or OpenCVException)
+        {
+            _logger.LogWarning(ex, "Saving the problem screenshot failed");
+            return null;
+        }
     }
 }

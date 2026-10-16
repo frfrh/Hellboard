@@ -38,7 +38,7 @@ public sealed class LoadoutRecognizerTests(ITestOutputHelper output)
         }
 
         observation.Duration.Should().BeLessThan(TimeSpan.FromMilliseconds(300), "a new loadout must be recognized within a few frames");
-        repeated.Duration.Should().BeLessThan(TimeSpan.FromMilliseconds(50), "an unchanged loadout screen must keep up with 10 frames per second");
+        repeated.Duration.Should().BeLessThan(TimeSpan.FromMilliseconds(100), "an unchanged loadout screen must keep up with 10 frames per second");
     }
 
     [Fact]

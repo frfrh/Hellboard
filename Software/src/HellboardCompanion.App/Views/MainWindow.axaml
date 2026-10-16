@@ -212,24 +212,49 @@
     <TabItem Header="History">
       <ScrollViewer>
         <StackPanel Margin="12" Spacing="10" DataContext="{Binding History}" x:DataType="vm:HistoryViewModel">
-          <TextBlock Text="Locked loadouts (newest first)" FontSize="18" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="History (newest first)" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="Show" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding Filters}" SelectedItem="{Binding Filter}" MinWidth="280" />
+            </StackPanel>
+          </Grid>
           <TextBlock Text="{Binding FilePath}" Opacity="0.6" />
           <ItemsControl ItemsSource="{Binding Entries}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:HistoryEntryViewModel">
-                <Border CornerRadius="4" Background="#20808080" Padding="10" Margin="0,0,0,8">
-                  <StackPanel Spacing="6">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                      <TextBlock Text="{Binding Time}" FontWeight="SemiBold" />
-                      <TextBlock Text="{Binding Source}" Opacity="0.7" />
+                <Panel>
+                  <!-- Locked loadout -->
+                  <Border IsVisible="{Binding IsLoadout}" CornerRadius="4" Background="#20808080" Padding="10" Margin="0,0,0,8">
+                    <StackPanel Spacing="6">
+                      <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="{Binding Time}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Title}" Opacity="0.7" />
+                      </StackPanel>
+                      <ItemsControl ItemsSource="{Binding Stratagems}" ItemTemplate="{StaticResource SmallTile}" ItemsPanel="{StaticResource Horizontal}" />
+                      <TextBlock Opacity="0.7">
+                        <Run Text="Mission stratagems: " />
+                        <Run Text="{Binding MissionStratagems}" />
+                      </TextBlock>
                     </StackPanel>
-                    <ItemsControl ItemsSource="{Binding Stratagems}" ItemTemplate="{StaticResource SmallTile}" ItemsPanel="{StaticResource Horizontal}" />
-                    <TextBlock Opacity="0.7">
-                      <Run Text="Mission stratagems: " />
-                      <Run Text="{Binding MissionStratagems}" />
-                    </TextBlock>
-                  </StackPanel>
-                </Border>
+                  </Border>
+                  <!-- Problem -->
+                  <Border IsVisible="{Binding IsProblem}" CornerRadius="4" Background="#22FFC107" BorderBrush="#99FFC107" BorderThickness="1" Padding="10" Margin="0,0,0,8">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                      <Panel Grid.Column="0" VerticalAlignment="Top">
+                        <Image Source="{Binding ProblemImage}" IsVisible="{Binding HasProblemImage}" MaxHeight="140" MaxWidth="320" Stretch="Uniform" />
+                        <Image Source="{Binding ProblemStratagem.Icon}" IsVisible="{Binding HasProblemStratagem}" Width="64" Height="64" />
+                      </Panel>
+                      <StackPanel Grid.Column="1" Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                          <TextBlock Text="{Binding Time}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding Title}" Foreground="#FFC107" />
+                        </StackPanel>
+                        <SelectableTextBlock Text="{Binding ProblemText}" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </Panel>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>

@@ -102,6 +102,15 @@ public sealed class LoadoutRecognizer : IDisposable
         return new LoadoutObservation(frame.Timestamp, screen, status, new LoadoutSnapshot(player, mission), System.Diagnostics.Stopwatch.GetElapsedTime(started));
     }
 
+    /// <summary>Position of a slot in <paramref name="frame"/>, corrected by the offset of the screen detection.</summary>
+    /// <param name="mission">true = optional mission slot, false = player slot.</param>
+    public PixelRect GetSlotRect(Frame frame, PixelOffset offset, bool mission, int index)
+    {
+        var scaler = new LayoutScaler(_layout, new PixelRect(0, 0, frame.Width, frame.Height));
+        var rect = scaler.ToScreen(mission ? _layout.OptionalMissionSlots[index] : _layout.PlayerSlots[index]);
+        return rect with { X = rect.X + offset.X, Y = rect.Y + offset.Y };
+    }
+
     public void Dispose()
     {
         _playerClassifier.Dispose();
