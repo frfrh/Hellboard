@@ -18,6 +18,7 @@ public sealed class ManualTriggerService(
     private static readonly TimeSpan Debounce = TimeSpan.FromSeconds(1);
 
     private IDisposable? _registration;
+    private (RecognitionMode Mode, string Hotkey) _applied;
     private DateTimeOffset _lastTrigger = DateTimeOffset.MinValue;
     private int _running;
 
@@ -30,8 +31,12 @@ public sealed class ManualTriggerService(
     /// <summary>Raised on a background thread after every manual recognition.</summary>
     public event EventHandler<ManualRecognitionResult>? Completed;
 
+    /// <summary>Raised when the registered hotkey changed (after <see cref="ApplySettings"/>).</summary>
+    public event EventHandler? HotkeyChanged;
+
     public void Start()
     {
+        _applied = (options.Mode, options.TriggerHotkey);
         if (options.Mode == RecognitionMode.Automatic || hotkeys is null)
         {
             return;
@@ -76,6 +81,22 @@ public sealed class ManualTriggerService(
         {
             Interlocked.Exchange(ref _running, 0);
         }
+    }
+
+    /// <summary>Re-registers the hotkey when mode or key combination changed.</summary>
+    public void ApplySettings()
+    {
+        if ((options.Mode, options.TriggerHotkey) == _applied)
+        {
+            return;
+        }
+
+        _registration?.Dispose();
+        _registration = null;
+        RegisteredHotkey = null;
+        HotkeyProblem = null;
+        Start();
+        HotkeyChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void Dispose() => _registration?.Dispose();

@@ -78,6 +78,7 @@ public sealed class HellboardLink : IDisposable
     private readonly CancellationTokenSource _stop = new();
     private readonly Dictionary<string, DateTimeOffset> _noProtocolUntil = new(StringComparer.OrdinalIgnoreCase);
 
+    private (HellboardConnectionMode Mode, string? Port) _appliedConnection;
     private IHellboardConnection? _connection;
     private HellboardClient? _client;
     private DateTimeOffset _lastHeartbeat;
@@ -99,6 +100,7 @@ public sealed class HellboardLink : IDisposable
         _logger = logger;
         _discovery = discovery;
         _openSerial = openSerial ?? (port => new SerialHellboardConnection(port));
+        _appliedConnection = (options.Mode, options.Port);
         State = new HellboardState(
             options.Mode == HellboardConnectionMode.DryRun ? HellboardStatus.DryRun : HellboardStatus.NotFound,
             null, null, null, null, null, [], null);
@@ -125,6 +127,33 @@ public sealed class HellboardLink : IDisposable
     /// <summary>Rebuilds the transfer from the last locked loadout, e.g. after the multi-function settings changed.</summary>
     public void Rebuild() => Enqueue(() =>
     {
+        BuildPending();
+        return SendPendingAsync();
+    });
+
+    /// <summary>
+    /// Applies changed settings: reconnects when the connection mode or port changed, and rebuilds the
+    /// transfer (e.g. a changed multi-function list); the board only receives it if it changed.
+    /// </summary>
+    public void ApplySettings() => Enqueue(() =>
+    {
+        if ((_options.Mode, _options.Port) != _appliedConnection)
+        {
+            _appliedConnection = (_options.Mode, _options.Port);
+            _logger.LogInformation("Hellboard connection changed to {Mode} {Port}", _options.Mode, _options.Port ?? "(auto)");
+            Disconnect();
+            _noProtocolUntil.Clear();
+            Update(State with
+            {
+                Status = _options.Mode == HellboardConnectionMode.DryRun ? HellboardStatus.DryRun : HellboardStatus.NotFound,
+                Port = null,
+                Info = null,
+                LastSent = null,
+                LastSentAt = null,
+                Message = null,
+            });
+        }
+
         BuildPending();
         return SendPendingAsync();
     });

@@ -434,6 +434,8 @@ interface IHellboardLink {
 
 ### 6.8 Configuration
 
+> **Implementation status (P6, step 1):** `CompanionSettings` with the sections `general`, `game`, `recognition`, `hellboard`, `multiFunction` in `%APPDATA%\HellboardCompanion\config.json` (`SettingsStore`: defaults for missing values, atomic write, an unreadable file is kept as `config.json.invalid`). The sections are the option objects the services use, so most changes apply immediately; the Hellboard link reconnects on a changed connection mode/port and resends a changed multi-function list, the hotkey is re-registered. Settings are changed through the settings page (step 2) instead of hot-reloading the file; JSON schema validation is not needed for that and was dropped.
+
 - `%APPDATA%\HellboardCompanion\config.json`, created from `config/default.config.json` on first start; validated against a JSON schema; hot reload via `FileSystemWatcher`.
 - Sections: `game`, `capture`, `layout`, `recognition` (thresholds, `stableFrames`), `hellboard`, `multiFunction`, `ui`.
 

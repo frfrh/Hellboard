@@ -2,6 +2,7 @@
 
 using HellboardCompanion.Core.Capture;
 using HellboardCompanion.Core.Catalog;
+using HellboardCompanion.Core.Configuration;
 using HellboardCompanion.Core.Hellboard;
 using HellboardCompanion.Core.Loadout;
 using HellboardCompanion.Core.Pipeline;
@@ -18,15 +19,18 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddCoreServices(this IServiceCollection services, IPlatformPaths paths)
     {
+        var settings = SettingsStore.Load(paths);
         services.AddSingleton(paths);
-        services.AddSingleton(new GameLocatorOptions());
+        services.AddSingleton(settings);
+        services.AddSingleton(settings.Settings.General);
+        services.AddSingleton(settings.Settings.Game);
         services.AddSingleton<GameFrameGrabber>();
         services.AddSingleton<StratagemIconStore>();
         services.AddSingleton<LoadoutHistory>();
-        services.AddSingleton(new RecognitionOptions());
+        services.AddSingleton(settings.Settings.Recognition);
         services.AddSingleton(StratagemCatalog.LoadSeed());
-        services.AddSingleton(new HellboardOptions());
-        services.AddSingleton(new MultiFunctionOptions());
+        services.AddSingleton(settings.Settings.Hellboard);
+        services.AddSingleton(settings.Settings.MultiFunction);
         services.AddSingleton(sp => new HellboardLink(
             sp.GetRequiredService<HellboardOptions>(),
             sp.GetRequiredService<MultiFunctionOptions>(),

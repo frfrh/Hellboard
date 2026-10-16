@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using HellboardCompanion.App;
 using HellboardCompanion.Core;
 using HellboardCompanion.Core.Catalog;
+using HellboardCompanion.Core.Configuration;
 using HellboardCompanion.Core.Hellboard;
 using HellboardCompanion.Core.Pipeline;
 using HellboardCompanion.Core.Platform;
@@ -52,7 +53,20 @@ internal static class Program
         pipeline.LoadoutLocked += (_, loadout) => hellboard.Submit(loadout);
         hellboard.Start();
         pipeline.Start();
-        services.GetRequiredService<ManualTriggerService>().Start();
+        var trigger = services.GetRequiredService<ManualTriggerService>();
+        trigger.Start();
+
+        var settings = services.GetRequiredService<SettingsStore>();
+        if (settings.LoadProblem is { } problem)
+        {
+            log.LogWarning("{Problem}", problem);
+        }
+
+        settings.Saved += (_, _) =>
+        {
+            hellboard.ApplySettings();
+            trigger.ApplySettings();
+        };
 
         CompanionApp? app = null;
         instance.OnShowRequested(() => Dispatcher.UIThread.Post(() => app?.ShowMainWindow()));

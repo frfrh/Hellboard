@@ -119,6 +119,37 @@ public sealed class HellboardLinkTests
     }
 
     [Fact]
+    public async Task Switching_from_dry_run_to_the_simulator_connects_and_sends()
+    {
+        var options = new HellboardOptions { Mode = HellboardConnectionMode.DryRun };
+        using var link = new HellboardLink(options, new MultiFunctionOptions(), Catalog, NullLogger<HellboardLink>.Instance);
+        link.Start();
+        link.Submit(LoadoutA);
+        await WaitFor(() => link.State.LastSent is not null);
+
+        options.Mode = HellboardConnectionMode.Simulator;
+        link.ApplySettings();
+
+        await WaitFor(() => link.State.Status == HellboardStatus.Connected && link.Simulator?.SetLoadoutCount == 1);
+    }
+
+    [Fact]
+    public async Task Changed_multi_function_list_is_sent_again()
+    {
+        var multiFunction = new MultiFunctionOptions();
+        using var link = new HellboardLink(new HellboardOptions { Mode = HellboardConnectionMode.Simulator }, multiFunction, Catalog, NullLogger<HellboardLink>.Instance);
+        link.Start();
+        link.Submit(LoadoutA);
+        await WaitFor(() => link.Simulator?.SetLoadoutCount == 1);
+
+        multiFunction.FixedList = ["sos_beacon", "eagle_rearm"];
+        link.ApplySettings();
+
+        await WaitFor(() => link.Simulator!.SetLoadoutCount == 2);
+        link.Simulator!.MissionStratagems!.AsArray().Should().HaveCount(2);
+    }
+
+    [Fact]
     public async Task Dry_run_builds_the_loadout_without_a_board()
     {
         using var link = Start(HellboardConnectionMode.DryRun);
