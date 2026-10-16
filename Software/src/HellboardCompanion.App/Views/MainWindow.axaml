@@ -5,136 +5,330 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:HellboardCompanion.App.ViewModels"
         mc:Ignorable="d"
-        d:DesignWidth="1200" d:DesignHeight="960"
+        d:DesignWidth="1200" d:DesignHeight="900"
         x:Class="HellboardCompanion.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/hellboard.ico"
         Title="{Binding Title}"
-        Width="1200" Height="960"
+        Width="1200" Height="900"
+        MinWidth="900" MinHeight="600"
         WindowStartupLocation="CenterScreen">
 
   <Design.DataContext>
     <x:Static Member="vm:MainWindowViewModel.DesignInstance" />
   </Design.DataContext>
 
-  <ScrollViewer>
-    <Grid Margin="24" ColumnDefinitions="440,*" ColumnSpacing="24">
-
-      <StackPanel Grid.Column="0" Spacing="16">
-        <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="SemiBold" />
-
-        <Border IsVisible="{Binding HasSupportNote}"
-                Background="#33FFC107" BorderBrush="#FFC107" BorderThickness="1"
-                CornerRadius="4" Padding="12">
-          <TextBlock Text="{Binding SupportNote}" TextWrapping="Wrap" />
-        </Border>
-
-        <TextBlock Text="Helldivers 2" FontSize="16" FontWeight="SemiBold" />
-        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
-          <TextBlock Grid.Row="0" Grid.Column="0" Text="Status" Opacity="0.7" />
-          <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding GameStatus}" />
-
-          <TextBlock Grid.Row="1" Grid.Column="0" Text="Monitor" Opacity="0.7" />
-          <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding GameMonitor}" />
-
-          <TextBlock Grid.Row="2" Grid.Column="0" Text="Game area" Opacity="0.7" />
-          <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding GameClientArea}" />
-
-          <TextBlock Grid.Row="3" Grid.Column="0" Text="Window mode" Opacity="0.7" />
-          <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding GameWindowMode}" />
-        </Grid>
-
-        <TextBlock Text="Loadout" FontSize="16" FontWeight="SemiBold" />
-        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
-          <TextBlock Grid.Row="0" Grid.Column="0" Text="Screen" Opacity="0.7" />
-          <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Loadout.Screen}" TextWrapping="Wrap" />
-
-          <TextBlock Grid.Row="1" Grid.Column="0" Text="Ready button" Opacity="0.7" />
-          <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Loadout.ReadyStatus}" />
-
-          <TextBlock Grid.Row="2" Grid.Column="0" Text="Stratagems" Opacity="0.7" />
-          <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Loadout.PlayerStratagems}" TextWrapping="Wrap" />
-
-          <TextBlock Grid.Row="3" Grid.Column="0" Text="Mission" Opacity="0.7" />
-          <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Loadout.MissionStratagems}" TextWrapping="Wrap" />
-
-          <TextBlock Grid.Row="4" Grid.Column="0" Text="Tracker" Opacity="0.7" />
-          <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Loadout.TrackerState}" />
-
-          <TextBlock Grid.Row="5" Grid.Column="0" Text="Last locked" Opacity="0.7" />
-          <SelectableTextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Loadout.LastLocked}" TextWrapping="Wrap" />
-
-          <TextBlock Grid.Row="6" Grid.Column="0" Text="Icons" Opacity="0.7" />
-          <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Loadout.Icons}" />
-        </Grid>
-
-        <TextBlock Text="Hellboard" FontSize="16" FontWeight="SemiBold" />
-        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
-          <TextBlock Grid.Row="0" Grid.Column="0" Text="Connection" Opacity="0.7" />
-          <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Hellboard.Connection}" TextWrapping="Wrap" />
-
-          <TextBlock Grid.Row="1" Grid.Column="0" Text="Firmware" Opacity="0.7" />
-          <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Hellboard.Firmware}" TextWrapping="Wrap" />
-
-          <TextBlock Grid.Row="2" Grid.Column="0" Text="Last sent" Opacity="0.7" />
-          <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Hellboard.LastSent}" TextWrapping="Wrap" />
-        </Grid>
-        <Border IsVisible="{Binding Hellboard.Warning, Converter={x:Static ObjectConverters.IsNotNull}}"
-                Background="#33FFC107" BorderBrush="#FFC107" BorderThickness="1" CornerRadius="4" Padding="12">
-          <TextBlock Text="{Binding Hellboard.Warning}" TextWrapping="Wrap" />
-        </Border>
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button Content="Set as default" Command="{Binding Hellboard.SetAsDefaultCommand}"
-                  ToolTip.Tip="Saves the current loadout and settings in the Hellboard's flash; they are used after power-up." />
-          <TextBlock Text="{Binding Hellboard.DefaultResult}" VerticalAlignment="Center" Opacity="0.7" TextWrapping="Wrap" />
+  <Window.Resources>
+    <!-- Large stratagem tile (overview) -->
+    <DataTemplate x:Key="LargeTile" x:DataType="vm:StratagemTileViewModel">
+      <Border Width="150" Height="170" Margin="0,0,12,0" CornerRadius="6" Background="#2F2F2F" Padding="10">
+        <StackPanel Spacing="8" HorizontalAlignment="Center">
+          <Panel Width="88" Height="88">
+            <Image Source="{Binding Icon}" IsVisible="{Binding HasIcon}" Width="88" Height="88" />
+            <TextBlock Text="–" IsVisible="{Binding !HasIcon}" FontSize="36" Foreground="#606060"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Panel>
+          <TextBlock Text="{Binding Name}" Foreground="White" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="130" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding Note}" IsVisible="{Binding HasNote}" Foreground="#FFC107" FontSize="11" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="130" />
         </StackPanel>
+      </Border>
+    </DataTemplate>
 
-        <TextBlock Text="Application" FontSize="16" FontWeight="SemiBold" />
-        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
-          <TextBlock Grid.Row="0" Grid.Column="0" Text="Operating system" Opacity="0.7" />
-          <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding OperatingSystem}" />
+    <!-- Small stratagem tile (multi-function list, history) -->
+    <DataTemplate x:Key="SmallTile" x:DataType="vm:StratagemTileViewModel">
+      <Border Margin="0,0,8,0" CornerRadius="4" Background="#2F2F2F" Padding="6" ToolTip.Tip="{Binding Name}">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Image Source="{Binding Icon}" IsVisible="{Binding HasIcon}" Width="32" Height="32" />
+          <TextBlock Text="{Binding Name}" Foreground="White" VerticalAlignment="Center" />
+        </StackPanel>
+      </Border>
+    </DataTemplate>
 
-          <TextBlock Grid.Row="1" Grid.Column="0" Text="Configuration" Opacity="0.7" />
-          <SelectableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ConfigDirectory}" TextWrapping="Wrap" />
+    <ItemsPanelTemplate x:Key="Horizontal">
+      <StackPanel Orientation="Horizontal" />
+    </ItemsPanelTemplate>
+  </Window.Resources>
 
-          <TextBlock Grid.Row="2" Grid.Column="0" Text="Logs" Opacity="0.7" />
-          <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LogDirectory}" TextWrapping="Wrap" />
+  <TabControl Margin="12,8">
+
+    <!-- ===================================================== Overview -->
+    <TabItem Header="Overview">
+      <ScrollViewer>
+        <StackPanel Margin="12" Spacing="20" DataContext="{Binding Overview}" x:DataType="vm:OverviewViewModel">
+
+          <!-- Chain: game → recognition → Hellboard -->
+          <Grid ColumnDefinitions="*,Auto,*,Auto,*">
+            <Border Grid.Column="0" CornerRadius="6" Background="#20808080" Padding="14">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Ellipse Width="14" Height="14" Fill="{Binding GameBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding GameText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+              </StackPanel>
+            </Border>
+            <TextBlock Grid.Column="1" Text="→" FontSize="22" Margin="10,0" VerticalAlignment="Center" Opacity="0.5" />
+            <Border Grid.Column="2" CornerRadius="6" Background="#20808080" Padding="14">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Ellipse Width="14" Height="14" Fill="{Binding RecognitionBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding RecognitionText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+              </StackPanel>
+            </Border>
+            <TextBlock Grid.Column="3" Text="→" FontSize="22" Margin="10,0" VerticalAlignment="Center" Opacity="0.5" />
+            <Border Grid.Column="4" CornerRadius="6" Background="#20808080" Padding="14">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Ellipse Width="14" Height="14" Fill="{Binding HellboardBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding HellboardText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+              </StackPanel>
+            </Border>
+          </Grid>
+
+          <!-- Loadout -->
+          <StackPanel Spacing="10">
+            <TextBlock Text="Loadout" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding LoadoutTitle}" Opacity="0.7" />
+            <ItemsControl ItemsSource="{Binding Stratagems}" ItemTemplate="{StaticResource LargeTile}" ItemsPanel="{StaticResource Horizontal}" />
+          </StackPanel>
+
+          <StackPanel Spacing="10">
+            <TextBlock Text="{Binding MultiFunctionTitle}" FontSize="16" FontWeight="SemiBold" />
+            <ItemsControl ItemsSource="{Binding MultiFunction}" ItemTemplate="{StaticResource SmallTile}" ItemsPanel="{StaticResource Horizontal}" />
+          </StackPanel>
+
+          <Border IsVisible="{Binding Warning, Converter={x:Static ObjectConverters.IsNotNull}}"
+                  Background="#33FFC107" BorderBrush="#FFC107" BorderThickness="1" CornerRadius="4" Padding="12">
+            <TextBlock Text="{Binding Warning}" TextWrapping="Wrap" />
+          </Border>
+
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Button Content="Recognize loadout now" Command="{Binding RecognizeNowCommand}" />
+            <Button Content="Set as default on the Hellboard" Command="{Binding HellboardStatus.SetAsDefaultCommand}"
+                    ToolTip.Tip="Saves the current loadout and settings in the Hellboard's flash; they are used after power-up." />
+            <TextBlock Text="{Binding HellboardStatus.DefaultResult}" VerticalAlignment="Center" Opacity="0.7" TextWrapping="Wrap" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+
+    <!-- ===================================================== Settings -->
+    <TabItem Header="Settings">
+      <ScrollViewer>
+        <StackPanel Margin="12" Spacing="22" MaxWidth="820" HorizontalAlignment="Left"
+                    DataContext="{Binding Settings}" x:DataType="vm:SettingsViewModel">
+
+          <StackPanel Spacing="10">
+            <TextBlock Text="Recognition" FontSize="18" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="10">
+              <TextBlock Grid.Row="0" Text="Mode" VerticalAlignment="Center" />
+              <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding RecognitionModes}" SelectedItem="{Binding RecognitionMode}" MinWidth="280" />
+
+              <TextBlock Grid.Row="1" Text="Hotkey for manual recognition" VerticalAlignment="Center" />
+              <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <TextBox Text="{Binding HotkeyText}" Width="180" />
+                <Button Content="Apply" Command="{Binding ApplyHotkeyCommand}" />
+                <TextBlock Text="{Binding HotkeyStatus}" VerticalAlignment="Center" Opacity="0.7" TextWrapping="Wrap" MaxWidth="300" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="2" Text="Test mode" VerticalAlignment="Center" />
+              <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding TestMode}"
+                        Content="Manual recognition only shows the result, nothing is locked in or sent" />
+
+              <TextBlock Grid.Row="3" Text="Test data" VerticalAlignment="Center" />
+              <CheckBox Grid.Row="3" Grid.Column="1" IsChecked="{Binding SaveSnapshotOnTrigger}"
+                        Content="Save the frames of every manual recognition as PNG" />
+            </Grid>
+          </StackPanel>
+
+          <StackPanel Spacing="10">
+            <TextBlock Text="Hellboard" FontSize="18" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="10">
+              <TextBlock Grid.Row="0" Text="Connection" VerticalAlignment="Center" />
+              <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding ConnectionModes}" SelectedItem="{Binding ConnectionMode}" MinWidth="280" />
+
+              <TextBlock Grid.Row="1" Text="Port" VerticalAlignment="Center" />
+              <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <TextBox Text="{Binding PortText}" Width="180" Watermark="automatic" />
+                <Button Content="Apply" Command="{Binding ApplyPortCommand}" />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+
+          <StackPanel Spacing="10">
+            <TextBlock Text="Multi-function button" FontSize="18" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="10">
+              <TextBlock Grid.Row="0" Text="Content" VerticalAlignment="Center" />
+              <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding MultiFunctionModes}" SelectedItem="{Binding MultiFunctionMode}" MinWidth="280" />
+
+              <TextBlock Grid.Row="1" Text="Fixed list" VerticalAlignment="Top" Margin="0,6,0,0" />
+              <ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding FixedList}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:StratagemTileViewModel">
+                    <Border CornerRadius="4" Background="#20808080" Padding="6" Margin="0,0,0,6">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Image Grid.Column="0" Source="{Binding Icon}" Width="32" Height="32" Margin="0,0,8,0" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding Name}" />
+                          <TextBlock Text="{Binding Note}" IsVisible="{Binding HasNote}" Foreground="#FFC107" FontSize="11" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                          <Button Content="↑" ToolTip.Tip="Move up"
+                                  Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).MoveUpCommand}" CommandParameter="{Binding}" />
+                          <Button Content="↓" ToolTip.Tip="Move down"
+                                  Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).MoveDownCommand}" CommandParameter="{Binding}" />
+                          <Button Content="Remove"
+                                  Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveStratagemCommand}" CommandParameter="{Binding}" />
+                        </StackPanel>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <TextBlock Grid.Row="2" Text="Add" VerticalAlignment="Center" />
+              <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <ComboBox ItemsSource="{Binding AvailableStratagems}" SelectedItem="{Binding StratagemToAdd}" MinWidth="280" MaxDropDownHeight="400" />
+                <Button Content="Add" Command="{Binding AddStratagemCommand}" />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+
+          <StackPanel Spacing="10">
+            <TextBlock Text="General" FontSize="18" FontWeight="SemiBold" />
+            <CheckBox IsChecked="{Binding StartWithWindows}" IsEnabled="{Binding AutostartAvailable}" Content="Start Hellboard Companion with Windows" />
+            <Grid ColumnDefinitions="220,*" ColumnSpacing="16">
+              <TextBlock Text="Game process" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <TextBox Text="{Binding ProcessNameText}" Width="180" />
+                <Button Content="Apply" Command="{Binding ApplyProcessNameCommand}" />
+              </StackPanel>
+            </Grid>
+            <TextBlock Opacity="0.6" TextWrapping="Wrap">
+              <Run Text="Settings are saved automatically in " />
+              <Run Text="{Binding ConfigFile}" />
+            </TextBlock>
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+
+    <!-- ===================================================== History -->
+    <TabItem Header="History">
+      <ScrollViewer>
+        <StackPanel Margin="12" Spacing="10" DataContext="{Binding History}" x:DataType="vm:HistoryViewModel">
+          <TextBlock Text="Locked loadouts (newest first)" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding FilePath}" Opacity="0.6" />
+          <ItemsControl ItemsSource="{Binding Entries}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:HistoryEntryViewModel">
+                <Border CornerRadius="4" Background="#20808080" Padding="10" Margin="0,0,0,8">
+                  <StackPanel Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                      <TextBlock Text="{Binding Time}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Source}" Opacity="0.7" />
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding Stratagems}" ItemTemplate="{StaticResource SmallTile}" ItemsPanel="{StaticResource Horizontal}" />
+                    <TextBlock Opacity="0.7">
+                      <Run Text="Mission stratagems: " />
+                      <Run Text="{Binding MissionStratagems}" />
+                    </TextBlock>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+
+    <!-- ===================================================== Diagnostics -->
+    <TabItem Header="Diagnostics">
+      <ScrollViewer>
+        <Grid Margin="12" ColumnDefinitions="440,*" ColumnSpacing="24">
+
+          <StackPanel Grid.Column="0" Spacing="16">
+            <Border IsVisible="{Binding HasSupportNote}"
+                    Background="#33FFC107" BorderBrush="#FFC107" BorderThickness="1"
+                    CornerRadius="4" Padding="12">
+              <TextBlock Text="{Binding SupportNote}" TextWrapping="Wrap" />
+            </Border>
+
+            <TextBlock Text="Helldivers 2" FontSize="16" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="Status" Opacity="0.7" />
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding GameStatus}" />
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="Monitor" Opacity="0.7" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding GameMonitor}" />
+              <TextBlock Grid.Row="2" Grid.Column="0" Text="Game area" Opacity="0.7" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding GameClientArea}" />
+              <TextBlock Grid.Row="3" Grid.Column="0" Text="Window mode" Opacity="0.7" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding GameWindowMode}" />
+            </Grid>
+
+            <TextBlock Text="Recognition" FontSize="16" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="Screen" Opacity="0.7" />
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Loadout.Screen}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="Ready button" Opacity="0.7" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Loadout.ReadyStatus}" />
+              <TextBlock Grid.Row="2" Grid.Column="0" Text="Stratagems" Opacity="0.7" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Loadout.PlayerStratagems}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="3" Grid.Column="0" Text="Mission" Opacity="0.7" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Loadout.MissionStratagems}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="4" Grid.Column="0" Text="Tracker" Opacity="0.7" />
+              <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Loadout.TrackerState}" />
+              <TextBlock Grid.Row="5" Grid.Column="0" Text="Last locked" Opacity="0.7" />
+              <SelectableTextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Loadout.LastLocked}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="6" Grid.Column="0" Text="Icons" Opacity="0.7" />
+              <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Loadout.Icons}" />
+            </Grid>
+
+            <TextBlock Text="Hellboard" FontSize="16" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="Connection" Opacity="0.7" />
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Hellboard.Connection}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="Firmware" Opacity="0.7" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Hellboard.Firmware}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="2" Grid.Column="0" Text="Last sent" Opacity="0.7" />
+              <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Hellboard.LastSent}" TextWrapping="Wrap" />
+            </Grid>
+
+            <TextBlock Text="Application" FontSize="16" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="Operating system" Opacity="0.7" />
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding OperatingSystem}" />
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="Configuration" Opacity="0.7" />
+              <SelectableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ConfigDirectory}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="2" Grid.Column="0" Text="Logs" Opacity="0.7" />
+              <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LogDirectory}" TextWrapping="Wrap" />
+            </Grid>
+          </StackPanel>
+
+          <StackPanel Grid.Column="1" Spacing="12">
+            <TextBlock Text="Capture" FontSize="16" FontWeight="SemiBold" />
+            <Border Background="#20000000" CornerRadius="4" MinHeight="200">
+              <Image Source="{Binding Capture.Preview}" Stretch="Uniform" MaxHeight="400" />
+            </Border>
+            <TextBlock Text="{Binding Capture.CaptureInfo}" Opacity="0.7" />
+            <Border IsVisible="{Binding Capture.IsBlack}"
+                    Background="#33F44336" BorderBrush="#F44336" BorderThickness="1"
+                    CornerRadius="4" Padding="12">
+              <TextBlock TextWrapping="Wrap"
+                         Text="The captured image is black. The game probably runs in exclusive fullscreen – switch to borderless window mode." />
+            </Border>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="Save snapshot" Command="{Binding Capture.SaveSnapshotCommand}" />
+              <Button Content="Open snapshot folder" Click="OnOpenSnapshotFolderClicked" />
+            </StackPanel>
+            <SelectableTextBlock Text="{Binding Capture.LastSnapshot}" TextWrapping="Wrap" Opacity="0.7" />
+
+            <TextBlock Text="Manual recognition" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
+            <TextBlock Text="{Binding Manual.HotkeyInfo}" Opacity="0.7" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="Recognize now" Command="{Binding Manual.RecognizeNowCommand}" />
+              <Button Content="Analyze image file…" Click="OnAnalyzeImageFileClicked" />
+            </StackPanel>
+            <SelectableTextBlock Text="{Binding Manual.Result}" TextWrapping="Wrap" />
+          </StackPanel>
         </Grid>
-      </StackPanel>
+      </ScrollViewer>
+    </TabItem>
 
-      <StackPanel Grid.Column="1" Spacing="12">
-        <TextBlock Text="Capture" FontSize="16" FontWeight="SemiBold" />
-
-        <Border Background="#20000000" CornerRadius="4" MinHeight="200">
-          <Image Source="{Binding Capture.Preview}" Stretch="Uniform" MaxHeight="400" />
-        </Border>
-
-        <TextBlock Text="{Binding Capture.CaptureInfo}" Opacity="0.7" />
-
-        <Border IsVisible="{Binding Capture.IsBlack}"
-                Background="#33F44336" BorderBrush="#F44336" BorderThickness="1"
-                CornerRadius="4" Padding="12">
-          <TextBlock TextWrapping="Wrap"
-                     Text="The captured image is black. The game probably runs in exclusive fullscreen – switch to borderless window mode." />
-        </Border>
-
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button Content="Save snapshot" Command="{Binding Capture.SaveSnapshotCommand}" />
-          <Button Content="Open snapshot folder" Click="OnOpenSnapshotFolderClicked" />
-        </StackPanel>
-
-        <SelectableTextBlock Text="{Binding Capture.LastSnapshot}" TextWrapping="Wrap" Opacity="0.7" />
-
-        <TextBlock Text="Manual recognition" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
-        <TextBlock Text="{Binding Manual.HotkeyInfo}" Opacity="0.7" TextWrapping="Wrap" />
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button Content="Recognize now" Command="{Binding Manual.RecognizeNowCommand}" />
-          <Button Content="Analyze image file…" Click="OnAnalyzeImageFileClicked" />
-        </StackPanel>
-        <SelectableTextBlock Text="{Binding Manual.Result}" TextWrapping="Wrap" />
-      </StackPanel>
-
-    </Grid>
-  </ScrollViewer>
-
+  </TabControl>
 </Window>

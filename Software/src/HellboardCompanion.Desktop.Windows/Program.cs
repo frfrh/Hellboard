@@ -62,6 +62,11 @@ internal static class Program
             log.LogWarning("{Problem}", problem);
         }
 
+        if (settings.Settings.General.StartWithWindows)
+        {
+            services.GetRequiredService<IAutostart>().SetEnabled(true);   // keeps the path current after the EXE moved
+        }
+
         settings.Saved += (_, _) =>
         {
             hellboard.ApplySettings();

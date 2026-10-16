@@ -18,6 +18,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFrameSource, DesktopDuplicationFrameSource>();
         services.AddSingleton<IGlobalHotkeys, Win32GlobalHotkeys>();
         services.AddSingleton<ISerialPortDiscovery, RegistrySerialPortDiscovery>();
+        services.AddSingleton<IAutostart, RegistryAutostart>();
         return services;
     }
 }

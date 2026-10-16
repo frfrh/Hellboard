@@ -2,7 +2,10 @@
 
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using HellboardCompanion.App.Services;
 using HellboardCompanion.Core;
+using HellboardCompanion.Core.Configuration;
+using HellboardCompanion.Core.Hellboard;
 using HellboardCompanion.Core.Platform;
 
 namespace HellboardCompanion.App.ViewModels;
@@ -23,8 +26,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _gameWindowMode = "–";
 
-    public MainWindowViewModel(IPlatformInfo platform, IPlatformPaths paths, IGameLocator? gameLocator, CapturePreviewViewModel capture, LoadoutStatusViewModel loadout, ManualRecognitionViewModel manual, HellboardStatusViewModel hellboard)
+    public MainWindowViewModel(IPlatformInfo platform, IPlatformPaths paths, IGameLocator? gameLocator, CapturePreviewViewModel capture, LoadoutStatusViewModel loadout, ManualRecognitionViewModel manual, HellboardStatusViewModel hellboard, OverviewViewModel overview, SettingsViewModel settings, HistoryViewModel history)
     {
+        Overview = overview;
+        Settings = settings;
+        History = history;
         Hellboard = hellboard;
         Capture = capture;
         Loadout = loadout;
@@ -66,9 +72,29 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public HellboardStatusViewModel Hellboard { get; }
 
+    public OverviewViewModel Overview { get; }
+
+    public SettingsViewModel Settings { get; }
+
+    public HistoryViewModel History { get; }
+
     /// <summary>Instance with placeholder values for the XAML previewer.</summary>
-    public static MainWindowViewModel DesignInstance =>
-        new(new DesignPlatformInfo(), DesignPaths, null, new CapturePreviewViewModel(null, DesignPaths), new LoadoutStatusViewModel(null, null), new ManualRecognitionViewModel(null, null, null), new HellboardStatusViewModel(null));
+    public static MainWindowViewModel DesignInstance
+    {
+        get
+        {
+            var catalog = StratagemCatalog.LoadSeed();
+            var images = new StratagemImages(null);
+            var hellboard = new HellboardStatusViewModel(null);
+            var designSettings = SettingsStore.Load(new PlatformPaths(Path.Combine(Path.GetTempPath(), "HellboardCompanionDesign"), Path.Combine(Path.GetTempPath(), "HellboardCompanionDesign")));
+            return new(
+                new DesignPlatformInfo(), DesignPaths, null, new CapturePreviewViewModel(null, DesignPaths), new LoadoutStatusViewModel(null, null),
+                new ManualRecognitionViewModel(null, null, null), hellboard,
+                new OverviewViewModel(null, null, null, catalog, images, null, hellboard),
+                new SettingsViewModel(designSettings, catalog, images, null, null),
+                new HistoryViewModel(null, null, catalog, images));
+        }
+    }
 
     private static PlatformPaths DesignPaths => new(@"C:\Users\Design\AppData\Roaming", @"C:\Users\Design\AppData\Local");
 
@@ -78,6 +104,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         Loadout.Dispose();
         Manual.Dispose();
         Hellboard.Dispose();
+        Overview.Dispose();
+        Settings.Dispose();
+        History.Dispose();
         if (_gameLocator is not null)
         {
             _gameLocator.Changed -= OnGameChanged;

@@ -4,10 +4,13 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using HellboardCompanion.App.Services;
 using HellboardCompanion.App.ViewModels;
 using HellboardCompanion.App.Views;
 using HellboardCompanion.Core.Capture;
 using HellboardCompanion.Core.Catalog;
+using HellboardCompanion.Core.Configuration;
+using HellboardCompanion.Core.Loadout;
 using HellboardCompanion.Core.Hellboard;
 using HellboardCompanion.Core.Pipeline;
 using HellboardCompanion.Core.Platform;
@@ -24,6 +27,7 @@ public sealed partial class CompanionApp : Application
     private readonly IServiceProvider? _services;
     private MainWindow? _mainWindow;
     private bool _openingMainWindow;
+    private StratagemImages? _images;
 
     /// <summary>Used by the XAML previewer only.</summary>
     public CompanionApp()
@@ -106,14 +110,28 @@ public sealed partial class CompanionApp : Application
         }
     }
 
-    private MainWindowViewModel CreateMainWindowViewModel() => _services is null
-        ? MainWindowViewModel.DesignInstance
-        : new MainWindowViewModel(
+    private MainWindowViewModel CreateMainWindowViewModel()
+    {
+        if (_services is null)
+        {
+            return MainWindowViewModel.DesignInstance;
+        }
+
+        _images ??= new StratagemImages(_services.GetService<StratagemIconStore>());
+        var catalog = _services.GetRequiredService<StratagemCatalog>();
+        var hellboard = new HellboardStatusViewModel(_services.GetService<HellboardLink>());
+        return new MainWindowViewModel(
             _services.GetRequiredService<IPlatformInfo>(),
             _services.GetRequiredService<IPlatformPaths>(),
             _services.GetService<IGameLocator>(),
             new CapturePreviewViewModel(_services.GetService<GameFrameGrabber>(), _services.GetRequiredService<IPlatformPaths>()),
             new LoadoutStatusViewModel(_services.GetService<LoadoutPipeline>(), _services.GetService<StratagemIconStore>()),
             new ManualRecognitionViewModel(_services.GetService<ManualTriggerService>(), _services.GetService<LoadoutPipeline>(), _services.GetService<RecognitionOptions>()),
-            new HellboardStatusViewModel(_services.GetService<HellboardLink>()));
+            hellboard,
+            new OverviewViewModel(
+                _services.GetService<IGameLocator>(), _services.GetService<LoadoutPipeline>(), _services.GetService<HellboardLink>(),
+                catalog, _images, _services.GetService<ManualTriggerService>(), hellboard, _services.GetService<LoadoutHistory>(), _services.GetService<MultiFunctionOptions>()),
+            new SettingsViewModel(_services.GetRequiredService<SettingsStore>(), catalog, _images, _services.GetService<ManualTriggerService>(), _services.GetService<IAutostart>()),
+            new HistoryViewModel(_services.GetService<LoadoutHistory>(), _services.GetService<LoadoutPipeline>(), catalog, _images));
+    }
 }
