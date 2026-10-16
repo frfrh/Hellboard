@@ -52,7 +52,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
-    public string Title => $"{AppInfo.ProductName} {AppInfo.Version}";
+    public string Title => $"{AppInfo.ProductName} {AppInfo.ShortVersion}";
+
+    /// <summary>Full version with git commit, shown and copyable in the diagnostics tab.</summary>
+    public string FullVersion => AppInfo.Version;
 
     public string OperatingSystem { get; }
 

@@ -2,7 +2,7 @@
 
 Windows companion app for the [Hellboard](../README.md): it watches the Helldivers 2 loadout screen, recognizes the selected stratagems and transfers them to the Hellboard.
 
-> Status: early development (phase P0 – project setup). See the [implementation plan](doc/spec/implementation-plan.md).
+> Status: beta (phase P6 – polish & release). See the [implementation plan](doc/spec/implementation-plan.md).
 
 ## Requirements
 
@@ -20,6 +20,15 @@ dotnet run --project src/HellboardCompanion.Desktop.Windows
 
 The app starts in the system tray. Left-click the tray icon or choose *Open* to show the window; *Exit* ends the app.
 Logs are written to `%LOCALAPPDATA%\HellboardCompanion\logs`.
+
+## Release package
+
+```powershell
+.\publish.ps1               # build, test, publish, zip
+.\publish.ps1 -SkipTests
+```
+
+Creates `publish/HellboardCompanion-<version>-win-x64.zip` with one self-contained `HellboardCompanion.exe` (no .NET installation needed), the license, [third-party notices](THIRD-PARTY-NOTICES.md) and the [beta readme](BETA-README.md).
 
 ## Project structure
 
@@ -39,4 +48,4 @@ Screenshots of the game are copyrighted game content. Put them into `tests/testD
 
 ## License
 
-Hellboard Companion is licensed under the [GNU General Public License v3.0 or later](LICENSE) (`GPL-3.0-or-later`). Third-party components keep their own licenses; see the implementation plan §3.3.
+Hellboard Companion is licensed under the [GNU General Public License v3.0 or later](LICENSE) (`GPL-3.0-or-later`). Third-party components keep their own licenses; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using Avalonia.Controls;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using HellboardCompanion.App.ViewModels;
@@ -31,6 +32,14 @@ public sealed partial class MainWindow : Window
         if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
         {
             await viewModel.Manual.AnalyzeFileAsync(path);
+        }
+    }
+
+    private async void OnCopyVersionClicked(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel && Clipboard is { } clipboard)
+        {
+            await clipboard.SetTextAsync(viewModel.FullVersion);
         }
     }
 
