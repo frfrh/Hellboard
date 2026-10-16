@@ -3,6 +3,7 @@
 using System.Text;
 using AwesomeAssertions;
 using HellboardCompanion.Core.Hellboard;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace HellboardCompanion.Core.Tests.Hellboard;
 
@@ -27,6 +28,19 @@ public sealed class StratagemCatalogTests
     public void Entries_carry_name_color_and_sequence(string id, string name, string category, string color, string sequence)
     {
         Catalog.Find(id).Should().Be(new CatalogEntry(id, name, category, color, sequence));
+    }
+
+    [Fact]
+    public void Every_stratagem_is_a_complete_json_object_on_its_own_line()
+    {
+        // The firmware reads doc/stratagems.json line by line (decision F11).
+        using var stream = typeof(StratagemCatalog).Assembly.GetManifestResourceStream("HellboardCompanion.Core.Hellboard.stratagems.json")!;
+        var lines = new StreamReader(stream).ReadToEnd().Split('\n').Select(l => l.Trim().TrimEnd(',')).ToList();
+
+        var entries = lines.Where(l => l.StartsWith("{\"id\":", StringComparison.Ordinal)).ToList();
+
+        entries.Should().HaveCount(Catalog.Entries.Count);
+        entries.Should().OnlyContain(l => System.Text.Json.JsonDocument.Parse(l, default).RootElement.GetProperty("id").GetString() != null);
     }
 
     [Fact]
@@ -71,6 +85,62 @@ public sealed class StratagemCatalogTests
         var parse = () => StratagemCatalog.Parse(ToStream("""{"version": 2, "categories": {}, "stratagems": []}"""));
 
         parse.Should().Throw<FormatException>().WithMessage("*version 2*");
+    }
+
+    [Fact]
+    public void User_entries_replace_built_in_ones_and_add_new_ones()
+    {
+        var builtIn = ToStream("""{"version": 1, "categories": {"Mission": "yellow"}, "stratagems": [{"id": "a", "name": "A", "category": "Mission", "code": "U"}, {"id": "b", "name": "B", "category": "Mission", "code": "D"}]}""");
+        var user = ToStream("""{"$comment": "x", "version": 1, "categories": {"Custom": "white"}, "stratagems": [{"id": "b", "name": "B fixed", "category": "Mission", "code": "LR"}, {"id": "c", "name": "C", "category": "Custom", "code": null}]}""");
+
+        var catalog = StratagemCatalog.Parse(builtIn, user);
+
+        catalog.Find("a")!.Sequence.Should().Be("U");
+        catalog.Find("b").Should().Be(new CatalogEntry("b", "B fixed", "Mission", "yellow", "LR"));
+        catalog.Find("c").Should().Be(new CatalogEntry("c", "C", "Custom", "white", null));
+        catalog.UserIds.Should().BeEquivalentTo("b", "c");
+    }
+
+    [Fact]
+    public void A_missing_user_list_is_created_as_an_empty_template()
+    {
+        var dir = Directory.CreateTempSubdirectory("hellboard-catalog").FullName;
+        try
+        {
+            var file = Path.Combine(dir, "stratagems.json");
+
+            var catalog = StratagemCatalog.Load(file, NullLogger.Instance);
+
+            catalog.Entries.Should().HaveCount(Catalog.Entries.Count);
+            using var template = File.OpenRead(file);
+            StratagemCatalog.Load(file, NullLogger.Instance).UserIds.Should().BeEmpty();
+            using var builtIn = typeof(StratagemCatalog).Assembly.GetManifestResourceStream("HellboardCompanion.Core.Hellboard.stratagems.json")!;
+            StratagemCatalog.Parse(builtIn, template).Entries.Should().HaveCount(Catalog.Entries.Count);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void An_invalid_user_list_is_ignored()
+    {
+        var dir = Directory.CreateTempSubdirectory("hellboard-catalog").FullName;
+        try
+        {
+            var file = Path.Combine(dir, "stratagems.json");
+            File.WriteAllText(file, """{"version": 1, "stratagems": [{"id": "machine_gun", "name": "MG", "category": "Mission", "code": "XYZ"}]}""");
+
+            var catalog = StratagemCatalog.Load(file, NullLogger.Instance);
+
+            catalog.Find("machine_gun")!.Sequence.Should().Be("DLDUR");
+            catalog.UserIds.Should().BeEmpty();
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
     }
 
     private static StratagemCatalog Parse(string stratagems) =>

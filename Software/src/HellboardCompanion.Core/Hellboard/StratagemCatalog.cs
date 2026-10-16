@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
 namespace HellboardCompanion.Core.Hellboard;
@@ -26,6 +27,17 @@ public sealed partial class StratagemCatalog
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
+    private static readonly HashSet<string> Colors = new(StringComparer.Ordinal) { "red", "green", "blue", "yellow", "white" };
+
+    private const string UserFileTemplate = """
+        {
+          "$comment": "Your own stratagems and corrections for Hellboard Companion. Same format as doc/stratagems.json of the Hellboard project (described in doc/stratagems.md): an entry with the id of a built-in stratagem replaces it, a new id adds a stratagem. Codes use U, D, L, R. Categories: Orbital, Eagle, Support weapon, Backpack, Vehicle, Defensive, Mission. Restart the Companion after a change. Example entry: {\"id\": \"my_stratagem\", \"name\": \"My Stratagem\", \"category\": \"Mission\", \"code\": \"UDLR\"}",
+          "version": 1,
+          "stratagems": [
+          ]
+        }
+        """;
+
     private readonly Dictionary<string, CatalogEntry> _entries;
 
     public StratagemCatalog(IEnumerable<CatalogEntry> entries)
@@ -35,72 +47,162 @@ public sealed partial class StratagemCatalog
 
     public IReadOnlyCollection<CatalogEntry> Entries => _entries.Values;
 
+    /// <summary>Ids of the entries that come from the user's own list (added or replacing a built-in one).</summary>
+    public IReadOnlySet<string> UserIds { get; private init; } = new HashSet<string>();
+
     /// <summary>The catalog shipped with the application (embedded <c>doc/stratagems.json</c>).</summary>
     public static StratagemCatalog LoadSeed()
     {
-        using var stream = typeof(StratagemCatalog).Assembly.GetManifestResourceStream(ListResourceName)
-            ?? throw new InvalidOperationException($"Embedded stratagem list '{ListResourceName}' not found.");
+        using var stream = OpenBuiltIn();
         return Parse(stream);
     }
 
-    /// <summary>Reads and validates a stratagem list in the format of <c>doc/stratagems.json</c>.</summary>
-    /// <exception cref="FormatException">The file is not valid JSON or breaks a rule of the format.</exception>
-    public static StratagemCatalog Parse(Stream json)
+    /// <summary>
+    /// Built-in list plus the user's own list <paramref name="userFile"/> (same format): an entry with the
+    /// id of a built-in stratagem replaces it, a new id adds one, user categories add to the built-in ones.
+    /// A missing user file is created as an empty template; an invalid one is ignored with a warning.
+    /// </summary>
+    public static StratagemCatalog Load(string userFile, ILogger logger)
     {
-        StratagemList list;
+        if (!File.Exists(userFile))
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(userFile)!);
+                File.WriteAllText(userFile, UserFileTemplate.ReplaceLineEndings());
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                logger.LogWarning(ex, "Could not create the user stratagem list {File}", userFile);
+            }
+
+            return LoadSeed();
+        }
+
         try
         {
-            list = JsonSerializer.Deserialize<StratagemList>(json, JsonOptions)
-                ?? throw new FormatException("Stratagem list is empty.");
+            using var builtIn = OpenBuiltIn();
+            using var user = File.OpenRead(userFile);
+            var catalog = Parse(builtIn, user);
+            if (catalog.UserIds.Count > 0)
+            {
+                logger.LogInformation("User stratagem list {File}: {Ids}", userFile, string.Join(", ", catalog.UserIds.Order()));
+            }
+
+            return catalog;
+        }
+        catch (Exception ex) when (ex is FormatException or IOException or UnauthorizedAccessException)
+        {
+            logger.LogWarning("User stratagem list {File} ignored, using the built-in list: {Error}", userFile, ex.Message);
+            return LoadSeed();
+        }
+    }
+
+    /// <summary>Reads and validates a stratagem list in the format of <c>doc/stratagems.json</c>, optionally with user overrides.</summary>
+    /// <exception cref="FormatException">A list is not valid JSON or breaks a rule of the format.</exception>
+    public static StratagemCatalog Parse(Stream json, Stream? overrides = null)
+    {
+        var list = Read(json);
+        var categories = new Dictionary<string, string>(list.Categories ?? [], StringComparer.Ordinal);
+        var items = Validate(list.Stratagems ?? [], categories, "built-in");
+        var userIds = new HashSet<string>(StringComparer.Ordinal);
+
+        if (overrides is not null)
+        {
+            var user = Read(overrides);
+            foreach (var (name, color) in user.Categories ?? [])
+            {
+                categories[name] = color;
+            }
+
+            foreach (var item in Validate(user.Stratagems ?? [], categories, "user"))
+            {
+                var index = items.FindIndex(i => i.Id == item.Id);
+                if (index >= 0)
+                {
+                    items[index] = item;
+                }
+                else
+                {
+                    items.Add(item);
+                }
+
+                userIds.Add(item.Id!);
+            }
+        }
+
+        foreach (var (name, color) in categories)
+        {
+            if (!Colors.Contains(color))
+            {
+                throw new FormatException($"Category '{name}': unknown color '{color}'.");
+            }
+        }
+
+        var entries = items.Select(i => new CatalogEntry(i.Id!, i.Name!, i.Category!, categories[i.Category!], i.Code));
+        return new StratagemCatalog(entries) { UserIds = userIds };
+    }
+
+    public CatalogEntry? Find(string id) => _entries.GetValueOrDefault(id);
+
+    private static Stream OpenBuiltIn() =>
+        typeof(StratagemCatalog).Assembly.GetManifestResourceStream(ListResourceName)
+            ?? throw new InvalidOperationException($"Embedded stratagem list '{ListResourceName}' not found.");
+
+    private static StratagemList Read(Stream json)
+    {
+        StratagemList? list;
+        try
+        {
+            list = JsonSerializer.Deserialize<StratagemList>(json, JsonOptions);
         }
         catch (JsonException e)
         {
             throw new FormatException($"Stratagem list is not valid JSON: {e.Message}", e);
         }
 
-        if (list.Version != SupportedVersion)
+        if (list is null)
         {
-            throw new FormatException($"Unsupported stratagem list version {list.Version}.");
+            throw new FormatException("Stratagem list is empty.");
         }
 
-        var categories = list.Categories ?? [];
-        var entries = new List<CatalogEntry>();
+        return list.Version == SupportedVersion ? list : throw new FormatException($"Unsupported stratagem list version {list.Version}.");
+    }
+
+    private static List<StratagemItem> Validate(List<StratagemItem> items, Dictionary<string, string> categories, string source)
+    {
         var ids = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var item in list.Stratagems ?? [])
+        foreach (var item in items)
         {
             var id = item.Id ?? string.Empty;
             if (!IdPattern().IsMatch(id))
             {
-                throw new FormatException($"Invalid id '{id}'.");
+                throw new FormatException($"{source} list: invalid id '{id}'.");
             }
 
             if (!ids.Add(id))
             {
-                throw new FormatException($"Duplicate id '{id}'.");
+                throw new FormatException($"{source} list: duplicate id '{id}'.");
             }
 
             if (string.IsNullOrWhiteSpace(item.Name))
             {
-                throw new FormatException($"{id}: name missing.");
+                throw new FormatException($"{source} list: {id}: name missing.");
             }
 
-            if (item.Category is null || !categories.TryGetValue(item.Category, out var color))
+            if (item.Category is null || !categories.ContainsKey(item.Category))
             {
-                throw new FormatException($"{id}: unknown category '{item.Category}'.");
+                throw new FormatException($"{source} list: {id}: unknown category '{item.Category}'.");
             }
 
             if (item.Code is { } code && (code.Length is 0 or > MaxSequenceLength || !CodePattern().IsMatch(code)))
             {
-                throw new FormatException($"{id}: invalid code '{code}' (1–{MaxSequenceLength} of U, D, L, R).");
+                throw new FormatException($"{source} list: {id}: invalid code '{code}' (1–{MaxSequenceLength} of U, D, L, R).");
             }
-
-            entries.Add(new CatalogEntry(id, item.Name, item.Category, color, item.Code));
         }
 
-        return new StratagemCatalog(entries);
+        return [.. items];
     }
-
-    public CatalogEntry? Find(string id) => _entries.GetValueOrDefault(id);
 
     [GeneratedRegex("^[a-z0-9_]+$")]
     private static partial Regex IdPattern();

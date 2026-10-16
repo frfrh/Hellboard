@@ -1,0 +1,11 @@
+{
+  "$comment": "Files installed on the Hellboard by the upload tool / firmware updater (Software/doc/spec/implementation-plan.md §6.10). source: relative to this file; target: file name on the board (all files live in the board's root directory).",
+  "files": [
+    { "source": "libs/3rd/keyboard.py", "target": "keyboard.py" },
+    { "source": "libs/3rd/ssd1306.py", "target": "ssd1306.py" },
+    { "source": "libs/helldiver.py", "target": "helldiver.py" },
+    { "source": "libs/macro.py", "target": "macro.py" },
+    { "source": "../doc/stratagems.json", "target": "stratagems.json" },
+    { "source": "main.py", "target": "main.py" }
+  ]
+}

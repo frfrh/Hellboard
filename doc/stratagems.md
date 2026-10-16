@@ -2,11 +2,15 @@
 
 [`stratagems.json`](stratagems.json) is the **single source of truth for the stratagem input codes of the Hellboard project.** The firmware (`Firmware/`) and the companion software (`Software/`) take their stratagem data from this file only. A stratagem or code is added or corrected there and nowhere else.
 
-> Status: the companion software embeds `stratagems.json` at build time and builds its stratagem catalog (names, LED colors, codes) from it; its unit tests fail if the file is invalid. The firmware does not use it yet – until then `Firmware/libs/macro.py` must be kept in line by hand.
+> Status: the companion software embeds `stratagems.json` at build time and builds its stratagem catalog (names, LED colors, codes) from it; its unit tests fail if the file is invalid. The firmware does not use it yet – until then `Firmware/libs/macro.py` must be kept in line by hand. Planned (decision F11): the file is copied unchanged onto the Hellboard and read there line by line.
+
+## User list (no new release needed)
+
+Users can add stratagems or correct codes themselves in `%APPDATA%\HellboardCompanion\stratagems.json` (Linux: `~/.config/HellboardCompanion/stratagems.json`). The Companion creates it as an empty template on the first start. Same format as this file; an entry with the id of a built-in stratagem **replaces** it, a new id **adds** a stratagem, user categories add to the built-in ones. The built-in list still updates with every release, so corrections reach users who have their own list. An invalid user list is ignored with a warning in the log; changes apply after a restart. Corrections that are useful for everyone should come back into this file.
 
 ## Format
 
-UTF-8 JSON, one stratagem per line (keeps diffs readable):
+UTF-8 JSON, **exactly one stratagem object per line**. This is a hard rule, not only for readable diffs: the firmware reads the file line by line to save RAM (decision F11), and a unit test of the companion checks it. Do not reformat the file with a JSON formatter.
 
 ```json
 {

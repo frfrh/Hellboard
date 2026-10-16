@@ -28,7 +28,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<StratagemIconStore>();
         services.AddSingleton<LoadoutHistory>();
         services.AddSingleton(settings.Settings.Recognition);
-        services.AddSingleton(StratagemCatalog.LoadSeed());
+        services.AddSingleton(sp => StratagemCatalog.Load(
+            Path.Combine(paths.ConfigDirectory, "stratagems.json"),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<StratagemCatalog>>()));
         services.AddSingleton(settings.Settings.Hellboard);
         services.AddSingleton(settings.Settings.MultiFunction);
         services.AddSingleton(sp => new HellboardLink(
