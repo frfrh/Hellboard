@@ -76,7 +76,7 @@
     {"id": "lumberer_exosuit", "name": "Lumberer Exosuit", "designation": "EXO-51 Lumberer Exosuit", "category": "Vehicle", "code": "LDRURLU", "firmwareMacro": null, "notes": null},
     {"id": "patriot_exosuit", "name": "Patriot Exosuit", "designation": "EXO-45 Patriot Exosuit", "category": "Vehicle", "code": "LDRULDD", "firmwareMacro": "PatriotSuit", "notes": null},
     {"id": "supply_frv", "name": "Supply FRV", "designation": "M-103 Supply FRV", "category": "Vehicle", "code": "LDLLDUR", "firmwareMacro": null, "notes": null},
-    {"id": "td_110_maelstrom", "name": "TD-110 Maelstrom", "designation": "TD-110 Maelstrom", "category": "Vehicle", "code": "LDRDLDULR", "firmwareMacro": null, "notes": "Unverified: wiki.gg; DiversHub starts with U instead of L"},
+    {"id": "td_110_maelstrom", "name": "TD-110 Maelstrom", "designation": "TD-110 Maelstrom", "category": "Vehicle", "code": "LDRDLDULR", "firmwareMacro": null, "notes": "Verified in game 2026-10-16 (DiversHub wrongly starts with U)"},
     {"id": "anti_personnel_minefield", "name": "Anti-Personnel Minefield", "designation": "MD-6 Anti-Personnel Minefield", "category": "Defensive", "code": "DLUR", "firmwareMacro": "AntiPersonnelMinefield", "notes": null},
     {"id": "anti_tank_emplacement", "name": "Anti-Tank Emplacement", "designation": "E/AT-12 Anti-Tank Emplacement", "category": "Defensive", "code": "DULRRR", "firmwareMacro": null, "notes": null},
     {"id": "anti_tank_mines", "name": "Anti-Tank Mines", "designation": "MD-17 Anti-Tank Mines", "category": "Defensive", "code": "DLUU", "firmwareMacro": "AntiTankMinefield", "notes": null},
