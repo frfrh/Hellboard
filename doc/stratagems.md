@@ -6,7 +6,7 @@
 
 ## User list (no new release needed)
 
-Users can add stratagems or correct codes themselves in `%APPDATA%\HellboardCompanion\stratagems.json` (Linux: `~/.config/HellboardCompanion/stratagems.json`). The Companion creates it as an empty template on the first start. Same format as this file; an entry with the id of a built-in stratagem **replaces** it, a new id **adds** a stratagem, user categories add to the built-in ones. The built-in list still updates with every release, so corrections reach users who have their own list. An invalid user list is ignored with a warning in the log; changes apply after a restart. Corrections that are useful for everyone should come back into this file.
+Users can add stratagems or correct codes themselves on the *Stratagems* tab of the Companion, which writes `%APPDATA%\HellboardCompanion\stratagems.json` (Linux: `~/.config/HellboardCompanion/stratagems.json`). The Companion creates it as an empty template on the first start. Same format as this file; an entry with the id of a built-in stratagem **replaces** it, a new id **adds** a stratagem, user categories add to the built-in ones. The built-in list still updates with every release, so corrections reach users who have their own list. An invalid user list is ignored with a warning in the log; changes made in the Companion apply immediately, changes made by hand after a restart. Corrections that are useful for everyone should come back into this file.
 
 ## Format
 

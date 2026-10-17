@@ -47,7 +47,7 @@ Useful files:
 | Logs | `%LOCALAPPDATA%\HellboardCompanion\logs` |
 | Problem images | `%LOCALAPPDATA%\HellboardCompanion\problems` |
 | Settings | `%APPDATA%\HellboardCompanion\config.json` |
-| Own stratagems / code corrections | `%APPDATA%\HellboardCompanion\stratagems.json` (format: `doc/stratagems.md` in the project; restart after changes) |
+| Own stratagems / code corrections | Tab *Stratagems* (stored in `%APPDATA%\HellboardCompanion\stratagems.json`) |
 
 Screenshots of the game show copyrighted game content – share them only with the developers for bug
 analysis.

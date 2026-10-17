@@ -70,11 +70,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         _portText = _settings.Hellboard.Port ?? string.Empty;
         _processNameText = _settings.Game.ProcessName;
 
-        AvailableStratagems = catalog.Entries
-            .Where(e => e.IsTransferable)
-            .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(e => new StratagemTileViewModel(e.Id, e.Name, null))
-            .ToList();
+        _availableStratagems = BuildAvailable();
+        _catalog.Changed += OnCatalogChanged;
         foreach (var id in _settings.MultiFunction.FixedList)
         {
             FixedList.Add(Tile(id));
@@ -109,7 +106,17 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         new(Core.Hellboard.MultiFunctionMode.AutoDetect, "Automatic detection"),
     ];
 
-    public IReadOnlyList<StratagemTileViewModel> AvailableStratagems { get; }
+    [ObservableProperty]
+    private IReadOnlyList<StratagemTileViewModel> _availableStratagems;
+
+    private List<StratagemTileViewModel> BuildAvailable() => _catalog.Entries
+        .Where(e => e.IsTransferable)
+        .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+        .Select(e => new StratagemTileViewModel(e.Id, e.Name, null))
+        .ToList();
+
+    /// <summary>The stratagem editor changed the catalog: new stratagems can be added to the fixed list.</summary>
+    private void OnCatalogChanged(object? sender, EventArgs e) => Avalonia.Threading.Dispatcher.UIThread.Post(() => AvailableStratagems = BuildAvailable());
 
     public ObservableCollection<StratagemTileViewModel> FixedList { get; } = [];
 
@@ -207,6 +214,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _catalog.Changed -= OnCatalogChanged;
         if (_iconStore is not null)
         {
             _iconStore.UpdateFinished -= OnIconUpdateFinished;

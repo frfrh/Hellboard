@@ -239,6 +239,102 @@
       </ScrollViewer>
     </TabItem>
 
+    <!-- ===================================================== Stratagems (editor) -->
+    <TabItem Header="Stratagems">
+      <Grid Margin="12" ColumnDefinitions="380,*" RowDefinitions="Auto,*,Auto" ColumnSpacing="20" RowSpacing="12"
+            DataContext="{Binding StratagemEditor}" x:DataType="vm:StratagemEditorViewModel">
+
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="4">
+          <TextBlock Text="Stratagems and input codes" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Opacity="0.7" TextWrapping="Wrap"
+                     Text="Add the code of a new stratagem or correct an existing one. Your changes are kept in your own list and stay when the Companion or the icons are updated. They apply immediately; the Hellboard gets the new code with the next transfer." />
+        </StackPanel>
+
+        <!-- list -->
+        <DockPanel Grid.Row="1" Grid.Column="0">
+          <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,8">
+            <TextBox Text="{Binding SearchText}" PlaceholderText="Search" />
+            <CheckBox IsChecked="{Binding OnlyWithoutCode}" Content="Only stratagems without code" />
+            <TextBlock Text="{Binding Summary}" Opacity="0.6" FontSize="12" />
+          </StackPanel>
+          <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:StratagemEditorItem">
+                <Grid ColumnDefinitions="40,*" ColumnSpacing="10">
+                  <Image Grid.Column="0" Source="{Binding Icon}" IsVisible="{Binding HasIcon}" Width="36" Height="36" />
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding CodeArrows}" FontSize="13" Opacity="0.8" />
+                    <TextBlock Text="{Binding Source}" FontSize="11" Opacity="0.55" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+
+        <!-- editing -->
+        <ScrollViewer Grid.Row="1" Grid.Column="1">
+          <StackPanel Spacing="12" MaxWidth="620" HorizontalAlignment="Left">
+            <TextBlock Text="Select a stratagem on the left." IsVisible="{Binding !HasSelection}" Opacity="0.6" />
+            <StackPanel Spacing="12" IsVisible="{Binding HasSelection}">
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <Image Source="{Binding Selected.Icon}" Width="72" Height="72" />
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Selected.Name}" FontSize="18" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Selected.Id}" Opacity="0.6" />
+                  <TextBlock Text="{Binding Selected.Source}" Opacity="0.6" />
+                </StackPanel>
+              </StackPanel>
+
+              <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="10">
+                <TextBlock Grid.Row="0" Text="Name" VerticalAlignment="Center" />
+                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding EditName}" MaxLength="64" />
+                <TextBlock Grid.Row="1" Text="Category (LED color)" VerticalAlignment="Center" />
+                <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding EditCategory}" MinWidth="240" />
+              </Grid>
+
+              <TextBlock Text="Input code" FontWeight="SemiBold" />
+              <Border x:Name="CodeInput" Focusable="True" KeyDown="OnCodeKeyDown" PointerPressed="OnCodeInputPressed"
+                      BorderBrush="#808080" BorderThickness="1" CornerRadius="6" Padding="14" Background="#20808080">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="{Binding EditCodeArrows}" FontSize="34" />
+                  <TextBlock Text="Click here and type with the arrow keys or W A S D; Backspace removes the last arrow." Opacity="0.6" FontSize="12" />
+                </StackPanel>
+              </Border>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Content="↑" FontSize="18" Width="48" Command="{Binding AddArrowCommand}" CommandParameter="U" />
+                <Button Content="↓" FontSize="18" Width="48" Command="{Binding AddArrowCommand}" CommandParameter="D" />
+                <Button Content="←" FontSize="18" Width="48" Command="{Binding AddArrowCommand}" CommandParameter="L" />
+                <Button Content="→" FontSize="18" Width="48" Command="{Binding AddArrowCommand}" CommandParameter="R" />
+                <Button Content="⌫ Remove last" Command="{Binding RemoveArrowCommand}" Margin="12,0,0,0" />
+                <Button Content="Clear" Command="{Binding ClearCodeCommand}" />
+              </StackPanel>
+              <TextBlock Text="{Binding CodeProblem}" IsVisible="{Binding CodeProblem, Converter={x:Static ObjectConverters.IsNotNull}}"
+                         Foreground="#FFC107" TextWrapping="Wrap" />
+
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button Content="Save" Command="{Binding SaveCommand}" />
+                <Button Content="Remove my change" Command="{Binding ResetCommand}"
+                        ToolTip.Tip="Restores the built-in code, or removes your own stratagem from your list." />
+              </StackPanel>
+              <TextBlock Text="{Binding Result}" TextWrapping="Wrap" Opacity="0.85" />
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- your list -->
+        <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="10">
+          <TextBlock VerticalAlignment="Center" Opacity="0.6" TextWrapping="Wrap" MaxWidth="700">
+            <Run Text="Your list: " />
+            <Run Text="{Binding UserFile}" />
+          </TextBlock>
+          <Button Content="Export …" Click="OnExportStratagemsClicked" ToolTip.Tip="Saves your list to a file, e.g. to share it." />
+          <Button Content="Import …" Click="OnImportStratagemsClicked" ToolTip.Tip="Adds the stratagems of a shared list to yours." />
+        </StackPanel>
+      </Grid>
+    </TabItem>
+
     <!-- ===================================================== Settings -->
     <TabItem Header="Settings">
       <ScrollViewer>

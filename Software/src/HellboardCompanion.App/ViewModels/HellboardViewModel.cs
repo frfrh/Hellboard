@@ -94,14 +94,9 @@ public sealed partial class HellboardViewModel : ObservableObject, IDisposable
             _store?.Save();   // SettingsStore.Saved → HellboardLink.ApplySettings → setConfig
         };
 
-        Stratagems =
-        [
-            new Choice<string?>(null, "– (button off)"),
-            .. catalog.Entries
-                .Where(e => e.IsTransferable)
-                .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(e => new Choice<string?>(e.Id, e.Name)),
-        ];
+        _catalog = catalog;
+        _stratagems = BuildStratagems();
+        _catalog.Changed += OnCatalogChanged;
 
         if (_link is not null)
         {
@@ -119,7 +114,26 @@ public sealed partial class HellboardViewModel : ObservableObject, IDisposable
 
     // ---- configuration -----------------------------------------------------------------------
 
-    public IReadOnlyList<Choice<string?>> Stratagems { get; }
+    private readonly StratagemCatalog _catalog;
+
+    [ObservableProperty]
+    private IReadOnlyList<Choice<string?>> _stratagems;
+
+    private List<Choice<string?>> BuildStratagems() =>
+    [
+        new Choice<string?>(null, "– (button off)"),
+        .. _catalog.Entries
+            .Where(e => e.IsTransferable)
+            .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(e => new Choice<string?>(e.Id, e.Name)),
+    ];
+
+    private void OnCatalogChanged(object? sender, EventArgs e) => Dispatcher.UIThread.Post(() =>
+    {
+        Stratagems = BuildStratagems();
+        OnPropertyChanged(nameof(FixedButton1));
+        OnPropertyChanged(nameof(FixedButton2));
+    });
 
     public Choice<string?> FixedButton1
     {
@@ -328,6 +342,7 @@ public sealed partial class HellboardViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _catalog.Changed -= OnCatalogChanged;
         _saveTimer.Stop();
         if (_link is not null)
         {

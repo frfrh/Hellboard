@@ -30,26 +30,43 @@ public sealed partial class StratagemCatalog
 
     private static readonly HashSet<string> Colors = new(StringComparer.Ordinal) { "red", "green", "blue", "yellow", "white" };
 
-    private const string UserFileTemplate = """
-        {
-          "$comment": "Your own stratagems and corrections for Hellboard Companion. Same format as doc/stratagems.json of the Hellboard project (described in doc/stratagems.md): an entry with the id of a built-in stratagem replaces it, a new id adds a stratagem. Codes use U, D, L, R. Categories: Orbital, Eagle, Support weapon, Backpack, Vehicle, Defensive, Mission. Restart the Companion after a change. Example entry: {\"id\": \"my_stratagem\", \"name\": \"My Stratagem\", \"category\": \"Mission\", \"code\": \"UDLR\"}",
-          "version": 1,
-          "stratagems": [
-          ]
-        }
-        """;
 
-    private readonly Dictionary<string, CatalogEntry> _entries;
+    private volatile Dictionary<string, CatalogEntry> _entries;
+    private volatile IReadOnlySet<string> _userIds = new HashSet<string>();
+    private volatile IReadOnlyDictionary<string, string> _categories;
 
     public StratagemCatalog(IEnumerable<CatalogEntry> entries)
     {
         _entries = entries.ToDictionary(e => e.Id, StringComparer.Ordinal);
+        _categories = _entries.Values.GroupBy(e => e.Category).ToDictionary(g => g.Key, g => g.First().Color, StringComparer.Ordinal);
     }
 
     public IReadOnlyCollection<CatalogEntry> Entries => _entries.Values;
 
     /// <summary>Ids of the entries that come from the user's own list (added or replacing a built-in one).</summary>
-    public IReadOnlySet<string> UserIds { get; private init; } = new HashSet<string>();
+    public IReadOnlySet<string> UserIds => _userIds;
+
+    /// <summary>All categories with their LED color (built-in and user).</summary>
+    public IReadOnlyDictionary<string, string> Categories => _categories;
+
+    /// <summary>The user's own list this catalog was loaded with (<see cref="Load"/>), <c>null</c> otherwise.</summary>
+    public string? UserFilePath { get; private set; }
+
+    /// <summary>Raised after <see cref="ReplaceWith"/>, e.g. when the stratagem editor saved a change.</summary>
+    public event EventHandler? Changed;
+
+    /// <summary>
+    /// Takes over the content of <paramref name="other"/> (e.g. after the user's list was edited), so all
+    /// components that hold this catalog see the change without a restart.
+    /// </summary>
+    public void ReplaceWith(StratagemCatalog other)
+    {
+        _entries = other._entries;
+        _userIds = other._userIds;
+        _categories = other._categories;
+        UserFilePath = other.UserFilePath ?? UserFilePath;
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
 
     /// <summary>The catalog shipped with the application (embedded <c>doc/stratagems.json</c>).</summary>
     public static StratagemCatalog LoadSeed()
@@ -69,15 +86,16 @@ public sealed partial class StratagemCatalog
         {
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(userFile)!);
-                File.WriteAllText(userFile, UserFileTemplate.ReplaceLineEndings());
+                UserStratagemList.Load(userFile).Save();   // empty template with a description of the format
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 logger.LogWarning(ex, "Could not create the user stratagem list {File}", userFile);
             }
 
-            return LoadSeed();
+            var seed = LoadSeed();
+            seed.UserFilePath = userFile;
+            return seed;
         }
 
         try
@@ -85,6 +103,7 @@ public sealed partial class StratagemCatalog
             using var builtIn = OpenBuiltIn();
             using var user = File.OpenRead(userFile);
             var catalog = Parse(builtIn, user);
+            catalog.UserFilePath = userFile;
             if (catalog.UserIds.Count > 0)
             {
                 logger.LogInformation("User stratagem list {File}: {Ids}", userFile, string.Join(", ", catalog.UserIds.Order()));
@@ -95,7 +114,9 @@ public sealed partial class StratagemCatalog
         catch (Exception ex) when (ex is FormatException or IOException or UnauthorizedAccessException)
         {
             logger.LogWarning("User stratagem list {File} ignored, using the built-in list: {Error}", userFile, ex.Message);
-            return LoadSeed();
+            var seed = LoadSeed();
+            seed.UserFilePath = userFile;
+            return seed;
         }
     }
 
@@ -141,7 +162,10 @@ public sealed partial class StratagemCatalog
         }
 
         var entries = items.Select(i => new CatalogEntry(i.Id!, i.Name!, i.Category!, categories[i.Category!], i.Code));
-        return new StratagemCatalog(entries) { UserIds = userIds };
+        var catalog = new StratagemCatalog(entries);
+        catalog._userIds = userIds;
+        catalog._categories = categories;
+        return catalog;
     }
 
     public CatalogEntry? Find(string id) => _entries.GetValueOrDefault(id);

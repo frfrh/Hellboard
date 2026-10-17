@@ -26,10 +26,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _gameWindowMode = "–";
 
-    public MainWindowViewModel(IPlatformInfo platform, IPlatformPaths paths, IGameLocator? gameLocator, CapturePreviewViewModel capture, LoadoutStatusViewModel loadout, ManualRecognitionViewModel manual, HellboardStatusViewModel hellboard, OverviewViewModel overview, SettingsViewModel settings, HistoryViewModel history, HellboardViewModel hellboardTab)
+    public MainWindowViewModel(IPlatformInfo platform, IPlatformPaths paths, IGameLocator? gameLocator, CapturePreviewViewModel capture, LoadoutStatusViewModel loadout, ManualRecognitionViewModel manual, HellboardStatusViewModel hellboard, OverviewViewModel overview, SettingsViewModel settings, HistoryViewModel history, HellboardViewModel hellboardTab, StratagemEditorViewModel stratagemEditor)
     {
         Overview = overview;
         HellboardTab = hellboardTab;
+        StratagemEditor = stratagemEditor;
         Settings = settings;
         History = history;
         Hellboard = hellboard;
@@ -84,13 +85,15 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public HellboardViewModel HellboardTab { get; }
 
+    public StratagemEditorViewModel StratagemEditor { get; }
+
     /// <summary>Instance with placeholder values for the XAML previewer.</summary>
     public static MainWindowViewModel DesignInstance
     {
         get
         {
             var catalog = StratagemCatalog.LoadSeed();
-            var images = new StratagemImages(null);
+            var images = new StratagemImages(null, catalog);
             var hellboard = new HellboardStatusViewModel(null);
             var designSettings = SettingsStore.Load(new PlatformPaths(Path.Combine(Path.GetTempPath(), "HellboardCompanionDesign"), Path.Combine(Path.GetTempPath(), "HellboardCompanionDesign")));
             return new(
@@ -99,7 +102,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 new OverviewViewModel(null, null, null, catalog, images, null, hellboard),
                 new SettingsViewModel(designSettings, catalog, images, null, null),
                 new HistoryViewModel(null, null, catalog, images),
-                new HellboardViewModel(designSettings, null, catalog, hellboard));
+                new HellboardViewModel(designSettings, null, catalog, hellboard),
+                new StratagemEditorViewModel(catalog, null, images));
         }
     }
 
@@ -115,6 +119,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         Settings.Dispose();
         History.Dispose();
         HellboardTab.Dispose();
+        StratagemEditor.Dispose();
         if (_gameLocator is not null)
         {
             _gameLocator.Changed -= OnGameChanged;

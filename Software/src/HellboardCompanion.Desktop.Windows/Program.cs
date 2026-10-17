@@ -54,6 +54,7 @@ internal static class Program
         var pipeline = services.GetRequiredService<LoadoutPipeline>();
         var hellboard = services.GetRequiredService<HellboardLink>();
         pipeline.LoadoutLocked += (_, loadout) => hellboard.Submit(loadout);
+        services.GetRequiredService<StratagemCatalog>().Changed += (_, _) => hellboard.Rebuild();   // stratagem editor (§6.12)
         var settings = services.GetRequiredService<SettingsStore>();
         hellboard.BoardConfigAdopted += (_, _) => settings.Save();   // first connect: keep the board's configuration (F13)
         hellboard.Start();

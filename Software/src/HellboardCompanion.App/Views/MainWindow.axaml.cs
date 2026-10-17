@@ -43,6 +43,75 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void OnCodeInputPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => (sender as Control)?.Focus();
+
+    /// <summary>Arrow keys or WASD enter the stratagem code (stratagem editor).</summary>
+    private void OnCodeKeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var editor = viewModel.StratagemEditor;
+        var direction = e.Key switch
+        {
+            Avalonia.Input.Key.Up or Avalonia.Input.Key.W => "U",
+            Avalonia.Input.Key.Down or Avalonia.Input.Key.S => "D",
+            Avalonia.Input.Key.Left or Avalonia.Input.Key.A => "L",
+            Avalonia.Input.Key.Right or Avalonia.Input.Key.D => "R",
+            _ => null,
+        };
+        if (direction is not null)
+        {
+            editor.AddArrowCommand.Execute(direction);
+            e.Handled = true;
+        }
+        else if (e.Key == Avalonia.Input.Key.Back)
+        {
+            editor.RemoveArrowCommand.Execute(null);
+            e.Handled = true;
+        }
+    }
+
+    private async void OnExportStratagemsClicked(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Export your stratagems",
+            SuggestedFileName = "hellboard-stratagems.json",
+            FileTypeChoices = [new FilePickerFileType("Stratagem list") { Patterns = ["*.json"] }],
+        });
+        if (file?.TryGetLocalPath() is { } path)
+        {
+            viewModel.StratagemEditor.ExportTo(path);
+        }
+    }
+
+    private async void OnImportStratagemsClicked(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Import stratagems",
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType("Stratagem list") { Patterns = ["*.json"] }],
+        });
+        if (files.Count == 1 && files[0].TryGetLocalPath() is { } path)
+        {
+            viewModel.StratagemEditor.ImportFrom(path);
+        }
+    }
+
     private async void OnCopyHellboardLogClicked(object? sender, RoutedEventArgs e)
     {
         if (DataContext is MainWindowViewModel viewModel && Clipboard is { } clipboard)
