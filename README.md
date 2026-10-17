@@ -4,6 +4,14 @@ This is a Macro board based on RP2040-zero and Micropython, meant for ordering S
 
 ![PXL_20240601_011015119 MP](https://github.com/frfrh/Hellboard/assets/93924020/1debbce7-9e01-4ee8-9f85-ac15d05eea98)
 
+## Hellboard Companion
+
+The Hellboard Companion is a Windows app that puts your stratagems on the Hellboard automatically. It watches the Helldivers 2 loadout screen, recognizes the four stratagems you pick and the optional mission stratagems, and sends them to the board as soon as you press *Ready*. You don't have to configure any buttons by hand. The app also configures the board and installs firmware updates, so you need nothing else to use the Hellboard.
+
+![Hellboard Companion – overview with a recognized loadout](doc/images/companion-overview.png)
+
+Download it from the [releases](https://github.com/frfrh/Hellboard/releases). More details: [`Software/README.md`](Software/README.md).
+
 ## Folders
 
 ##### [Firmware](https://github.com/frfrh/Hellboard/tree/master/Firmware)
@@ -19,15 +27,20 @@ Contains the 3D files for the case and the button caps.
 Contains the project files for the PCB and the gerber files to order one.
 Project is based on KiCad 8.0.2.
 
+##### [Software](https://github.com/frfrh/Hellboard/tree/master/Software)
+
+Contains the Hellboard Companion (C#/.NET, Windows): loadout recognition, transfer to the board, board configuration and firmware updates.
+
 ## Configuration
 
 The board is configured in [`Firmware/config.json`](Firmware/config.json); the stratagems and their input codes come from [`doc/stratagems.json`](doc/stratagems.json), the single list used by the firmware and the Companion software (format: [`doc/stratagems.md`](doc/stratagems.md)).
 
 - `fixed`, `loadout`, `multiFunction`: stratagems of the buttons `1_1`/`1_2`, row 2 and the multi-function button `1_3` (cycled with `1_4`), by their `id`.
 - `modifierKey`: HID usage id of the stratagem key ([scancodes](https://deskthority.net/wiki/Scancode), e.g. 6 = `C`, 224 = left Ctrl). `modifierToggle: true` presses it once to open the menu, `false` keeps it pressed while the code is entered.
-- `directionKeys`: `arrows` or `wasd`; `keyDelayMs`: delay between key events; `brightness`: LED brightness (0-255).
+- `directionKeys`: `arrows` or `wasd`; `menuDelayMs`, `keyPressMs`, `keyReleaseMs`: wait for the stratagem menu, how long each arrow is held, pause between arrows (ms); `brightness`: LED brightness (0-255).
+- `screenSaverSeconds`: display off after this time without a button press (0 = off); `scrollText`: `off`, `long` (long names scroll back and forth) or `loop` (they run continuously).
 
-Upload the changed `config.json` to the board (see Setup). With the Hellboard Companion (`Software/`), the loadout is taken from the game automatically.
+Upload the changed `config.json` to the board (see Setup). With the Hellboard Companion, all of this is set on its *Hellboard* tab instead, and the loadout is taken from the game automatically.
 
 ## Build your own
 
