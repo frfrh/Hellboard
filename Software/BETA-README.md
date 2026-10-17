@@ -35,7 +35,10 @@ The app runs in the system tray. Left-click the tray icon to open the window.
   *Ready* (or when the screen closes).
 - Manual trigger: **Ctrl+Shift+F9** recognizes the current screen immediately (changeable in *Settings*).
 - *History* shows the locked loadouts and recognition problems, including a picture of the slot that was
-  not recognized.
+  not recognized. Choose there which stratagem it is and click *Use as reference*: the picture is stored on
+  your PC and replaces the icon of that stratagem in the recognition (useful when the game draws an icon
+  differently, e.g. with a small badge, or the icon is wrong). The *Stratagems* tab shows and removes these
+  reference images.
 
 ## Reporting problems
 

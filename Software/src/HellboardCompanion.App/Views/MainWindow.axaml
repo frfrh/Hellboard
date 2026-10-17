@@ -270,7 +270,10 @@
         <DockPanel Grid.Row="1" Grid.Column="0">
           <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,8">
             <TextBox Text="{Binding SearchText}" PlaceholderText="Search" />
-            <CheckBox IsChecked="{Binding OnlyWithoutCode}" Content="Only stratagems without code" />
+            <StackPanel Orientation="Horizontal" Spacing="16">
+              <CheckBox IsChecked="{Binding OnlyWithoutCode}" Content="Only without code" />
+              <CheckBox IsChecked="{Binding OnlyWithReference}" Content="Only with reference" />
+            </StackPanel>
             <TextBlock Text="{Binding Summary}" Opacity="0.6" FontSize="12" />
           </StackPanel>
           <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}">
@@ -281,7 +284,7 @@
                   <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding CodeArrows}" FontSize="13" Opacity="0.8" />
-                    <TextBlock Text="{Binding Source}" FontSize="11" Opacity="0.55" />
+                    <TextBlock Text="{Binding SourceText}" FontSize="11" Opacity="0.55" />
                   </StackPanel>
                 </Grid>
               </DataTemplate>
@@ -335,6 +338,11 @@
                         ToolTip.Tip="Restores the built-in code, or removes your own stratagem from your list." />
               </StackPanel>
               <TextBlock Text="{Binding Result}" TextWrapping="Wrap" Opacity="0.85" />
+
+              <TextBlock Text="Reference images" FontWeight="SemiBold" Margin="0,8,0,0" />
+              <TextBlock Text="{Binding Selected.ReferenceText}" TextWrapping="Wrap" Opacity="0.8" />
+              <Button Content="Remove reference images" Command="{Binding RemoveReferencesCommand}" HorizontalAlignment="Left"
+                      ToolTip.Tip="Deletes the slot images you assigned to this stratagem in the History tab." />
             </StackPanel>
           </StackPanel>
         </ScrollViewer>
@@ -507,6 +515,18 @@
                           <TextBlock Text="{Binding Title}" Foreground="#FFC107" />
                         </StackPanel>
                         <SelectableTextBlock Text="{Binding ProblemText}" TextWrapping="Wrap" />
+                        <!-- Unrecognized slot: assign it as reference image -->
+                        <StackPanel IsVisible="{Binding HasReference}" Spacing="4" Margin="0,4,0,0">
+                          <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="This is" VerticalAlignment="Center" />
+                            <ComboBox ItemsSource="{Binding Reference.Choices}" SelectedItem="{Binding Reference.Selected}" MinWidth="260"
+                                      PlaceholderText="Choose the stratagem …" />
+                            <Button Content="Use as reference" Command="{Binding Reference.AssignCommand}"
+                                    ToolTip.Tip="Stores this slot image locally; the recognition uses it instead of the icon of this stratagem" />
+                          </StackPanel>
+                          <TextBlock Text="{Binding Reference.Result}" IsVisible="{Binding Reference.Result, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                     TextWrapping="Wrap" Opacity="0.8" />
+                        </StackPanel>
                       </StackPanel>
                     </Grid>
                   </Border>
