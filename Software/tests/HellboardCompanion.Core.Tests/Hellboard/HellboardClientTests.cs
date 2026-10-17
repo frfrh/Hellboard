@@ -65,6 +65,21 @@ public sealed class HellboardClientTests
     }
 
     [Fact]
+    public async Task A_new_connection_is_not_answered_with_results_of_an_earlier_one()
+    {
+        var board = new SimulatedHellboard();
+        using (var first = new HellboardClient(board))
+        {
+            await first.SetConfigAsync(new System.Text.Json.Nodes.JsonObject { ["brightness"] = 10 }, TestContext.Current.CancellationToken);
+        }
+
+        using var second = new HellboardClient(board);
+        await second.SetConfigAsync(new System.Text.Json.Nodes.JsonObject { ["brightness"] = 99 }, TestContext.Current.CancellationToken);
+
+        board.Config["brightness"]!.GetValue<int>().Should().Be(99, "the request must be executed, not answered from the first connection");
+    }
+
+    [Fact]
     public async Task Non_protocol_output_is_ignored()
     {
         var board = new SimulatedHellboard();

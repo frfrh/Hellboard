@@ -11,8 +11,9 @@ REMEMBERED_ANSWERS = 16
 
 
 class ProtocolError(Exception):
+    # No Exception.__init__ here: MicroPython does not have it ("type object 'Exception' has no
+    # attribute '__init__'"), every error answer became internal_error.
     def __init__(self, code, message=''):
-        Exception.__init__(self, message)
         self.code = code
         self.message = message
 
@@ -67,6 +68,11 @@ class Protocol:
             return
 
         id = request.get('id')
+        if request.get('cmd') == 'ping':
+            # Every connection starts with ping: forget the answers of an earlier connection, whose
+            # ids the PC may use again (protocol section 3).
+            self._answers = {}
+            self._answer_ids = []
         if id is not None and id in self._answers:
             print(self._answers[id])        # repeated request: same answer (protocol section 3)
             return

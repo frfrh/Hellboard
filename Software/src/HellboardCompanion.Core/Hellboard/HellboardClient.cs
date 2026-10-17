@@ -21,7 +21,9 @@ public sealed class HellboardClient : IDisposable
     private readonly int _retries;
     private readonly SemaphoreSlim _sequential = new(1, 1);
     private readonly ConcurrentDictionary<int, TaskCompletionSource<JsonObject>> _pending = new();
-    private int _nextId;
+    // Random start per connection: the board remembers recent answers by id (idempotent retries), so a
+    // new connection starting at 1 again got old answers instead of executing its requests.
+    private int _nextId = Random.Shared.Next(1, 1_000_000_000);
 
     public HellboardClient(IHellboardConnection connection, TimeSpan? timeout = null, int retries = 3)
     {
