@@ -11,6 +11,9 @@ public sealed class GameFrameGrabber(IGameLocator gameLocator, IFrameSource fram
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMilliseconds(250);
 
+    /// <summary>Current state of the game.</summary>
+    public GameSnapshot Game => gameLocator.Current;
+
     /// <summary>
     /// Returns the current image of the game, or <c>null</c> if the game is not running, minimized
     /// or no image is available.

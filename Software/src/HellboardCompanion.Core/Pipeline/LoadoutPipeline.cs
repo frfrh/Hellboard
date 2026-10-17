@@ -219,6 +219,11 @@ public sealed class LoadoutPipeline : IDisposable
 
     private ManualRecognitionResult RunManualRecognition(LoadoutRecognizer recognizer)
     {
+        if (_grabber.Game.Status != GameStatus.Running)
+        {
+            return Failed(ManualRecognitionResult.GameNotRunning);
+        }
+
         var timestamp = DateTimeOffset.Now;
         var frames = new List<Frame>();
         for (var i = 0; i < BurstFrames; i++)
@@ -236,7 +241,7 @@ public sealed class LoadoutPipeline : IDisposable
 
         if (frames.Count == 0)
         {
-            return Failed("No image of the game (not running or minimized).");
+            return Failed("No image of the game (minimized?).");
         }
 
         var saved = _options.SaveSnapshotOnTrigger ? SaveFrames(frames, timestamp) : [];
