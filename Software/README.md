@@ -24,11 +24,12 @@ Logs are written to `%LOCALAPPDATA%\HellboardCompanion\logs`.
 ## Release package
 
 ```powershell
-.\publish.ps1               # build, test, publish, zip
+.\publish.ps1                  # build, test, publish, zip and installer
 .\publish.ps1 -SkipTests
+.\publish.ps1 -SkipInstaller   # without Inno Setup
 ```
 
-Creates `publish/HellboardCompanion-<version>-win-x64.zip` with one self-contained `HellboardCompanion.exe` (no .NET installation needed), the license, [third-party notices](THIRD-PARTY-NOTICES.md) and the [beta readme](BETA-README.md).
+Creates `publish/HellboardCompanion-<version>-win-x64.zip` with one self-contained `HellboardCompanion.exe` (no .NET installation needed), the license, [third-party notices](THIRD-PARTY-NOTICES.md) and the [beta readme](BETA-README.md), and the installer `publish/HellboardCompanion-<version>-setup.exe` ([`installer/HellboardCompanion.iss`](installer/HellboardCompanion.iss), needs [Inno Setup 7](https://jrsoftware.org/isdl.php)). The installer offers "install for me only" (`%LOCALAPPDATA%\Programs`, no admin rights) or "for all users" (Program Files), creates a Start menu entry, installs over older versions and removes the autostart entry on uninstall; user data stays.
 
 ## Project structure
 

@@ -1,15 +1,33 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Builds the release package for beta testers: one self-contained HellboardCompanion.exe plus
-# license, third-party notices and readme, zipped to publish/HellboardCompanion-<version>-win-x64.zip.
+# Builds the release packages: one self-contained HellboardCompanion.exe plus license, third-party
+# notices and readme, zipped to publish/HellboardCompanion-<version>-win-x64.zip, and the installer
+# publish/HellboardCompanion-<version>-setup.exe (Inno Setup 7, installer/HellboardCompanion.iss).
 #
-# Usage: .\publish.ps1 [-SkipTests]
+# Usage: .\publish.ps1 [-SkipTests] [-SkipInstaller]
 
 param(
-    [switch]$SkipTests
+    [switch]$SkipTests,
+    [switch]$SkipInstaller
 )
 
 $ErrorActionPreference = 'Stop'
+
+# ISCC.exe of Inno Setup 7 (or 6): PATH or the default installation folders.
+function Find-InnoSetup {
+    $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+    foreach ($folder in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, (Join-Path $env:LOCALAPPDATA 'Programs'))) {
+        foreach ($name in @('Inno Setup 7', 'Inno Setup 6')) {
+            if ($folder -and (Test-Path (Join-Path $folder "$name\ISCC.exe"))) {
+                return Join-Path $folder "$name\ISCC.exe"
+            }
+        }
+    }
+    return $null
+}
 
 function Invoke-Dotnet {
     & dotnet @args
@@ -53,6 +71,21 @@ try {
     Compress-Archive -Path (Join-Path $packageDir '*') -DestinationPath $zipPath
     $size = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
     Write-Host "Release package: $zipPath ($size MB)"
+
+    if (-not $SkipInstaller) {
+        $iscc = Find-InnoSetup
+        if (-not $iscc) {
+            Write-Warning 'Inno Setup not found - installer skipped (https://jrsoftware.org/isdl.php, or use -SkipInstaller).'
+        }
+        else {
+            & $iscc /Q "/DAppVersion=$version" "/DSourceDir=$packageDir" "/DOutputDir=$(Join-Path $PSScriptRoot 'publish')" (Join-Path $PSScriptRoot 'installer/HellboardCompanion.iss')
+            if ($LASTEXITCODE -ne 0) {
+                throw "Inno Setup failed with exit code $LASTEXITCODE"
+            }
+            $setup = Join-Path $PSScriptRoot "publish/HellboardCompanion-$version-setup.exe"
+            Write-Host "Installer: $setup ($([math]::Round((Get-Item $setup).Length / 1MB, 1)) MB)"
+        }
+    }
 }
 finally {
     Pop-Location

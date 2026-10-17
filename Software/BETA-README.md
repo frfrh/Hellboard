@@ -5,10 +5,15 @@ four stratagems (and the optional mission stratagems) and sends them to the Hell
 
 ## Installation
 
-1. Unzip the archive into any folder, e.g. `C:\Tools\HellboardCompanion`.
-2. Start `HellboardCompanion.exe`. No installation and no .NET runtime are needed – the EXE is self-contained.
-3. Windows SmartScreen may warn that the app is from an unknown publisher (the beta is not code-signed).
-   Choose *More info* → *Run anyway*.
+**With the installer** (`HellboardCompanion-<version>-setup.exe`, recommended): run it and choose
+*Install for me only* (no administrator rights) or *Install for all users*. It creates a Start menu entry
+(optionally a desktop icon), and a newer version simply installs over the old one.
+
+**Without installing** (`HellboardCompanion-<version>-win-x64.zip`): unzip the archive into any folder,
+e.g. `C:\Tools\HellboardCompanion`, and start `HellboardCompanion.exe`.
+
+No .NET runtime is needed either way – the EXE is self-contained. Windows SmartScreen may warn that the
+app is from an unknown publisher (it is not code-signed). Choose *More info* → *Run anyway*.
 
 On the first start the app needs an internet connection: it downloads the stratagem icons it uses for
 recognition from GitHub (`nvigneux/Helldivers-2-Stratagems-icons-svg`). The first start also takes a few
@@ -54,8 +59,10 @@ analysis.
 
 ## Uninstall
 
-Enable autostart only if you want it (*Settings*); disable it again before deleting the folder. Then delete
-the app folder and the two folders `%LOCALAPPDATA%\HellboardCompanion` and `%APPDATA%\HellboardCompanion`.
+Installed: uninstall it in *Settings → Apps* (this also removes the autostart entry). Unzipped: disable
+autostart in *Settings* first, then delete the folder. Your settings, own stratagems and logs stay in
+`%APPDATA%\HellboardCompanion` and `%LOCALAPPDATA%\HellboardCompanion`; delete these two folders as well
+to remove everything.
 
 ## License
 

@@ -26,6 +26,12 @@ texts are available at the linked project pages and in the respective NuGet pack
 | Vortice.Mathematics | 2.1.0 | MIT | https://github.com/amerkoleci/Vortice.Mathematics |
 | SharpGen.Runtime, SharpGen.Runtime.COM | 2.4.2-beta | MIT | https://github.com/SharpGenTools/SharpGenTools |
 
+## Installer
+
+The installer (`HellboardCompanion-<version>-setup.exe`) is built with **Inno Setup 7**, Copyright (C) 1997-2026
+Jordan Russell and Martijn Laan, https://jrsoftware.org/isinfo.php (Inno Setup license: use for any purpose,
+copyright notice retained). The installer runtime shows this notice itself.
+
 ## Not bundled
 
 - **Stratagem icons** are downloaded at runtime from
