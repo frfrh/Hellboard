@@ -61,12 +61,14 @@ public sealed class LoadoutRecognizer : IDisposable
     private readonly StratagemSlotClassifier _playerClassifier;
     private readonly StratagemSlotClassifier _missionClassifier;
 
-    public LoadoutRecognizer(LoadoutLayout layout, IReadOnlyList<StratagemIcon> icons)
+    /// <param name="missionOnly">Ids that only appear in mission slots (e.g. SEAF Artillery); they are
+    /// not compared in the player slots, where some of them look almost like player stratagems.</param>
+    public LoadoutRecognizer(LoadoutLayout layout, IReadOnlyList<StratagemIcon> icons, IReadOnlySet<string>? missionOnly = null)
     {
         _layout = layout;
         _screenDetector = new LoadoutScreenDetector(layout);
         _readyDetector = new ReadyStatusDetector(layout);
-        _playerClassifier = new StratagemSlotClassifier(icons, SlotStyle.PlayerSlot);
+        _playerClassifier = new StratagemSlotClassifier(icons.Where(icon => missionOnly?.Contains(icon.Id) != true), SlotStyle.PlayerSlot);
         _missionClassifier = new StratagemSlotClassifier(icons, SlotStyle.MissionSlot);
     }
 

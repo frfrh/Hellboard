@@ -74,6 +74,11 @@ public sealed class LoadoutPipeline : IDisposable
             _iconsChanged = true;
             _wake.Release();
         };
+        if (_catalog is not null)
+        {
+            // The categories decide which icons are compared in the player slots.
+            _catalog.Changed += (_, _) => _iconsChanged = true;
+        }
         Tracker.Locked += OnLocked;
     }
 
@@ -283,7 +288,7 @@ public sealed class LoadoutPipeline : IDisposable
         {
             _iconsChanged = false;
             var previous = _recognizer;
-            _recognizer = new LoadoutRecognizer(LoadoutLayout.Default, _iconStore.Icons);
+            _recognizer = new LoadoutRecognizer(LoadoutLayout.Default, _iconStore.Icons, _catalog?.MissionOnlyIds());
             previous?.Dispose();
             _logger.LogInformation("Loadout recognizer ready with {Count} stratagem templates", _iconStore.Icons.Count);
         }

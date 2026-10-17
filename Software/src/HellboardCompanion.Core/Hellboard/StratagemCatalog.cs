@@ -49,6 +49,10 @@ public sealed partial class StratagemCatalog
     /// <summary>All categories with their LED color (built-in and user).</summary>
     public IReadOnlyDictionary<string, string> Categories => _categories;
 
+    /// <summary>Ids of the category "Mission": only in mission slots, never selectable as player stratagem.</summary>
+    public IReadOnlySet<string> MissionOnlyIds() =>
+        _entries.Values.Where(e => e.Category == "Mission").Select(e => e.Id).ToHashSet(StringComparer.Ordinal);
+
     /// <summary>The user's own list this catalog was loaded with (<see cref="Load"/>), <c>null</c> otherwise.</summary>
     public string? UserFilePath { get; private set; }
 
