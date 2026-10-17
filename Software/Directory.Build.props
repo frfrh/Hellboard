@@ -9,6 +9,6 @@
     <Authors>FrFrh</Authors>
     <Copyright>Copyright (c) 2026 FrFrh</Copyright>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
-    <Version>0.4.0</Version>
+    <Version>0.4.1</Version>
   </PropertyGroup>
 </Project>
