@@ -112,16 +112,20 @@ public sealed class StratagemIconDownloaderTests : IDisposable
     {
         public Dictionary<string, byte[]> Files { get; } = new(StringComparer.Ordinal);
 
-        public int TreeRequests { get; private set; }
+        private int _treeRequests;
+        private int _downloads;
 
-        public int Downloads { get; private set; }
+        public int TreeRequests => Volatile.Read(ref _treeRequests);
+
+        /// <summary>Counted thread-safely: the downloader loads several icons at once.</summary>
+        public int Downloads => Volatile.Read(ref _downloads);
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var uri = request.RequestUri!;
             if (uri.Host == "api.github.com")
             {
-                TreeRequests++;
+                Interlocked.Increment(ref _treeRequests);
                 var tree = new JsonArray([.. Files.Select(f => (JsonNode)new JsonObject
                 {
                     ["path"] = f.Key, ["type"] = "blob", ["sha"] = StratagemIconDownloader.GitBlobSha(f.Value),
@@ -143,7 +147,7 @@ public sealed class StratagemIconDownloaderTests : IDisposable
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
             }
 
-            Downloads++;
+            Interlocked.Increment(ref _downloads);
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(content) });
         }
     }
