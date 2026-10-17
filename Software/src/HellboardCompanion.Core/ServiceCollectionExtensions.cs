@@ -26,6 +26,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(settings.Settings.Game);
         services.AddSingleton<GameFrameGrabber>();
         services.AddSingleton<StratagemIconStore>();
+        services.AddSingleton(sp =>
+        {
+            var store = new StratagemReferenceStore(paths, sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<StratagemReferenceStore>>());
+            store.Load();
+            return store;
+        });
         services.AddSingleton<LoadoutHistory>();
         services.AddSingleton(settings.Settings.Recognition);
         services.AddSingleton(sp => StratagemCatalog.Load(
@@ -48,7 +54,8 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<RecognitionOptions>(),
             sp.GetRequiredService<IPlatformPaths>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<LoadoutPipeline>>(),
-            sp.GetRequiredService<StratagemCatalog>()));
+            sp.GetRequiredService<StratagemCatalog>(),
+            sp.GetRequiredService<StratagemReferenceStore>()));
         services.AddSingleton(sp => new ManualTriggerService(
             sp.GetRequiredService<LoadoutPipeline>(),
             sp.GetRequiredService<RecognitionOptions>(),

@@ -18,14 +18,22 @@ public sealed class StratagemImages
 {
     private const int Size = 96;
 
+    /// <summary>Share of the slot cut off on each side of a reference image (the slot frame).</summary>
+    private const double ReferenceInset = 0.04;
+
+    /// <summary>Slot background of the game (as in SlotStyle.PlayerSlot); similar pixels become transparent.</summary>
+    private static readonly SKColor SlotBackground = new(47, 47, 47);
+
     private readonly StratagemIconStore? _iconStore;
     private readonly StratagemCatalog? _catalog;
+    private readonly StratagemReferenceStore? _references;
     private readonly ConcurrentDictionary<string, Bitmap?> _cache = new();
 
-    public StratagemImages(StratagemIconStore? iconStore, StratagemCatalog? catalog = null)
+    public StratagemImages(StratagemIconStore? iconStore, StratagemCatalog? catalog = null, StratagemReferenceStore? references = null)
     {
         _iconStore = iconStore;
         _catalog = catalog;
+        _references = references;
         if (iconStore is not null)
         {
             iconStore.IconsChanged += (_, _) => _cache.Clear();   // icons were added or updated (§6.11)
@@ -34,6 +42,11 @@ public sealed class StratagemImages
         if (catalog is not null)
         {
             catalog.Changed += (_, _) => _cache.Clear();   // name or category of a placeholder may have changed (§6.12)
+        }
+
+        if (references is not null)
+        {
+            references.Changed += (_, _) => _cache.Clear();   // a reference image replaces the icon
         }
     }
 
@@ -48,6 +61,13 @@ public sealed class StratagemImages
         if (_cache.TryGetValue(id, out var cached))
         {
             return cached;
+        }
+
+        // A reference image shows how the game really draws the stratagem (and corrects a wrong icon), like in the recognition.
+        if (_references?.References.Where(r => r.Id == id).OrderBy(r => r.Slot).ThenByDescending(r => r.Path, StringComparer.Ordinal).FirstOrDefault() is { } reference
+            && FromReference(reference.Path) is { } image)
+        {
+            return _cache[id] = image;
         }
 
         if (_iconStore?.Icons.FirstOrDefault(i => i.Id == id) is { } icon)
@@ -81,6 +101,51 @@ public sealed class StratagemImages
                 canvas.Clear(SKColors.Transparent);
                 canvas.Scale(Size / Math.Max(picture.CullRect.Width, picture.CullRect.Height));
                 canvas.DrawPicture(picture);
+            }
+
+            return ToBitmap(bitmap);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The icon part of a reference image: the slot without its frame, the slot background made
+    /// transparent (soft edge), scaled to the icon size.
+    /// </summary>
+    private static Bitmap? FromReference(string path)
+    {
+        try
+        {
+            using var image = SKBitmap.Decode(path);
+            if (image is null)
+            {
+                return null;
+            }
+
+            var (offset, size) = StratagemReference.SlotIn(image.Width);
+            var inset = (int)Math.Round(size * ReferenceInset);
+            var area = SKRectI.Create(offset + inset, offset + inset, size - (2 * inset), size - (2 * inset));
+            using var icon = new SKBitmap(area.Width, area.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul);
+            for (var y = 0; y < area.Height; y++)
+            {
+                for (var x = 0; x < area.Width; x++)
+                {
+                    var pixel = image.GetPixel(area.Left + x, area.Top + y);
+                    var distance = Math.Max(Math.Abs(pixel.Red - SlotBackground.Red), Math.Max(Math.Abs(pixel.Green - SlotBackground.Green), Math.Abs(pixel.Blue - SlotBackground.Blue)));
+                    var alpha = (byte)Math.Clamp((distance - 12) * 255 / 24, 0, 255);
+                    icon.SetPixel(x, y, pixel.WithAlpha(alpha));
+                }
+            }
+
+            using var bitmap = new SKBitmap(Size, Size, SKColorType.Bgra8888, SKAlphaType.Premul);
+            using (var canvas = new SKCanvas(bitmap))
+            {
+                canvas.Clear(SKColors.Transparent);
+                using var source = SKImage.FromBitmap(icon);
+                canvas.DrawImage(source, new SKRect(0, 0, Size, Size), new SKSamplingOptions(SKCubicResampler.Mitchell));
             }
 
             return ToBitmap(bitmap);

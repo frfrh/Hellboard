@@ -45,6 +45,7 @@ public sealed class LoadoutPipeline : IDisposable
     private static readonly TimeSpan ErrorReportInterval = TimeSpan.FromMinutes(10);
 
     private readonly StratagemCatalog? _catalog;
+    private readonly StratagemReferenceStore? _references;
     private readonly HashSet<string> _reportedWithoutSequence = new(StringComparer.Ordinal);
     private readonly Dictionary<string, DateTimeOffset> _lastErrorReport = new(StringComparer.Ordinal);
     private LoadoutRecognizer? _recognizer;
@@ -60,9 +61,11 @@ public sealed class LoadoutPipeline : IDisposable
         RecognitionOptions options,
         IPlatformPaths paths,
         ILogger<LoadoutPipeline> logger,
-        StratagemCatalog? catalog = null)
+        StratagemCatalog? catalog = null,
+        StratagemReferenceStore? references = null)
     {
         _catalog = catalog;
+        _references = references;
         _grabber = grabber;
         _iconStore = iconStore;
         _history = history;
@@ -74,6 +77,21 @@ public sealed class LoadoutPipeline : IDisposable
             _iconsChanged = true;
             _wake.Release();
         };
+        if (_catalog is not null)
+        {
+            // The categories decide which icons are compared in the player slots.
+            _catalog.Changed += (_, _) => _iconsChanged = true;
+        }
+
+        if (_references is not null)
+        {
+            _references.Changed += (_, _) =>
+            {
+                _iconsChanged = true;
+                _wake.Release();
+            };
+        }
+
         Tracker.Locked += OnLocked;
     }
 
@@ -283,9 +301,10 @@ public sealed class LoadoutPipeline : IDisposable
         {
             _iconsChanged = false;
             var previous = _recognizer;
-            _recognizer = new LoadoutRecognizer(LoadoutLayout.Default, _iconStore.Icons);
+            var references = _references?.References ?? [];
+            _recognizer = new LoadoutRecognizer(LoadoutLayout.Default, _iconStore.Icons, _catalog?.MissionOnlyIds(), references);
             previous?.Dispose();
-            _logger.LogInformation("Loadout recognizer ready with {Count} stratagem templates", _iconStore.Icons.Count);
+            _logger.LogInformation("Loadout recognizer ready with {Count} stratagem templates and {References} reference images", _iconStore.Icons.Count, references.Count);
         }
 
         return _recognizer;

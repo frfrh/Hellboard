@@ -4,7 +4,9 @@ using System.Collections.ObjectModel;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using HellboardCompanion.App.Services;
+using HellboardCompanion.Core.Catalog;
 using HellboardCompanion.Core.Configuration;
 using HellboardCompanion.Core.Hellboard;
 using HellboardCompanion.Core.Loadout;
@@ -20,7 +22,8 @@ public sealed record HistoryEntryViewModel(
     string MissionStratagems,
     string? ProblemText = null,
     Bitmap? ProblemImage = null,
-    StratagemTileViewModel? ProblemStratagem = null)
+    StratagemTileViewModel? ProblemStratagem = null,
+    ProblemReferenceViewModel? Reference = null)
 {
     public bool IsProblem => ProblemText is not null;
 
@@ -29,6 +32,47 @@ public sealed record HistoryEntryViewModel(
     public bool HasProblemImage => ProblemImage is not null;
 
     public bool HasProblemStratagem => ProblemStratagem is not null;
+
+    public bool HasReference => Reference is not null;
+}
+
+/// <summary>
+/// "This is …" of an unrecognized slot: stores the slot image as reference image of the chosen
+/// stratagem, so the recognition knows how the game draws it.
+/// </summary>
+public sealed partial class ProblemReferenceViewModel(StratagemReferenceStore store, string imagePath, ReferenceSlot slot, IReadOnlyList<Choice<string>> choices)
+    : ObservableObject
+{
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AssignCommand))]
+    private Choice<string>? _selected;
+
+    [ObservableProperty]
+    private string? _result;
+
+    public IReadOnlyList<Choice<string>> Choices { get; } = choices;
+
+    [RelayCommand(CanExecute = nameof(CanAssign))]
+    private void Assign()
+    {
+        if (Selected is not { } choice)
+        {
+            return;
+        }
+
+        try
+        {
+            Result = store.Add(imagePath, choice.Value, slot)
+                ? $"Saved as reference image of {choice.Label} – the recognition uses it from now on."
+                : $"This image is already a reference image of {choice.Label}.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Result = $"Not saved: {ex.Message}";
+        }
+    }
+
+    private bool CanAssign() => Selected is not null;
 }
 
 /// <summary>
@@ -42,14 +86,17 @@ public sealed partial class HistoryViewModel : ObservableObject, IDisposable
     private readonly StratagemCatalog _catalog;
     private readonly StratagemImages _images;
     private readonly SettingsStore? _settings;
+    private readonly StratagemReferenceStore? _references;
 
-    public HistoryViewModel(LoadoutHistory? history, LoadoutPipeline? pipeline, StratagemCatalog catalog, StratagemImages images, SettingsStore? settings = null)
+    public HistoryViewModel(LoadoutHistory? history, LoadoutPipeline? pipeline, StratagemCatalog catalog, StratagemImages images, SettingsStore? settings = null,
+        StratagemReferenceStore? references = null)
     {
         _history = history;
         _pipeline = pipeline;
         _catalog = catalog;
         _images = images;
         _settings = settings;
+        _references = references;
         if (_pipeline is not null)
         {
             _pipeline.LoadoutLocked += OnChanged;
@@ -150,7 +197,26 @@ public sealed partial class HistoryViewModel : ObservableObject, IDisposable
         string.Empty,
         problem.Message,
         LoadImage(problem.ImagePath),
-        problem.StratagemId is { } id ? new StratagemTileViewModel(id, _catalog.Find(id)?.Name ?? id, _images.Get(id)) : null);
+        problem.StratagemId is { } id ? new StratagemTileViewModel(id, _catalog.Find(id)?.Name ?? id, _images.Get(id)) : null,
+        ToReference(problem));
+
+    /// <summary>Unrecognized slot with its image: the user can say which stratagem it is.</summary>
+    private ProblemReferenceViewModel? ToReference(RecognitionProblem problem)
+    {
+        if (_references is null || problem.Kind != ProblemKind.UnrecognizedStratagem || problem.ImagePath is not { } path || !File.Exists(path)
+            || StratagemReferenceStore.SlotOfProblemImage(path) is not { } slot)
+        {
+            return null;
+        }
+
+        // Player slots only offer player stratagems, mission slots only mission stratagems.
+        var choices = _catalog.Entries
+            .Where(e => (e.Category == "Mission") == (slot == ReferenceSlot.Mission))
+            .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(e => new Choice<string>(e.Id, e.Name))
+            .ToList();
+        return new ProblemReferenceViewModel(_references, path, slot, choices);
+    }
 
     private static Bitmap? LoadImage(string? path)
     {
