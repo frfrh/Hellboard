@@ -3,7 +3,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="HellboardCompanion.App.Views.ToastWindow"
-        SystemDecorations="None"
+        WindowDecorations="None"
         Topmost="True"
         ShowActivated="False"
         ShowInTaskbar="False"

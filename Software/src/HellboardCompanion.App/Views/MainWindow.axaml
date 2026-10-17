@@ -388,7 +388,7 @@
 
               <TextBlock Grid.Row="1" Text="Port" VerticalAlignment="Center" />
               <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                <TextBox Text="{Binding PortText}" Width="180" Watermark="automatic" />
+                <TextBox Text="{Binding PortText}" Width="180" PlaceholderText="automatic" />
                 <Button Content="Apply" Command="{Binding ApplyPortCommand}" />
               </StackPanel>
             </Grid>
