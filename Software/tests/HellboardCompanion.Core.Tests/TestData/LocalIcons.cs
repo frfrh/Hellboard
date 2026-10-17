@@ -29,7 +29,7 @@ public static class LocalIcons
         {
             using var http = new HttpClient();
             http.DefaultRequestHeaders.UserAgent.ParseAdd("HellboardCompanion-Tests");
-            new StratagemIconDownloader(http).DownloadMissingAsync(Directory).GetAwaiter().GetResult();
+            new StratagemIconDownloader(http).UpdateAsync(Directory).GetAwaiter().GetResult();   // at most once a day
         }
         catch (Exception) when (System.IO.Directory.Exists(Directory))
         {

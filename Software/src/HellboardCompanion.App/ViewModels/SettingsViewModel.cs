@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HellboardCompanion.App.Services;
+using HellboardCompanion.Core.Catalog;
 using HellboardCompanion.Core.Configuration;
 using HellboardCompanion.Core.Hellboard;
 using HellboardCompanion.Core.Pipeline;
@@ -25,6 +26,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     private readonly StratagemImages _images;
     private readonly ManualTriggerService? _trigger;
     private readonly IAutostart? _autostart;
+    private readonly StratagemIconStore? _iconStore;
 
     [ObservableProperty]
     private string _hotkeyText;
@@ -49,8 +51,15 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         StratagemCatalog catalog,
         StratagemImages images,
         ManualTriggerService? trigger,
-        IAutostart? autostart)
+        IAutostart? autostart,
+        StratagemIconStore? iconStore = null)
     {
+        _iconStore = iconStore;
+        if (_iconStore is not null)
+        {
+            _iconStore.UpdateFinished += OnIconUpdateFinished;
+        }
+
         _store = store;
         _settings = store.Settings;
         _catalog = catalog;
@@ -148,8 +157,61 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 
     public bool AutostartAvailable => _autostart is not null;
 
+    // ---- stratagem icons (implementation plan §6.11) -----------------------------------------
+
+    /// <summary>Number of icons, last check and its result.</summary>
+    public string IconStatus => _iconStore is null
+        ? "–"
+        : $"{_iconStore.Icons.Count} icons"
+          + (_iconStore.LastResult?.CheckedAt is { } at ? $", checked {at.LocalDateTime:g}" : string.Empty)
+          + (_iconStore.LastError is { } error ? $" – last check failed: {error}"
+             : _iconStore.LastResult is { Checked: true } result ? $" – {result.Summary}" : string.Empty);
+
+    /// <summary>Icons in the repository whose stratagem has no input code yet (new stratagems).</summary>
+    public string? IconsWithoutCode => _iconStore?.WithoutCode(_catalog) is { Count: > 0 } icons
+        ? $"No input code known yet for: {string.Join(", ", icons.Select(i => i.Name))}. "
+          + "They are recognized, but cannot be sent to the Hellboard until their code is added to "
+          + "%APPDATA%\\HellboardCompanion\\stratagems.json (or a newer release)."
+        : null;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CheckIconsCommand))]
+    private bool _isCheckingIcons;
+
+    [RelayCommand(CanExecute = nameof(CanCheckIcons))]
+    private async Task CheckIconsAsync()
+    {
+        if (_iconStore is null)
+        {
+            return;
+        }
+
+        IsCheckingIcons = true;
+        try
+        {
+            await _iconStore.UpdateAsync(force: true);
+        }
+        finally
+        {
+            IsCheckingIcons = false;
+        }
+    }
+
+    private bool CanCheckIcons() => _iconStore is not null && !IsCheckingIcons;
+
+    private void OnIconUpdateFinished(object? sender, EventArgs e) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+    {
+        OnPropertyChanged(nameof(IconStatus));
+        OnPropertyChanged(nameof(IconsWithoutCode));
+    });
+
     public void Dispose()
     {
+        if (_iconStore is not null)
+        {
+            _iconStore.UpdateFinished -= OnIconUpdateFinished;
+        }
+
         if (_trigger is not null)
         {
             _trigger.HotkeyChanged -= OnHotkeyChanged;

@@ -9,11 +9,21 @@ using Svg.Skia;
 namespace HellboardCompanion.App.Services;
 
 /// <summary>Stratagem icons for the user interface, rendered from the downloaded SVGs and cached.</summary>
-public sealed class StratagemImages(StratagemIconStore? iconStore)
+public sealed class StratagemImages
 {
     private const int Size = 96;
 
+    private readonly StratagemIconStore? iconStore;
     private readonly ConcurrentDictionary<string, Bitmap?> _cache = new();
+
+    public StratagemImages(StratagemIconStore? iconStore)
+    {
+        this.iconStore = iconStore;
+        if (iconStore is not null)
+        {
+            iconStore.IconsChanged += (_, _) => _cache.Clear();   // icons were added or updated (§6.11)
+        }
+    }
 
     /// <summary>The icon of a stratagem, or <c>null</c> if no icon is available (yet).</summary>
     public Bitmap? Get(string? id)

@@ -47,7 +47,10 @@ internal static class Program
         var log = services.GetRequiredService<ILoggerFactory>().CreateLogger("HellboardCompanion");
         log.LogInformation("{Product} {Version} starting", AppInfo.ProductName, AppInfo.Version);
         services.GetRequiredService<IGameLocator>().Start();
-        _ = services.GetRequiredService<StratagemIconStore>().UpdateAsync();
+        var iconStore = services.GetRequiredService<StratagemIconStore>();
+        _ = iconStore.UpdateAsync();
+        // Long-running sessions: look again every 6 h; the store itself checks the repository at most once a day.
+        using var iconTimer = new Timer(_ => _ = iconStore.UpdateAsync(), null, TimeSpan.FromHours(6), TimeSpan.FromHours(6));
         var pipeline = services.GetRequiredService<LoadoutPipeline>();
         var hellboard = services.GetRequiredService<HellboardLink>();
         pipeline.LoadoutLocked += (_, loadout) => hellboard.Submit(loadout);
