@@ -15,8 +15,17 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace HellboardCompanion.App.ViewModels;
 
 /// <summary>One stratagem in the editor list.</summary>
-public sealed record StratagemEditorItem(string Id, string Name, string Category, string? Code, string Source, Bitmap? Icon, string? SvgPath)
+public sealed record StratagemEditorItem(string Id, string Name, string Category, string? Code, string Source, Bitmap? Icon, string? SvgPath, int ReferenceCount = 0)
 {
+    public bool HasReference => ReferenceCount > 0;
+
+    /// <summary>Origin of the entry for the list, e.g. "Built-in, with reference".</summary>
+    public string SourceText => HasReference ? $"{Source}, with reference" : Source;
+
+    public string ReferenceText => ReferenceCount == 0
+        ? "None. If the game shows this stratagem differently from its icon, assign an unrecognized slot to it in the History tab."
+        : $"{ReferenceCount} slot image(s) from the game – the recognition uses them instead of the icon.";
+
     public string CodeArrows => StratagemEditorViewModel.ToArrows(Code) is { Length: > 0 } arrows ? arrows : "no code yet";
 
     public bool HasCode => !string.IsNullOrEmpty(Code);
@@ -34,6 +43,7 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
     private readonly StratagemCatalog _catalog;
     private readonly StratagemIconStore? _icons;
     private readonly StratagemImages _images;
+    private readonly StratagemReferenceStore? _references;
     private readonly ILogger _logger;
     private readonly StratagemCatalog _builtIn = StratagemCatalog.LoadSeed();
     private List<StratagemEditorItem> _all = [];
@@ -45,9 +55,13 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
     private bool _onlyWithoutCode;
 
     [ObservableProperty]
+    private bool _onlyWithReference;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     [NotifyCanExecuteChangedFor(nameof(ResetCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveReferencesCommand))]
     private StratagemEditorItem? _selected;
 
     [ObservableProperty]
@@ -67,16 +81,23 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
     [ObservableProperty]
     private string? _result;
 
-    public StratagemEditorViewModel(StratagemCatalog catalog, StratagemIconStore? icons, StratagemImages images, ILogger? logger = null)
+    public StratagemEditorViewModel(StratagemCatalog catalog, StratagemIconStore? icons, StratagemImages images, ILogger? logger = null,
+        StratagemReferenceStore? references = null)
     {
         _catalog = catalog;
         _icons = icons;
         _images = images;
+        _references = references;
         _logger = logger ?? NullLogger.Instance;
         _catalog.Changed += OnCatalogChanged;
         if (_icons is not null)
         {
             _icons.IconsChanged += OnCatalogChanged;
+        }
+
+        if (_references is not null)
+        {
+            _references.Changed += OnCatalogChanged;
         }
 
         Rebuild();
@@ -107,7 +128,7 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
 
     public string? UserFile => _catalog.UserFilePath;
 
-    public string Summary => $"{_all.Count} stratagems, {_all.Count(i => !i.HasCode)} without code, {_catalog.UserIds.Count} in your list";
+    public string Summary => $"{_all.Count} stratagems, {_all.Count(i => !i.HasCode)} without code, {_all.Count(i => i.HasReference)} with reference, {_catalog.UserIds.Count} in your list";
 
     // ---- code entry -----------------------------------------------------------------------------
 
@@ -202,6 +223,27 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
 
     private bool CanReset() => Selected is not null && _catalog.UserIds.Contains(Selected.Id);
 
+    [RelayCommand(CanExecute = nameof(CanRemoveReferences))]
+    private void RemoveReferences()
+    {
+        if (Selected is not { } item || _references is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _references.Remove(item.Id);   // → Changed → Rebuild, the recognizer is rebuilt
+            Result = $"{item.Name}: reference images removed.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Result = $"Not removed: {ex.Message}";
+        }
+    }
+
+    private bool CanRemoveReferences() => Selected is { ReferenceCount: > 0 } && _references is not null;
+
     /// <summary>Writes your list to <paramref name="target"/> (to share it).</summary>
     public void ExportTo(string target)
     {
@@ -254,6 +296,11 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
         {
             _icons.IconsChanged -= OnCatalogChanged;
         }
+
+        if (_references is not null)
+        {
+            _references.Changed -= OnCatalogChanged;
+        }
     }
 
     public static string ToArrows(string? code) => string.Concat((code ?? string.Empty).Select(c => c switch
@@ -268,6 +315,8 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
     partial void OnSearchTextChanged(string value) => Filter();
 
     partial void OnOnlyWithoutCodeChanged(bool value) => Filter();
+
+    partial void OnOnlyWithReferenceChanged(bool value) => Filter();
 
     partial void OnSelectedChanged(StratagemEditorItem? value)
     {
@@ -297,11 +346,15 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
     {
         var icons = _icons?.Icons ?? [];
         var items = _catalog.Entries.Select(e => new StratagemEditorItem(
-            e.Id, e.Name, e.Category, e.Sequence, SourceOf(e.Id), _images.Get(e.Id), icons.FirstOrDefault(i => i.Id == e.Id)?.SvgPath)).ToList();
+            e.Id, e.Name, e.Category, e.Sequence, SourceOf(e.Id), _images.Get(e.Id), icons.FirstOrDefault(i => i.Id == e.Id)?.SvgPath,
+            _references?.Count(e.Id) ?? 0)).ToList();
         foreach (var icon in icons.Where(i => _catalog.Find(i.Id) is null))
         {
-            items.Add(new StratagemEditorItem(icon.Id, icon.Name, GuessCategory(icon.SvgPath), null, "New icon – no code yet", _images.Get(icon.Id), icon.SvgPath));
+            items.Add(new StratagemEditorItem(icon.Id, icon.Name, GuessCategory(icon.SvgPath), null, "New icon – no code yet", _images.Get(icon.Id), icon.SvgPath,
+                _references?.Count(icon.Id) ?? 0));
         }
+
+        RemoveReferencesCommand.NotifyCanExecuteChanged();
 
         _all = items.OrderBy(i => i.HasCode).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList();
         OnPropertyChanged(nameof(Categories));
@@ -321,7 +374,7 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
     {
         var search = SearchText.Trim();
         Items.Clear();
-        foreach (var item in _all.Where(i => (!OnlyWithoutCode || !i.HasCode)
+        foreach (var item in _all.Where(i => (!OnlyWithoutCode || !i.HasCode) && (!OnlyWithReference || i.HasReference)
                      && (search.Length == 0 || i.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || i.Id.Contains(search, StringComparison.OrdinalIgnoreCase))))
         {
             Items.Add(item);

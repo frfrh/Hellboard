@@ -96,6 +96,72 @@ public sealed class StratagemSlotClassifierTests(ITestOutputHelper output)
         }
     }
 
+    /// <summary>
+    /// A reference image (another capture of the same icon, assigned in the history) makes an icon
+    /// recognizable that the game draws differently from its SVG.
+    /// </summary>
+    [Theory]
+    [InlineData("slot-expendable_anti_tank-badge.png", "ref-expendable_anti_tank.png", "expendable_anti_tank")]
+    [InlineData("slot-eat_411-badge.png", "ref-eat_411.png", "eat_411")]
+    public void Recognizes_a_slot_with_a_reference_image(string file, string reference, string expected)
+    {
+        var path = Path.Combine(LocalScenes.TestDataDirectory, "local", file);
+        var referencePath = Path.Combine(LocalScenes.TestDataDirectory, "local", reference);
+        Assert.SkipUnless(File.Exists(path) && File.Exists(referencePath), $"Local test images '{file}' / '{reference}' are not available.");
+        var missionOnly = StratagemCatalog.LoadSeed().MissionOnlyIds();
+        using var classifier = new StratagemSlotClassifier(LocalIcons.All.Where(icon => !missionOnly.Contains(icon.Id)), SlotStyle.PlayerSlot,
+            references: [new StratagemReference(expected, ReferenceSlot.Player, referencePath)]);
+        var frame = FrameFile.Load(path);
+        var (offset, size) = StratagemReference.SlotIn(frame.Width);
+
+        var result = classifier.Classify(frame, new PixelRect(offset, offset, size, size));
+
+        output.WriteLine(result.ToString());
+        result.State.Should().Be(SlotState.Recognized);
+        result.StratagemId.Should().Be(expected);
+    }
+
+    /// <summary>
+    /// The SVG of Bastion MK XVI shows the Maelstrom (icon repository). A reference image of the real
+    /// Bastion replaces it, so Maelstrom is no longer taken for Bastion.
+    /// </summary>
+    [Fact]
+    public void A_reference_image_replaces_a_wrong_svg()
+    {
+        var bastion = Path.Combine(LocalScenes.TestDataDirectory, "local", "slot-bastion_mk_xvi.png");
+        var reference = Path.Combine(LocalScenes.TestDataDirectory, "local", "ref-bastion_mk_xvi.png");
+        Assert.SkipUnless(File.Exists(bastion) && File.Exists(reference), "Local test images of Bastion MK XVI are not available.");
+        var missionOnly = StratagemCatalog.LoadSeed().MissionOnlyIds();
+        using var classifier = new StratagemSlotClassifier(LocalIcons.All.Where(icon => !missionOnly.Contains(icon.Id)), SlotStyle.PlayerSlot,
+            references: [new StratagemReference("bastion_mk_xvi", ReferenceSlot.Player, reference)]);
+
+        // Maelstrom as drawn by its SVG on a player slot (slot 94 px, icon 87.5 %, saved with a margin of 1/8).
+        var maelstrom = Path.Combine(Directory.CreateTempSubdirectory("hellboard-maelstrom").FullName, "maelstrom.png");
+        using (var image = SvgRenderer.Render(LocalIcons.All.First(i => i.Id == "td_110_maelstrom").SvgPath, 116, 82, SlotStyle.PlayerSlot.Background))
+        {
+            OpenCvSharp.Cv2.ImWrite(maelstrom, image);
+        }
+
+        string? Classify(string path)
+        {
+            var frame = FrameFile.Load(path);
+            var (offset, size) = StratagemReference.SlotIn(frame.Width);
+            var result = classifier.Classify(frame, new PixelRect(offset, offset, size, size));
+            output.WriteLine($"{Path.GetFileName(path)}: {result}");
+            return result.State == SlotState.Recognized ? result.StratagemId : null;
+        }
+
+        try
+        {
+            Classify(bastion).Should().Be("bastion_mk_xvi");
+            Classify(maelstrom).Should().Be("td_110_maelstrom");
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(maelstrom)!, recursive: true);
+        }
+    }
+
     private static readonly Lazy<StratagemSlotClassifier> MissionClassifier =
         new(() => new StratagemSlotClassifier(LocalIcons.All, SlotStyle.MissionSlot));
 

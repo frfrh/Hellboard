@@ -63,13 +63,17 @@ public sealed class LoadoutRecognizer : IDisposable
 
     /// <param name="missionOnly">Ids that only appear in mission slots (e.g. SEAF Artillery); they are
     /// not compared in the player slots, where some of them look almost like player stratagems.</param>
-    public LoadoutRecognizer(LoadoutLayout layout, IReadOnlyList<StratagemIcon> icons, IReadOnlySet<string>? missionOnly = null)
+    /// <param name="references">Reference images assigned by the user (StratagemReferenceStore).</param>
+    public LoadoutRecognizer(LoadoutLayout layout, IReadOnlyList<StratagemIcon> icons, IReadOnlySet<string>? missionOnly = null,
+        IReadOnlyList<StratagemReference>? references = null)
     {
         _layout = layout;
         _screenDetector = new LoadoutScreenDetector(layout);
         _readyDetector = new ReadyStatusDetector(layout);
-        _playerClassifier = new StratagemSlotClassifier(icons.Where(icon => missionOnly?.Contains(icon.Id) != true), SlotStyle.PlayerSlot);
-        _missionClassifier = new StratagemSlotClassifier(icons, SlotStyle.MissionSlot);
+        _playerClassifier = new StratagemSlotClassifier(icons.Where(icon => missionOnly?.Contains(icon.Id) != true), SlotStyle.PlayerSlot,
+            references: references?.Where(r => r.Slot == ReferenceSlot.Player && missionOnly?.Contains(r.Id) != true));
+        _missionClassifier = new StratagemSlotClassifier(icons, SlotStyle.MissionSlot,
+            references: references?.Where(r => r.Slot == ReferenceSlot.Mission));
     }
 
     /// <param name="frame">Capture of the game's client area.</param>

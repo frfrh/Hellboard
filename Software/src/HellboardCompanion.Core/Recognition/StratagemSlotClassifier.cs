@@ -84,15 +84,18 @@ public sealed class StratagemSlotClassifier : IDisposable
     /// <summary>Mean absolute pixel difference below which a slot counts as unchanged.</summary>
     private const double UnchangedThreshold = 3.0;
 
-    private readonly Dictionary<string, Mat> _templates;
-    private readonly Dictionary<string, Mat> _coarseTemplates;
+    private readonly Dictionary<string, Mat[]> _templates;   // per stratagem: its reference images, otherwise its SVG
+    private readonly Dictionary<string, Mat[]> _coarseTemplates;
     private readonly Dictionary<string, Mat[]> _scaledTemplates;
     private readonly ConcurrentDictionary<PixelRect, (Mat Canonical, SlotResult Result)> _cache = new();
     private readonly int _inset;
     private readonly double _minScore;
     private readonly double _minMargin;
 
-    public StratagemSlotClassifier(IEnumerable<StratagemIcon> icons, SlotStyle style, double minScore = 0.7, double minMargin = 0.05)
+    /// <param name="references">Slot images from the game assigned by the user (same slot kind as
+    /// <paramref name="style"/>); they are compared instead of the SVG of their stratagem.</param>
+    public StratagemSlotClassifier(IEnumerable<StratagemIcon> icons, SlotStyle style, double minScore = 0.7, double minMargin = 0.05,
+        IEnumerable<StratagemReference>? references = null)
     {
         _minScore = minScore;
         _minMargin = minMargin;
@@ -105,13 +108,45 @@ public sealed class StratagemSlotClassifier : IDisposable
             return new Mat(full, content).Clone();
         }
 
-        var unique = icons.GroupBy(icon => icon.Id).ToDictionary(g => g.Key, g => g.First().SvgPath);
-        _templates = unique.ToDictionary(i => i.Key, i => Render(i.Value, iconSize));
-        _coarseTemplates = _templates.ToDictionary(t => t.Key, t => Half(t.Value));
+        // Reference images replace the SVG of their stratagem: they show how the game really draws it, and a
+        // wrong SVG (Bastion MK XVI shows the Maelstrom) would otherwise still compete with the right stratagem.
+        var images = (references ?? [])
+            .Select(r => (r.Id, Template: LoadReference(r.Path, content)))
+            .Where(r => r.Template is not null)
+            .ToLookup(r => r.Id, r => r.Template!);
+        var unique = icons.GroupBy(icon => icon.Id).Where(g => !images.Contains(g.Key)).ToDictionary(g => g.Key, g => g.First().SvgPath);
+        _templates = unique.ToDictionary(i => i.Key, i => new[] { Render(i.Value, iconSize) });
+        foreach (var group in images)
+        {
+            _templates[group.Key] = group.ToArray();
+        }
+
+        _coarseTemplates = _templates.ToDictionary(t => t.Key, t => t.Value.Select(Half).ToArray());
         _scaledTemplates = unique.ToDictionary(i => i.Key, i => SizeTolerances.Select(s => Render(i.Value, (int)Math.Round(iconSize * s))).ToArray());
     }
 
     public int TemplateCount => _templates.Count;
+
+    /// <summary>The slot content of a saved reference image at canonical size, <c>null</c> if it cannot be read.</summary>
+    private static Mat? LoadReference(string path, Rect content)
+    {
+        using var image = Cv2.ImRead(path, ImreadModes.Color);
+        if (image.Empty())
+        {
+            return null;
+        }
+
+        var (offset, size) = StratagemReference.SlotIn(image.Width);
+        if (offset + size > image.Height)
+        {
+            return null;
+        }
+
+        using var slot = new Mat(image, new Rect(offset, offset, size, size));
+        using var canonical = new Mat();
+        Cv2.Resize(slot, canonical, new Size(CanonicalSize, CanonicalSize), interpolation: size > CanonicalSize ? InterpolationFlags.Area : InterpolationFlags.Cubic);
+        return new Mat(canonical, content).Clone();
+    }
 
     /// <param name="frame">Capture of the game's client area.</param>
     /// <param name="slot">Slot interior in frame coordinates.</param>
@@ -161,14 +196,15 @@ public sealed class StratagemSlotClassifier : IDisposable
 
         // Coarse pass at half resolution over all templates, fine pass with full shift search on the best few.
         using var coarseSearchArea = Half(searchArea);
+        // A stratagem counts with its best template (several reference images, or the SVG).
         var ids = _coarseTemplates
-            .Select(t => (Id: t.Key, Score: Match(coarseSearchArea, t.Value)))
+            .Select(t => (Id: t.Key, Score: t.Value.Max(template => Match(coarseSearchArea, template))))
             .OrderByDescending(r => r.Score)
             .Take(FineCandidates)
             .Select(r => r.Id)
             .ToList();
         var ranking = ids
-            .Select(id => BestMatch(searchArea, id, _templates[id]))
+            .Select(id => _templates[id].Select(template => BestMatch(searchArea, id, template)).MaxBy(c => c.Score)!)
             .OrderByDescending(c => c.Score)
             .ToList();
         if (Decide(searchArea, ranking) is { } result)
@@ -178,7 +214,7 @@ public sealed class StratagemSlotClassifier : IDisposable
 
         // Second pass: the game draws some icons slightly larger or smaller than their SVG (Warp Pack: 5 % larger).
         ranking = ranking
-            .Select(plain => _scaledTemplates[plain.Id].Select(template => BestMatch(searchArea, plain.Id, template)).Append(plain).MaxBy(c => c.Score)!)
+            .Select(plain => _scaledTemplates.GetValueOrDefault(plain.Id, []).Select(template => BestMatch(searchArea, plain.Id, template)).Append(plain).MaxBy(c => c.Score)!)
             .OrderByDescending(c => c.Score)
             .ToList();
         if (Decide(searchArea, ranking) is { } scaled)
@@ -280,7 +316,7 @@ public sealed class StratagemSlotClassifier : IDisposable
 
     public void Dispose()
     {
-        foreach (var template in _templates.Values.Concat(_coarseTemplates.Values).Concat(_scaledTemplates.Values.SelectMany(t => t)))
+        foreach (var template in _templates.Values.Concat(_coarseTemplates.Values).Concat(_scaledTemplates.Values).SelectMany(t => t))
         {
             template.Dispose();
         }
