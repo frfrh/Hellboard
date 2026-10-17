@@ -1,5 +1,6 @@
 # Hellboard application: button handling, display, LEDs and the protocol to the Companion
-# (decisions F6, F11, F13). The initial assignment comes from config.json / saved.json, the
+# (decisions F6, F11, F13, F14-F16; button behavior, key timings, screen saver and scrolling text
+# based on the branch changesMartin by JoeGurt). The initial assignment comes from config.json / saved.json, the
 # Companion replaces loadout and configuration at runtime (RAM only until it asks to save).
 
 import json
@@ -10,10 +11,12 @@ from machine import Pin
 import config
 import log
 import stratagems
+from buttons import Button, PRESS, HOLD, RELEASE
 from display import Display
 from hid import Hid
 from leds import Leds
 from protocol import Protocol, ProtocolError, VERSION as PROTOCOL_VERSION, send
+
 
 def _firmware_version():
     """version.json is written by the installer from the version in Firmware/manifest.json."""
@@ -34,8 +37,9 @@ FIXED = ('1_1', '1_2')
 LOADOUT = ('2_1', '2_2', '2_3', '2_4')
 CYCLE = '1_4'
 MULTI = '1_3'
-CYCLE_DEBOUNCE_MS = 300
-LOOP_MS = 50
+LOOP_MS = 10                # F14: buttons are polled every 10 ms
+CONFIRM_MS = 150            # all LEDs white after a key press
+LOGO_MS = 2000              # F16: start-up logo
 MAX_MISSION = 16
 LOG_LEVELS = ('debug', 'info', 'warn', 'error')
 
@@ -102,10 +106,15 @@ class App:
         self.display = Display()
         if not self.display.ready:
             log.warn('Display not available: %s' % self.display.error)
-        self.pins = {}
+        self.buttons = {}
         for name in PINS:
-            self.pins[name] = Pin(PINS[name], Pin.IN, Pin.PULL_UP)
-        self.last_cycle = time.ticks_ms()
+            self.buttons[name] = Button(Pin(PINS[name], Pin.IN, Pin.PULL_UP))
+        now = time.ticks_ms()
+        self.last_activity = now     # F15: button press or transfer; the screen saver starts after that
+        self.cycle_waking = False    # the current press of the cycle button only woke the display
+        self.confirm_until = now
+        self.display.logo(FIRMWARE_VERSION)
+        self.logo_until = time.ticks_add(now, LOGO_MS)
         self.last_request = None
         self.message = None
         self.message_since = 0
@@ -123,9 +132,9 @@ class App:
         while self.running:
             try:
                 self.protocol.poll()
-                pressed = self.handle_buttons()
+                self.handle_buttons()
                 self.draw()
-                self.show_leds(pressed)
+                self.show_leds()
             except Exception as e:
                 log.error('Main loop: %s' % e)
                 self.hid.release_all()
@@ -140,23 +149,40 @@ class App:
     # ---- buttons, display, LEDs --------------------------------------------------------------
 
     def handle_buttons(self):
-        pressed = False
+        """F14: a stratagem button sends once per press; the cycle button moves forward on a short
+        press and backward on a long press (repeated while held). While the screen saver is active,
+        a stratagem button still sends, the cycle button only wakes the display."""
+        now = time.ticks_ms()
         for button in ORDER:
-            if self.pins[button].value():
-                continue        # pull-up: 0 = pressed
+            event = self.buttons[button].poll(now)
+            if event is None:
+                continue
+            asleep = self.asleep(now)
+            self.last_activity = now
             if button == CYCLE:
-                if time.ticks_diff(time.ticks_ms(), self.last_cycle) > CYCLE_DEBOUNCE_MS and self.multi:
-                    self.last_cycle = time.ticks_ms()
-                    self.index = (self.index + 1) % len(self.multi)
+                if event == PRESS:
+                    self.cycle_waking = asleep
+                elif not self.cycle_waking and self.multi:
+                    step = 1 if event == RELEASE else -1
+                    self.index = (self.index + step) % len(self.multi)
                     log.info('Multi-function button: %s' % self.multi[self.index].name)
-                    pressed = True
-            else:
+                    self.confirm(now)
+            elif event == PRESS:
                 stratagem = self.stratagem(button)
                 if stratagem and stratagem.code:
                     log.debug('Sending %s' % stratagem)
+                    self.confirm(now)
+                    self.show_leds()
                     self.hid.send(stratagem.code)
-                    pressed = True
-        return pressed
+
+    def confirm(self, now):
+        self.confirm_until = time.ticks_add(now, CONFIRM_MS)
+
+    def asleep(self, now=None):
+        """F15: screen saver after screenSaverSeconds without activity (0 = off)."""
+        seconds = self.config['screenSaverSeconds']
+        now = time.ticks_ms() if now is None else now
+        return seconds > 0 and time.ticks_diff(now, self.last_activity) > seconds * 1000
 
     def color(self, button):
         if button == CYCLE:
@@ -172,12 +198,13 @@ class App:
         now = time.ticks_ms()
         self.message = message
         self.message_since = now
+        self.last_activity = now        # wakes the display, so the message can be read
         if flash:
             self.flash = flash
             self.flash_since = now
 
-    def show_leds(self, pressed):
-        if pressed:
+    def show_leds(self):
+        if time.ticks_diff(self.confirm_until, time.ticks_ms()) > 0:
             self.leds.confirm(len(ORDER))
             return
         if self.flash and time.ticks_diff(time.ticks_ms(), self.flash_since) < FLASH_STEP_MS * FLASH_STEPS:
@@ -198,6 +225,13 @@ class App:
         return SEPARATOR[:-2] + 'PC' if self.pc_connected() else SEPARATOR
 
     def draw(self):
+        now = time.ticks_ms()
+        if time.ticks_diff(self.logo_until, now) > 0:
+            return
+        if self.asleep(now):
+            self.display.blank()
+            return
+
         def name(button):
             stratagem = self.stratagem(button)
             return stratagem.name if stratagem else '-'
@@ -209,7 +243,7 @@ class App:
             (34, name('2_2')),
             (44, name('2_3')),
             (54, name('2_4')),
-        ))
+        ), self.config['scrollText'], now)
 
     # ---- protocol (hellboard-protocol.md section 4) --------------------------------------------
 
@@ -292,11 +326,19 @@ class App:
             checks = (
                 ('modifierKey', lambda v: isinstance(v, int) and 4 <= v <= 231),
                 ('modifierToggle', lambda v: isinstance(v, bool)),
-                ('keyDelayMs', lambda v: isinstance(v, int) and 20 <= v <= 200),
+                ('menuDelayMs', lambda v: isinstance(v, int) and 0 <= v <= 1000),
+                ('keyPressMs', lambda v: isinstance(v, int) and 20 <= v <= 200),
+                ('keyReleaseMs', lambda v: isinstance(v, int) and 20 <= v <= 200),
                 ('directionKeys', lambda v: v in ('arrows', 'wasd')),
                 ('brightness', lambda v: isinstance(v, int) and 0 <= v <= 255),
                 ('logLevel', lambda v: v in LOG_LEVELS),
+                ('screenSaverSeconds', lambda v: isinstance(v, int) and 0 <= v <= 3600),
+                ('scrollText', lambda v: v in ('off', 'long', 'loop')),
             )
+            if 'keyDelayMs' in changes:     # Companion 0.3: one delay for pressing and releasing
+                changes = dict(changes)
+                changes.setdefault('keyPressMs', changes['keyDelayMs'])
+                changes.setdefault('keyReleaseMs', changes['keyDelayMs'])
             for key, valid in checks:
                 if key in changes and not valid(changes[key]):
                     raise ValueError('invalid %s' % key)

@@ -23,7 +23,8 @@ public sealed class SimulatedHellboard : IHellboardConnection
             ["1_1"] = new JsonObject { ["id"] = "reinforce", ["name"] = "Reinforce", ["color"] = "yellow", ["sequence"] = "UDRLU" },
             ["1_2"] = new JsonObject { ["id"] = "resupply", ["name"] = "Resupply", ["color"] = "yellow", ["sequence"] = "DDUR" },
         },
-        ["modifierKey"] = 6, ["modifierToggle"] = false, ["keyDelayMs"] = 50, ["directionKeys"] = "arrows", ["brightness"] = 80, ["logLevel"] = "info",
+        ["modifierKey"] = 6, ["modifierToggle"] = false, ["menuDelayMs"] = 50, ["keyPressMs"] = 50, ["keyReleaseMs"] = 50, ["directionKeys"] = "arrows", ["brightness"] = 80,
+        ["logLevel"] = "info", ["screenSaverSeconds"] = 0, ["scrollText"] = "long",
     };
 
     private JsonObject _savedConfig = new();
@@ -100,6 +101,11 @@ public sealed class SimulatedHellboard : IHellboardConnection
         }
 
         var id = request["id"]?.GetValue<int>();
+        if (request["cmd"]?.GetValue<string>() == "ping")
+        {
+            _answered.Clear();   // like the firmware: a connection starts with ping, older answers are forgotten
+        }
+
         if (id is { } known && _answered.TryGetValue(known, out var repeated))
         {
             return repeated;   // idempotent: same id → same answer

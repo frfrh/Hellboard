@@ -1,0 +1,2 @@
+# CPython caches of Firmware/tests (the board runs MicroPython)
+__pycache__/

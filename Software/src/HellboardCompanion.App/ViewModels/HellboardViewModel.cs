@@ -183,16 +183,72 @@ public sealed partial class HellboardViewModel : ObservableObject, IDisposable
 
     public decimal MaxKeyDelay => BoardConfiguration.MaxKeyDelayMs;
 
-    public decimal? KeyDelayMs
+    public decimal MaxMenuDelay => BoardConfiguration.MaxMenuDelayMs;
+
+    public decimal? MenuDelayMs
     {
-        get => _board.KeyDelayMs;
+        get => _board.MenuDelayMs;
         set
         {
             if (value is { } delay)
             {
-                Change(() => _board.KeyDelayMs = (int)Math.Clamp(delay, MinKeyDelay, MaxKeyDelay));
+                Change(() => _board.MenuDelayMs = (int)Math.Clamp(delay, 0, MaxMenuDelay));
             }
         }
+    }
+
+    public decimal? KeyPressMs
+    {
+        get => _board.KeyPressMs;
+        set
+        {
+            if (value is { } delay)
+            {
+                Change(() => _board.KeyPressMs = (int)Math.Clamp(delay, MinKeyDelay, MaxKeyDelay));
+            }
+        }
+    }
+
+    public decimal? KeyReleaseMs
+    {
+        get => _board.KeyReleaseMs;
+        set
+        {
+            if (value is { } delay)
+            {
+                Change(() => _board.KeyReleaseMs = (int)Math.Clamp(delay, MinKeyDelay, MaxKeyDelay));
+            }
+        }
+    }
+
+    public IReadOnlyList<Choice<int>> ScreenSaverChoices { get; } =
+    [
+        new(0, "Off"),
+        new(30, "After 30 seconds"),
+        new(60, "After 1 minute"),
+        new(120, "After 2 minutes"),
+        new(300, "After 5 minutes"),
+        new(600, "After 10 minutes"),
+        new(1800, "After 30 minutes"),
+    ];
+
+    public Choice<int> ScreenSaver
+    {
+        get => ScreenSaverChoices.FirstOrDefault(c => c.Value == _board.ScreenSaverSeconds) ?? new Choice<int>(_board.ScreenSaverSeconds, $"After {_board.ScreenSaverSeconds} s");
+        set => Change(() => _board.ScreenSaverSeconds = value?.Value ?? 0);
+    }
+
+    public IReadOnlyList<Choice<ScrollText>> ScrollTextChoices { get; } =
+    [
+        new(Core.Hellboard.ScrollText.Off, "Off – long names are cut after 16 characters"),
+        new(Core.Hellboard.ScrollText.Long, "Scroll long names back and forth"),
+        new(Core.Hellboard.ScrollText.Loop, "Scroll long names continuously (ticker)"),
+    ];
+
+    public Choice<ScrollText> ScrollText
+    {
+        get => ScrollTextChoices.First(c => c.Value == _board.ScrollText);
+        set => Change(() => _board.ScrollText = value?.Value ?? Core.Hellboard.ScrollText.Long);
     }
 
     public double Brightness
@@ -309,7 +365,8 @@ public sealed partial class HellboardViewModel : ObservableObject, IDisposable
             { Status: HellboardStatus.Updating } => "updating …",
             _ => "–",
         };
-        IsUpdateAvailable = CanUpdate && (state?.Status == HellboardStatus.NoProtocol || state?.Info?.Firmware != _bundle.Value?.Version);
+        IsUpdateAvailable = CanUpdate && state is not null
+            && FirmwareVersions.Classify(state, _bundle.Value?.Version) is FirmwareStatus.Outdated or FirmwareStatus.Incompatible;
     }
 
     // ---- log ---------------------------------------------------------------------------------

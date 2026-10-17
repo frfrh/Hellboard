@@ -169,7 +169,7 @@
             <TextBlock Text="Configuration" FontSize="18" FontWeight="SemiBold" />
             <TextBlock Opacity="0.7" TextWrapping="Wrap"
                        Text="Changes are sent to the Hellboard immediately and stay in its memory until it restarts. Save them on the Hellboard to keep them without the Companion." />
-            <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="10">
+            <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="10">
               <TextBlock Grid.Row="0" Text="Button 1-1" VerticalAlignment="Center" />
               <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Stratagems}" SelectedItem="{Binding FixedButton1}" MinWidth="320" MaxDropDownHeight="400" />
 
@@ -185,11 +185,18 @@
               <TextBlock Grid.Row="4" Text="Direction keys" VerticalAlignment="Center" />
               <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding DirectionKeyChoices}" SelectedItem="{Binding DirectionKeys}" MinWidth="320" />
 
-              <TextBlock Grid.Row="5" Text="Delay between key events" VerticalAlignment="Center" />
-              <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                <NumericUpDown Value="{Binding KeyDelayMs}" Minimum="{Binding MinKeyDelay}" Maximum="{Binding MaxKeyDelay}" Increment="5" FormatString="0" Width="140" />
-                <TextBlock Text="ms" VerticalAlignment="Center" />
-              </StackPanel>
+              <TextBlock Grid.Row="5" Text="Key timings" VerticalAlignment="Top" Margin="0,6,0,0" />
+              <Grid Grid.Row="5" Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+                <TextBlock Grid.Row="0" Text="Wait for the stratagem menu" VerticalAlignment="Center" MinWidth="200" />
+                <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding MenuDelayMs}" Minimum="0" Maximum="{Binding MaxMenuDelay}" Increment="10" FormatString="0" Width="140" />
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="ms" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="1" Text="Hold each arrow" VerticalAlignment="Center" />
+                <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding KeyPressMs}" Minimum="{Binding MinKeyDelay}" Maximum="{Binding MaxKeyDelay}" Increment="5" FormatString="0" Width="140" />
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="ms" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="2" Text="Pause between arrows" VerticalAlignment="Center" />
+                <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding KeyReleaseMs}" Minimum="{Binding MinKeyDelay}" Maximum="{Binding MaxKeyDelay}" Increment="5" FormatString="0" Width="140" />
+                <TextBlock Grid.Row="2" Grid.Column="2" Text="ms" VerticalAlignment="Center" />
+              </Grid>
 
               <TextBlock Grid.Row="6" Text="LED brightness" VerticalAlignment="Center" />
               <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="12">
@@ -199,6 +206,15 @@
 
               <TextBlock Grid.Row="7" Text="Hellboard log level" VerticalAlignment="Center" />
               <ComboBox Grid.Row="7" Grid.Column="1" ItemsSource="{Binding LogLevels}" SelectedItem="{Binding LogLevel}" MinWidth="320" />
+
+              <TextBlock Grid.Row="8" Text="Display: long names" VerticalAlignment="Center" />
+              <ComboBox Grid.Row="8" Grid.Column="1" ItemsSource="{Binding ScrollTextChoices}" SelectedItem="{Binding ScrollText}" MinWidth="320" />
+
+              <TextBlock Grid.Row="9" Text="Display: screen saver" VerticalAlignment="Top" Margin="0,6,0,0" />
+              <StackPanel Grid.Row="9" Grid.Column="1" Spacing="4">
+                <ComboBox ItemsSource="{Binding ScreenSaverChoices}" SelectedItem="{Binding ScreenSaver}" MinWidth="320" />
+                <TextBlock Text="Turns the display off when no button is pressed, against OLED burn-in. Stratagem buttons keep working; the cycle button wakes the display." Opacity="0.6" FontSize="12" TextWrapping="Wrap" MaxWidth="520" />
+              </StackPanel>
             </Grid>
             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0">
               <Button Content="Save configuration on the Hellboard" Command="{Binding SaveConfigCommand}"

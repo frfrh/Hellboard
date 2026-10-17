@@ -4,7 +4,7 @@
 |-|-|
 | Status | Draft, version 1 |
 | Date | 2026-10-16 |
-| Decisions | F1–F13 in [implementation-plan.md](implementation-plan.md) §6.9 |
+| Decisions | F1–F16 in [implementation-plan.md](implementation-plan.md) §6.9 |
 
 The Hellboard Companion (PC) sends the locked loadout to the Hellboard and configures it. This document is the contract between the PC software and the firmware; both sides implement exactly this.
 
@@ -26,7 +26,7 @@ The Hellboard Companion (PC) sends the locked loadout to the Hellboard and confi
 
 ## 3. Requests, responses, events
 
-- **Request** (PC → board): `{"v":1, "id":<int>, "cmd":"<command>", ...parameters}`. `id` is chosen by the PC (incrementing, 1…2³¹−1).
+- **Request** (PC → board): `{"v":1, "id":<int>, "cmd":"<command>", ...parameters}`. `id` is chosen by the PC (incrementing, 1…2³¹−1, **starting at a random value per connection**). The board remembers the answers of the last 16 ids for retries and **forgets them on every `ping`**, which starts each connection – otherwise a new connection reusing ids got answers of the old one without its requests being executed (found 2026-10-17).
 - **Response** (board → PC), exactly one per request: `{"v":1, "ack":<id>, "ok":true, ...result}` or `{"v":1, "ack":<id>, "ok":false, "error":"<code>", "message":"<text>"}`.
 - **Event** (board → PC, unsolicited): `{"v":1, "event":"<name>", ...}`.
 - The PC waits **500 ms** for a response and retries up to **3 times with the same `id`**. All commands are **idempotent**: repeating a request with an `id` that was already executed just repeats the response.
@@ -108,10 +108,15 @@ Changes the board configuration (F7, F13). Applied immediately, kept in RAM only
 | `fixed` | Stratagems of the fixed buttons `1_1` and `1_2`: definitions as in §4.2 plus an optional `id`, or `null` (button off) | – | Reinforce, Resupply |
 | `modifierKey` | HID usage id of the stratagem key (e.g. 224 = left Ctrl, 6 = C) | 4–231 | 6 |
 | `modifierToggle` | `true`: press once to open the menu; `false`: hold while entering | – | `false` |
-| `keyDelayMs` | Delay between key down/up events | 20–200 | 50 |
+| `menuDelayMs` | Wait after pressing the stratagem key, until the menu is open (F15) | 0–1000 | 50 |
+| `keyPressMs` | How long an arrow is held (F15) | 20–200 | 50 |
+| `keyReleaseMs` | Pause between two arrows (F15) | 20–200 | 50 |
+| `keyDelayMs` | Firmware 2.0: one delay for press and release. Firmware ≥ 2.1 still accepts it and sets `keyPressMs` and `keyReleaseMs` unless they are given too; the Companion sends it for older boards. | 20–200 | 50 |
 | `directionKeys` | `arrows` or `wasd` | – | `arrows` |
 | `brightness` | LED brightness | 0–255 | 80 |
 | `logLevel` | Lowest level sent as `log` event (F12) | `debug`, `info`, `warn`, `error` | `info` |
+| `screenSaverSeconds` | Display off after this time without a button press or transfer; 0 = off (F15) | 0–3600 | 0 |
+| `scrollText` | `off`: names cut after 16 characters; `long`: names longer than a line scroll back and forth; `loop`: they run continuously like a ticker, a gap between end and start (F16) | `off`, `long`, `loop` | `long` |
 
 `configSaved` (also in `getState`): `true` when the configuration in RAM equals the one saved in flash.
 

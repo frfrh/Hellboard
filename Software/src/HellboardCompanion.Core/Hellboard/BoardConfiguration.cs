@@ -10,6 +10,19 @@ public enum DirectionKeys
     Wasd,
 }
 
+/// <summary>Names longer than a display line (decision F16).</summary>
+public enum ScrollText
+{
+    /// <summary>Static, cut after 16 characters.</summary>
+    Off,
+
+    /// <summary>Only names longer than a line scroll, back and forth.</summary>
+    Long,
+
+    /// <summary>Only names longer than a line scroll, continuously like a ticker (gap, then the start again).</summary>
+    Loop,
+}
+
 public enum BoardLogLevel
 {
     Debug,
@@ -43,7 +56,19 @@ public sealed class BoardOptions
     /// <summary><c>true</c>: the key is pressed once to open the menu; <c>false</c>: held while the code is entered.</summary>
     public bool ModifierToggle { get; set; }
 
-    public int KeyDelayMs { get; set; } = 50;
+    /// <summary>After pressing the stratagem key, until the stratagem menu is open (F15).</summary>
+    public int MenuDelayMs { get; set; } = 50;
+
+    /// <summary>How long an arrow key is held (F15).</summary>
+    public int KeyPressMs { get; set; } = 50;
+
+    /// <summary>Pause between two arrows (F15).</summary>
+    public int KeyReleaseMs { get; set; } = 50;
+
+    /// <summary>Display off after this time without a button press or transfer; 0 = off (F15).</summary>
+    public int ScreenSaverSeconds { get; set; }
+
+    public ScrollText ScrollText { get; set; } = ScrollText.Long;
 
     public DirectionKeys DirectionKeys { get; set; } = DirectionKeys.Arrows;
 
@@ -57,6 +82,8 @@ public static class BoardConfiguration
 {
     public const int MinKeyDelayMs = 20;
     public const int MaxKeyDelayMs = 200;
+    public const int MaxMenuDelayMs = 1000;
+    public const int MaxScreenSaverSeconds = 3600;
 
     public static JsonObject ToProtocol(BoardOptions options, StratagemCatalog catalog) => new()
     {
@@ -67,7 +94,12 @@ public static class BoardConfiguration
         },
         ["modifierKey"] = Math.Clamp(options.ModifierKey, 4, 231),
         ["modifierToggle"] = options.ModifierToggle,
-        ["keyDelayMs"] = Math.Clamp(options.KeyDelayMs, MinKeyDelayMs, MaxKeyDelayMs),
+        ["menuDelayMs"] = Math.Clamp(options.MenuDelayMs, 0, MaxMenuDelayMs),
+        ["keyPressMs"] = Math.Clamp(options.KeyPressMs, MinKeyDelayMs, MaxKeyDelayMs),
+        ["keyReleaseMs"] = Math.Clamp(options.KeyReleaseMs, MinKeyDelayMs, MaxKeyDelayMs),
+        ["keyDelayMs"] = Math.Clamp(options.KeyPressMs, MinKeyDelayMs, MaxKeyDelayMs),   // firmware 2.0 knows only this one
+        ["screenSaverSeconds"] = Math.Clamp(options.ScreenSaverSeconds, 0, MaxScreenSaverSeconds),
+        ["scrollText"] = options.ScrollText switch { ScrollText.Long => "long", ScrollText.Loop => "loop", _ => "off" },
         ["directionKeys"] = options.DirectionKeys == DirectionKeys.Wasd ? "wasd" : "arrows",
         ["brightness"] = Math.Clamp(options.Brightness, 0, 255),
         ["logLevel"] = options.LogLevel.ToString().ToLowerInvariant(),
@@ -94,7 +126,32 @@ public static class BoardConfiguration
 
         if (config["keyDelayMs"] is JsonValue delay && delay.TryGetValue<int>(out var delayMs))
         {
-            options.KeyDelayMs = delayMs;
+            options.KeyPressMs = options.KeyReleaseMs = delayMs;   // firmware 2.0
+        }
+
+        if (Int(config, "menuDelayMs") is { } menuDelay)
+        {
+            options.MenuDelayMs = menuDelay;
+        }
+
+        if (Int(config, "keyPressMs") is { } press)
+        {
+            options.KeyPressMs = press;
+        }
+
+        if (Int(config, "keyReleaseMs") is { } release)
+        {
+            options.KeyReleaseMs = release;
+        }
+
+        if (Int(config, "screenSaverSeconds") is { } screenSaver)
+        {
+            options.ScreenSaverSeconds = screenSaver;
+        }
+
+        if (config["scrollText"]?.GetValue<string>() is { } scroll)
+        {
+            options.ScrollText = scroll switch { "long" => ScrollText.Long, "loop" => ScrollText.Loop, _ => ScrollText.Off };
         }
 
         if (config["directionKeys"]?.GetValue<string>() is { } directions)
@@ -114,6 +171,9 @@ public static class BoardConfiguration
 
         options.Adopted = true;
     }
+
+    private static int? Int(JsonObject config, string key) =>
+        config[key] is JsonValue value && value.TryGetValue<int>(out var number) ? number : null;
 
     private static JsonObject? Definition(string? id, StratagemCatalog catalog) =>
         id is not null && catalog.Find(id) is { IsTransferable: true } entry

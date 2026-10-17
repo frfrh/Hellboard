@@ -1,7 +1,8 @@
 # Tests the firmware logic (protocol, configuration, buttons) on the PC with CPython; the
 # hardware modules (machine, usb_hid, ssd1306, select, stdin) are replaced by stubs.
-# Run from the repository root:  python Firmware/tests/test_firmware.py
+# Run from the repository root:  python -B Firmware/tests/test_firmware.py   (-B: no __pycache__ in Firmware/libs)
 import contextlib, io, json, os, shutil, sys, tempfile, time, types
+sys.dont_write_bytecode = True     # no __pycache__ next to the firmware files
 
 FW = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOC = os.path.join(os.path.dirname(FW), 'doc')
@@ -10,6 +11,7 @@ _t = [0]
 time.sleep_ms = lambda ms: _t.__setitem__(0, _t[0] + ms)
 time.ticks_ms = lambda: _t[0]
 time.ticks_diff = lambda a, b: a - b
+time.ticks_add = lambda a, b: a + b
 
 pressed = set()
 reports = []
@@ -32,14 +34,19 @@ usb_hid = types.ModuleType('usb_hid'); usb_hid.KEYBOARD = 1
 usb_hid.report = lambda kind, report: reports.append(bytes(report))
 sys.modules['usb_hid'] = usb_hid
 ssd = types.ModuleType('ssd1306')
+screen = []        # every shown screen: list of (y, text); 'logo' for the start-up logo
 class SSD1306_I2C:
-    def __init__(self, *a, **k): pass
+    def __init__(self, *a, **k): self.buf = []
     def rotate(self, r): pass
-    def fill(self, c): pass
-    def text(self, t, x, y): pass
-    def show(self): pass
+    def fill(self, c): self.buf = []
+    def text(self, t, x, y): self.buf.append((y, t))
+    def blit(self, fb, x, y): self.buf.append('logo')
+    def show(self): screen.append(list(self.buf))
 ssd.SSD1306_I2C = SSD1306_I2C
 sys.modules['ssd1306'] = ssd
+framebuf = types.ModuleType('framebuf'); framebuf.MONO_HLSB = 0
+framebuf.FrameBuffer = lambda data, w, h, mode: (len(data), w, h)
+sys.modules['framebuf'] = framebuf
 
 class FakeStdin:
     def __init__(self): self.data = ''
@@ -65,7 +72,16 @@ real_stdin = sys.stdin
 with contextlib.redirect_stdout(out):
     sys.stdin = stdin
     import app
+    import stratagems
     a = app.App()
+
+# start-up logo with the firmware version, the normal screen only after LOGO_MS (F16)
+assert screen[-1][0] == 'logo' and screen[-1][1][1] == 'vdev', screen[-1]
+a.draw()
+assert screen[-1][0] == 'logo', 'still the logo'
+_t[0] += app.LOGO_MS + 1
+a.draw()
+assert screen[-1][2] == (24, 'Grenade Launcher'), screen[-1]
 
 def request(obj):
     out.truncate(0); out.seek(0)
@@ -92,15 +108,15 @@ assert r['ok'], r
 import display
 assert a.separator() == 'Loadout received', a.separator()
 spi_writes.clear()
-a.show_leds(False)                       # flash phase 1: bright colors
+a.show_leds()                       # flash phase 1: bright colors
 _t[0] += app.FLASH_STEP_MS
-a.show_leds(False)                       # phase 2: off
+a.show_leds()                       # phase 2: off
 assert len(spi_writes) == 2 and spi_writes[0] != spi_writes[1]
 assert spi_writes[1] == bytes(b'\x92\x49\x24' * 3 * 8), 'all LEDs off in the flash pause'
 _t[0] += app.MESSAGE_MS
 assert a.separator() == '--------------PC', a.separator()
 assert a.flash is not None
-a.show_leds(False)
+a.show_leds()
 assert a.flash is None, 'flash finished'
 _t[0] += app.PC_TIMEOUT_MS
 assert a.separator() == app.SEPARATOR, 'no request for 15 s: PC indicator off'
@@ -116,7 +132,7 @@ r = request({'v': 1, 'id': 4, 'cmd': 'setLoadout', 'stratagems': [mg], 'missionS
 assert not r['ok'] and r['error'] == 'invalid_loadout', r
 assert a.separator() == 'Transfer error' and a.flash == 'error'
 spi_writes.clear()
-a.show_leds(False)
+a.show_leds()
 red = bytes(spi_writes[0])
 assert red != bytes(b'\x92\x49\x24' * 3 * 8)
 r = request({'v': 1, 'id': 5, 'cmd': 'setLoadout', 'stratagems': [{'name': 'X', 'color': 'blue', 'sequence': 'UXD'}, None, None, None], 'missionStratagems': []})
@@ -143,15 +159,108 @@ assert r['error'] == 'unknown_command'
 r = request({'v': 2, 'id': 12, 'cmd': 'ping'})
 assert r['error'] == 'unsupported_version'
 
+def poll(ms=10):
+    _t[0] += ms
+    with contextlib.redirect_stdout(out):
+        a.handle_buttons()
+
+def hold(pin, ms):
+    pressed.add(pin)
+    for _ in range(ms // 10):
+        poll()
+    pressed.discard(pin)
+    for _ in range(5):
+        poll()
+
+def sends():
+    # a send starts when the modifier is pressed while nothing else is
+    previous = bytes(8)
+    count = 0
+    for r in reports:
+        if previous == bytes(8) and r[0] == 0x01 and r.count(0) == 7:
+            count += 1
+        previous = r
+    return count
+
 # modifier key now 224 (left Ctrl = modifier bit 0x01 in the report) and Machine Gun code
 reports.clear()
-pressed.add(29)
-with contextlib.redirect_stdout(out):
-    a.handle_buttons()
-pressed.clear()
+hold(29, 100)
 assert reports[0][0] == 0x01, reports[0]
 arrows = {0x52: 'U', 0x51: 'D', 0x50: 'L', 0x4f: 'R'}
 assert ''.join(arrows[r[2]] for r in reports if r[2] in arrows) == 'DLDUR'
+
+# F14: holding a stratagem button sends it only once
+reports.clear()
+hold(29, 2000)
+assert sends() == 1, sends()
+
+# F14: debouncing - a 10 ms bounce does not count as a second press
+reports.clear()
+pressed.add(29); poll(); poll(); poll(); pressed.discard(29); poll(); pressed.add(29); poll(); pressed.discard(29)
+for _ in range(10):
+    poll()
+assert sends() == 1, sends()
+
+# F14: cycle button - short press forward, long press backward (repeated while held)
+names = lambda: a.multi[a.index].name
+a.multi = [stratagems.Stratagem('a', 'A', 'yellow', 'UUU'), stratagems.Stratagem('b', 'B', 'yellow', 'DDD'), stratagems.Stratagem('c', 'C', 'yellow', 'LLL')]
+a.index = 0
+hold(0, 100)
+assert names() == 'B', names()
+hold(0, 450)
+assert names() == 'A', 'long press goes back'
+hold(0, 450 + 300 + 20)
+assert names() == 'B', 'held: back twice (A -> C -> B)'
+
+# F15: key timings; keyDelayMs of an older Companion sets press and release
+r = request({'v': 1, 'id': 20, 'cmd': 'setConfig', 'config': {'menuDelayMs': 400, 'keyDelayMs': 80}})
+assert r['ok'] and r['config']['menuDelayMs'] == 400 and r['config']['keyPressMs'] == 80 and r['config']['keyReleaseMs'] == 80, r
+start = _t[0]
+hold(29, 30)
+assert _t[0] - start >= 400 + 5 * 160, 'menu delay + 5 arrows x (80 + 80) ms'
+r = request({'v': 1, 'id': 21, 'cmd': 'setConfig', 'config': {'menuDelayMs': 5000}})
+assert r['error'] == 'invalid_config', r
+
+# F15: screen saver - dark after the timeout; the cycle button only wakes, a stratagem button still sends
+r = request({'v': 1, 'id': 22, 'cmd': 'setConfig', 'config': {'screenSaverSeconds': 1, 'menuDelayMs': 50, 'keyPressMs': 50, 'keyReleaseMs': 50}})
+assert r['ok'], r
+_t[0] += 3000
+assert a.asleep()
+a.draw()
+assert screen[-1] == [], 'display dark'
+index = a.index
+hold(0, 100)
+assert a.index == index and not a.asleep(), 'cycle button only woke the display'
+_t[0] += 3000
+reports.clear()
+hold(29, 50)
+assert sends() == 1, 'a stratagem button sends while the display is dark'
+request({'v': 1, 'id': 23, 'cmd': 'setConfig', 'config': {'screenSaverSeconds': 0}})
+
+# F16: scrolling text - only names longer than a line, pause, scroll to the end, pause, back
+import display
+d = display.Display()
+long_name = 'StA-X3 W.A.S.P. Launcher'
+assert d._visible(24, long_name, 'off', 0) == long_name[:16]
+assert d._visible(24, long_name, 'long', 0) == long_name[:16]
+assert d._visible(24, long_name, 'long', display.SCROLL_PAUSE_MS + display.SCROLL_STEP_MS * 3) == long_name[4:20], 'first step right after the pause'
+assert d._visible(24, long_name, 'long', display.SCROLL_PAUSE_MS + display.SCROLL_STEP_MS * (len(long_name) - 16)) == long_name[-16:], 'stops at the end'
+cycle = 2 * display.SCROLL_PAUSE_MS + (len(long_name) - 16) * display.SCROLL_STEP_MS
+assert d._visible(24, long_name, 'long', cycle + 10) == long_name[:16], 'starts again'
+assert d._visible(24, 'Machine Gun', 'long', 5000) == 'Machine Gun'
+
+# F16 'loop': ticker - after the first pause the name runs on, followed by a gap, without jumping back
+d2 = display.Display()
+band = long_name + display.LOOP_GAP
+at = lambda steps: display.SCROLL_PAUSE_MS + display.SCROLL_STEP_MS * steps
+assert d2._visible(24, long_name, 'loop', 0) == long_name[:16]
+assert d2._visible(24, long_name, 'loop', at(len(long_name) - 1)) == (band + band)[len(long_name):len(long_name) + 16], 'end, gap, start'
+assert d2._visible(24, long_name, 'loop', at(len(band) - 1)) == long_name[:16], 'one full turn: back at the start without a jump'
+assert d2._visible(24, long_name, 'loop', at(len(band))) == long_name[1:17], 'and on'
+assert d2._visible(24, 'Machine Gun', 'loop', 5000) == 'Machine Gun', 'short names stay'
+assert request({'v': 1, 'id': 25, 'cmd': 'setConfig', 'config': {'scrollText': 'loop'}})['ok']
+r = request({'v': 1, 'id': 24, 'cmd': 'setConfig', 'config': {'scrollText': 'sideways'}})
+assert r['error'] == 'invalid_config', r
 
 # restart: saved.json wins over config.json
 with contextlib.redirect_stdout(out):
@@ -169,6 +278,19 @@ assert 'line_too_long' in out.getvalue()
 # enterUpdateMode ends the main loop
 r = request({'v': 1, 'id': 13, 'cmd': 'enterUpdateMode'})
 assert r['ok'] and a.running is False
+
+# a new connection reuses ids: after a ping the board must not answer from the old connection
+r_old = request({'v': 1, 'id': 1, 'cmd': 'setConfig', 'config': {'brightness': 10}})
+request({'v': 1, 'id': 900, 'cmd': 'ping'})
+r_new = request({'v': 1, 'id': 1, 'cmd': 'setConfig', 'config': {'brightness': 99}})
+assert r_new['config']['brightness'] == 99, 'executed again, not answered from the old connection'
+
+# MicroPython has no Exception.__init__ (protocol errors became internal_error on the board)
+for name in os.listdir(FW + '/libs'):
+    if name.endswith('.py'):
+        assert 'Exception.__init__(' not in open(FW + '/libs/' + name, encoding='utf-8').read(), name
+r = request({'v': 1, 'id': 901, 'cmd': 'setConfig', 'config': {'scrollText': 'sideways'}})
+assert r['error'] == 'invalid_config', r
 
 sys.stdin = real_stdin
 print('Firmware tests passed')

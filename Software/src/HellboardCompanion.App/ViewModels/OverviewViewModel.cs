@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HellboardCompanion.App.Services;
 using HellboardCompanion.Core.Hellboard;
+using HellboardCompanion.Core.Hellboard.Update;
 using HellboardCompanion.Core.Loadout;
 using HellboardCompanion.Core.Pipeline;
 using HellboardCompanion.Core.Platform;
@@ -23,6 +24,7 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
     private static readonly IBrush Good = new SolidColorBrush(Color.Parse("#4CAF50"));
     private static readonly IBrush Attention = new SolidColorBrush(Color.Parse("#FFC107"));
     private static readonly IBrush Inactive = new SolidColorBrush(Color.Parse("#808080"));
+    private static readonly IBrush Problem = new SolidColorBrush(Color.Parse("#F44336"));
 
     private readonly IGameLocator? _game;
     private readonly LoadoutPipeline? _pipeline;
@@ -220,11 +222,19 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
     private void RefreshHellboard()
     {
         var state = _hellboard?.State;
+        var bundled = FirmwareVersions.EmbeddedVersion;
+        var firmware = state is null ? FirmwareStatus.Unknown : FirmwareVersions.Classify(state, bundled);
         (HellboardText, HellboardBrush) = state?.Status switch
         {
             Core.Hellboard.HellboardStatus.Connected when state.Port == "Simulator" => ("Hellboard simulator", Attention),
+            Core.Hellboard.HellboardStatus.Connected when firmware == FirmwareStatus.Outdated =>
+                ($"Hellboard connected ({state.Port}) – firmware {state.Info?.Firmware} is outdated, {bundled} is available on the Hellboard tab", Attention),
             Core.Hellboard.HellboardStatus.Connected => ($"Hellboard connected ({state.Port})", Good),
-            Core.Hellboard.HellboardStatus.NoProtocol => ("Hellboard firmware update needed", Attention),
+            Core.Hellboard.HellboardStatus.NoProtocol when firmware != FirmwareStatus.Incompatible => ($"Hellboard on {state.Port} – {state.Message}", Attention),
+            Core.Hellboard.HellboardStatus.NoProtocol when state.Info?.Protocol > HellboardClient.ProtocolVersion =>
+                ("Hellboard firmware is newer than this Companion – please update Hellboard Companion", Problem),
+            Core.Hellboard.HellboardStatus.NoProtocol => ("Hellboard firmware not compatible – install the firmware on the Hellboard tab", Problem),
+            Core.Hellboard.HellboardStatus.Updating => ("Installing Hellboard firmware …", Attention),
             Core.Hellboard.HellboardStatus.DryRun => ("Hellboard: dry run", Attention),
             _ => ("No Hellboard connected", Inactive),
         };
