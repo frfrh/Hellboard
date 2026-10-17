@@ -10,6 +10,11 @@ public static class ManualRecognitionText
 {
     public static (string Title, string Body) Describe(ManualRecognitionResult result)
     {
+        if (result.Problem == ManualRecognitionResult.GameNotRunning)
+        {
+            return ("Helldivers 2 is not running", "Start the game and open the loadout screen first.");
+        }
+
         var title = result switch
         {
             { Loadout: null } => "Recognition failed",

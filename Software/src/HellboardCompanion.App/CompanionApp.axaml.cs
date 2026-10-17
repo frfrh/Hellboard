@@ -24,6 +24,8 @@ namespace HellboardCompanion.App;
 /// </summary>
 public sealed partial class CompanionApp : Application
 {
+    private const string RecognizeNowHeader = "Recognize loadout now";   // tray menu entry in CompanionApp.axaml
+
     private readonly IServiceProvider? _services;
     private MainWindow? _mainWindow;
     private bool _openingMainWindow;
@@ -57,7 +59,24 @@ public sealed partial class CompanionApp : Application
             });
         }
 
+        if (_services?.GetService<IGameLocator>() is { } game)
+        {
+            game.Changed += (_, snapshot) => Avalonia.Threading.Dispatcher.UIThread.Post(() => UpdateRecognizeMenuItem(snapshot));
+            UpdateRecognizeMenuItem(game.Current);
+        }
+
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>"Recognize loadout now" in the tray menu only while the game window can be captured.</summary>
+    private void UpdateRecognizeMenuItem(GameSnapshot snapshot)
+    {
+        var item = TrayIcon.GetIcons(this)?.SelectMany(icon => icon.Menu?.Items ?? []).OfType<NativeMenuItem>()
+            .FirstOrDefault(i => i.Header == RecognizeNowHeader);
+        if (item is not null)
+        {
+            item.IsEnabled = snapshot is { Status: GameStatus.Running, Location.IsMinimized: false };
+        }
     }
 
     private void OnTrayIconClicked(object? sender, EventArgs e) => ShowMainWindow();

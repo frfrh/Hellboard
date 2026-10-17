@@ -37,22 +37,25 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
     private LoadoutSnapshot? _shownSnapshot;
 
     [ObservableProperty]
-    private string _gameText = "–";
+    [NotifyPropertyChangedFor(nameof(GameBrush))]
+    private StatusLine _gameLine = new("–", null, StatusLevel.Inactive);
 
     [ObservableProperty]
-    private IBrush _gameBrush = Inactive;
+    [NotifyPropertyChangedFor(nameof(RecognitionBrush))]
+    private StatusLine _recognitionLine = new("–", null, StatusLevel.Inactive);
 
     [ObservableProperty]
-    private string _recognitionText = "–";
+    [NotifyPropertyChangedFor(nameof(HellboardBrush))]
+    private StatusLine _hellboardLine = new("–", null, StatusLevel.Inactive);
 
+    /// <summary>The game runs (also in the background or minimized): the recognize button is shown.</summary>
     [ObservableProperty]
-    private IBrush _recognitionBrush = Inactive;
+    private bool _isGameRunning;
 
+    /// <summary>The game window can be captured (running, not minimized).</summary>
     [ObservableProperty]
-    private string _hellboardText = "–";
-
-    [ObservableProperty]
-    private IBrush _hellboardBrush = Inactive;
+    [NotifyCanExecuteChangedFor(nameof(RecognizeNowCommand))]
+    private bool _canRecognize;
 
     [ObservableProperty]
     private string _loadoutTitle = "No loadout recognized yet";
@@ -110,10 +113,17 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<StratagemTileViewModel> Stratagems { get; } = [];
 
-    public ObservableCollection<StratagemTileViewModel> MultiFunction { get; } = [];
+    /// <summary>Multi-function list in board order, in its groups "Fixed list" and "Detected".</summary>
+    public ObservableCollection<MultiFunctionGroupViewModel> MultiFunctionGroups { get; } = [];
 
     /// <summary>Connection details and the "Set as default" command.</summary>
     public HellboardStatusViewModel HellboardStatus { get; }
+
+    public IBrush GameBrush => BrushOf(GameLine.Level);
+
+    public IBrush RecognitionBrush => BrushOf(RecognitionLine.Level);
+
+    public IBrush HellboardBrush => BrushOf(HellboardLine.Level);
 
     public void Dispose()
     {
@@ -134,7 +144,7 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanRecognize))]
     private async Task RecognizeNowAsync()
     {
         if (_trigger is not null)
@@ -172,13 +182,9 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
     private void RefreshGame()
     {
         var snapshot = _game?.Current ?? GameSnapshot.NotRunning;
-        (GameText, GameBrush) = snapshot.Status switch
-        {
-            GameStatus.Running when snapshot.Location!.IsMinimized => ("Helldivers 2 is minimized", Attention),
-            GameStatus.Running => ($"Helldivers 2 runs on {snapshot.Location!.Monitor.DeviceName.TrimStart('\\', '.')} ({snapshot.Location.ClientBounds.Width}×{snapshot.Location.ClientBounds.Height})", Good),
-            GameStatus.Starting => ("Helldivers 2 is starting …", Attention),
-            _ => ("Helldivers 2 is not running", Inactive),
-        };
+        GameLine = OverviewStatus.Game(snapshot);
+        IsGameRunning = snapshot.Status == GameStatus.Running;
+        CanRecognize = snapshot is { Status: GameStatus.Running, Location.IsMinimized: false };
     }
 
     private void RefreshLoadout()
@@ -186,13 +192,7 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
         var tracker = _pipeline?.Tracker;
         var observation = _pipeline?.LastObservation;
 
-        (RecognitionText, RecognitionBrush) = tracker?.State switch
-        {
-            TrackerState.Selecting => ("Loadout screen – selecting", Attention),
-            TrackerState.Locked => ("Loadout confirmed (Ready)", Good),
-            _ when observation is null => ("Waiting for the game", Inactive),
-            _ => ("Waiting for the loadout screen", Inactive),
-        };
+        RecognitionLine = OverviewStatus.Recognition(tracker?.State, tracker?.LastLocked?.Source, observation is not null);
 
         // While the player selects, show what is on the screen; otherwise the last locked loadout.
         if (observation is { ScreenVisible: true, Loadout: { } live } && tracker?.State != TrackerState.Locked)
@@ -204,7 +204,7 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
         else if (tracker?.LastLocked is { } locked)
         {
             _shownSnapshot = null;
-            LoadoutTitle = $"Locked in at {locked.Timestamp.LocalDateTime:HH:mm:ss} ({Describe(locked.Source)})";
+            LoadoutTitle = $"Locked in at {locked.Timestamp.LocalDateTime:HH:mm:ss} ({OverviewStatus.Describe(locked.Source)})";
             SetTiles(locked.Stratagems);
         }
         else if (_previousSession is { } previous)
@@ -222,22 +222,7 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
     private void RefreshHellboard()
     {
         var state = _hellboard?.State;
-        var bundled = FirmwareVersions.EmbeddedVersion;
-        var firmware = state is null ? FirmwareStatus.Unknown : FirmwareVersions.Classify(state, bundled);
-        (HellboardText, HellboardBrush) = state?.Status switch
-        {
-            Core.Hellboard.HellboardStatus.Connected when state.Port == "Simulator" => ("Hellboard simulator", Attention),
-            Core.Hellboard.HellboardStatus.Connected when firmware == FirmwareStatus.Outdated =>
-                ($"Hellboard connected ({state.Port}) – firmware {state.Info?.Firmware} is outdated, {bundled} is available on the Hellboard tab", Attention),
-            Core.Hellboard.HellboardStatus.Connected => ($"Hellboard connected ({state.Port})", Good),
-            Core.Hellboard.HellboardStatus.NoProtocol when firmware != FirmwareStatus.Incompatible => ($"Hellboard on {state.Port} – {state.Message}", Attention),
-            Core.Hellboard.HellboardStatus.NoProtocol when state.Info?.Protocol > HellboardClient.ProtocolVersion =>
-                ("Hellboard firmware is newer than this Companion – please update Hellboard Companion", Problem),
-            Core.Hellboard.HellboardStatus.NoProtocol => ("Hellboard firmware not compatible – install the firmware on the Hellboard tab", Problem),
-            Core.Hellboard.HellboardStatus.Updating => ("Installing Hellboard firmware …", Attention),
-            Core.Hellboard.HellboardStatus.DryRun => ("Hellboard: dry run", Attention),
-            _ => ("No Hellboard connected", Inactive),
-        };
+        HellboardLine = OverviewStatus.Hellboard(state, FirmwareVersions.EmbeddedVersion);
 
         // Before anything was sent in this session, preview the list from the shown loadout.
         var multiFunction = state?.LastSent?.MissionStratagems
@@ -245,17 +230,27 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
             ?? ((_pipeline?.Tracker.LastLocked ?? _previousSession) is { } shown
                 ? LoadoutTransferBuilder.Build(shown, _catalog, _multiFunction).Loadout.MissionStratagems
                 : null);
-        MultiFunction.Clear();
-        foreach (var definition in multiFunction ?? [])
+        var tiles = (multiFunction ?? []).Select(definition =>
         {
             var entry = _catalog.Entries.FirstOrDefault(e => e.Name == definition.Name);
-            MultiFunction.Add(new StratagemTileViewModel(entry?.Id, definition.Name, _images.Get(entry?.Id)));
-        }
-
-        MultiFunctionTitle = MultiFunction.Count == 0 ? "Multi-function button – empty" : "Multi-function button";
+            return new StratagemTileViewModel(entry?.Id, definition.Name, _images.Get(entry?.Id));
+        }).ToList();
+        SetMultiFunction(tiles);
         Warning = state?.NotTransferable.Count > 0
             ? $"Not transferable yet (no input sequence known): {string.Join(", ", state.NotTransferable.Select(id => _catalog.Find(id)?.Name ?? id))}"
             : null;
+    }
+
+    /// <summary>Shows the multi-function list, grouped by origin (also used by the screenshot tool).</summary>
+    public void SetMultiFunction(IReadOnlyList<StratagemTileViewModel> tiles)
+    {
+        MultiFunctionGroups.Clear();
+        foreach (var (title, entries) in ViewModels.MultiFunctionGroups.Split(tiles, t => t.Id, _multiFunction))
+        {
+            MultiFunctionGroups.Add(new MultiFunctionGroupViewModel(title, entries));
+        }
+
+        MultiFunctionTitle = tiles.Count == 0 ? "Multi-function button – empty" : "Multi-function button";
     }
 
     private void SetTiles(IEnumerable<string?> ids)
@@ -283,10 +278,11 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
         }
     }
 
-    private static string Describe(LockSource source) => source switch
+    private static IBrush BrushOf(StatusLevel level) => level switch
     {
-        LockSource.Ready => "Ready",
-        LockSource.ScreenExit => "screen closed",
-        _ => "manual",
+        StatusLevel.Good => Good,
+        StatusLevel.Attention => Attention,
+        StatusLevel.Problem => Problem,
+        _ => Inactive,
     };
 }

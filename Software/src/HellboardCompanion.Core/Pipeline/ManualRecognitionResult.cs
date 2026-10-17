@@ -22,6 +22,9 @@ public sealed record ManualRecognitionResult(
     IReadOnlyList<string> SavedFiles,
     string? Problem)
 {
+    /// <summary><see cref="Problem"/> of a trigger while the game is not running (UI polish plan §4).</summary>
+    public const string GameNotRunning = "Helldivers 2 is not running.";
+
     /// <summary>Most frequent value per slot and most frequent status over several observations.</summary>
     public static (LoadoutSnapshot Loadout, ReadyStatus Status) Majority(IReadOnlyList<LoadoutObservation> observations)
     {

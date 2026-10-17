@@ -57,7 +57,7 @@ The previews were rendered with the headless screenshot approach of `Software/to
   | | Hellboard simulator / Installing firmware … / Dry run / No Hellboard connected | – |
 
   The colour of the dot stays as today (good / attention / problem / inactive). The view model gets a `…Detail` property per field next to the existing text (`GameText` + `GameDetail` etc.); unit tests check the texts of every state, and that no short text is longer than about 28 characters.
-- **Arrows:** a separate arrow element would end up at the end or start of a line after wrapping. Instead each entry gets a **chevron shape** (pointed right edge, notched left edge, like the Helldivers UI) – the flow direction stays visible on one line and on several lines.
+- **Arrows:** a separate arrow element would end up at the end or start of a line after wrapping. Proposed: a **chevron shape** per entry (pointed right edge, notched left edge, like the Helldivers UI). Decided: no direction marks at all (section 7).
 - Entries have a common minimum width, so on one line they still look like a balanced row.
 
 ## 3. Multi-function button list
@@ -97,17 +97,18 @@ The previews were rendered with the headless screenshot approach of `Software/to
 
 | Step | Effort |
 |-|-|
-| Status chain with wrap panel, chevrons, short text and detail line (incl. view model and tests) | small to medium |
+| Status chain with wrap panel, short text and detail line (incl. view model and tests) | small to medium |
 | Multi-function groups with frames and wrapping (incl. view model and tests) | medium |
 | Recognize button / tray / hotkey depending on the game | small |
 | Background (chosen option) incl. resize test | small to medium |
 
 All in one round of work; the background last, so the layout changes can be judged on it.
 
-## 7. Open questions for the user
+## 7. Decisions (2026-10-17) and implementation
 
-1. **Background:** option 1, 2, 3 or 4 – or a combination (e.g. 1 + hazard stripes of 2)?
-2. **Arrows in the status chain:** chevron-shaped entries (recommended) or no direction marks at all?
-   The short texts and detail lines of section 2 are part of the plan (requested 2026-10-17); their wording can still be adjusted.
-3. **Group frames** in every mode (recommended) or only with "fixed list + automatic detection"?
-4. **Recognize button without the game:** hidden (as requested) – and should the hotkey without the game show a short notice (recommended) or do nothing?
+1. **Background:** option 1 (hex grid) combined with the hazard stripes and the top line of option 2 – `Views/HexBackground.cs`, drawn for the current window size.
+2. **Status chain:** no direction marks at all (no arrows, no chevrons); short text + detail line as in section 2 – texts in `ViewModels/OverviewStatus.cs` (`StatusLine`, max. 28 characters, tested). The Hellboard state "board found, but the port is used by another program" reads "Hellboard not reachable" with the reason as detail.
+3. **Group frames** in every mode; groups "Fixed list" / "Detected" (`MultiFunctionGroups`, tested).
+4. **Recognize button** only while the game runs (disabled while minimized), tray entry disabled likewise; the hotkey without the game shows the toast "Helldivers 2 is not running".
+
+`tools/screenshot/overview-screenshot.cs -- <png> [width] [long]` renders the overview for the checks of section 5.

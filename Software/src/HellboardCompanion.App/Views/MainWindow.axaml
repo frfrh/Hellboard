@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:HellboardCompanion.App.ViewModels"
+        xmlns:views="using:HellboardCompanion.App.Views"
         mc:Ignorable="d"
         d:DesignWidth="1200" d:DesignHeight="900"
         x:Class="HellboardCompanion.App.Views.MainWindow"
@@ -36,7 +37,7 @@
 
     <!-- Small stratagem tile (multi-function list, history) -->
     <DataTemplate x:Key="SmallTile" x:DataType="vm:StratagemTileViewModel">
-      <Border Margin="0,0,8,0" CornerRadius="4" Background="#2F2F2F" Padding="6" ToolTip.Tip="{Binding Name}">
+      <Border Margin="0,0,8,8" CornerRadius="4" Background="#2F2F2F" Padding="6" ToolTip.Tip="{Binding Name}">
         <StackPanel Orientation="Horizontal" Spacing="6">
           <Image Source="{Binding Icon}" IsVisible="{Binding HasIcon}" Width="32" Height="32" />
           <TextBlock Text="{Binding Name}" Foreground="White" VerticalAlignment="Center" />
@@ -47,8 +48,14 @@
     <ItemsPanelTemplate x:Key="Horizontal">
       <StackPanel Orientation="Horizontal" />
     </ItemsPanelTemplate>
+
+    <ItemsPanelTemplate x:Key="Wrap">
+      <WrapPanel />
+    </ItemsPanelTemplate>
   </Window.Resources>
 
+  <Panel>
+  <views:HexBackground />
   <TabControl Margin="12,8">
 
     <!-- ===================================================== Overview -->
@@ -56,29 +63,55 @@
       <ScrollViewer>
         <StackPanel Margin="12" Spacing="20" DataContext="{Binding Overview}" x:DataType="vm:OverviewViewModel">
 
-          <!-- Chain: game → recognition → Hellboard -->
-          <Grid ColumnDefinitions="*,Auto,*,Auto,*">
-            <Border Grid.Column="0" CornerRadius="6" Background="#20808080" Padding="14">
-              <StackPanel Orientation="Horizontal" Spacing="10">
+          <!-- Chain game → recognition → Hellboard: whole entries move to the next line when the window gets narrow -->
+          <WrapPanel Margin="0,0,0,-10">
+            <WrapPanel.Styles>
+              <Style Selector="Border.status">
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="Background" Value="#20808080" />
+                <Setter Property="Padding" Value="14,10" />
+                <Setter Property="Margin" Value="0,0,10,10" />
+                <Setter Property="MinWidth" Value="250" />
+                <Setter Property="MaxWidth" Value="360" />
+              </Style>
+              <Style Selector="Border.status TextBlock.text">
+                <Setter Property="TextWrapping" Value="NoWrap" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+              </Style>
+              <Style Selector="Border.status TextBlock.detail">
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Opacity" Value="0.65" />
+              </Style>
+            </WrapPanel.Styles>
+            <Border Classes="status" ToolTip.Tip="{Binding GameLine.FullText}">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                 <Ellipse Width="14" Height="14" Fill="{Binding GameBrush}" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding GameText}" TextWrapping="Wrap" VerticalAlignment="Center" />
-              </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                  <TextBlock Classes="text" Text="{Binding GameLine.Text}" />
+                  <TextBlock Classes="detail" Text="{Binding GameLine.Detail}" IsVisible="{Binding GameLine.Detail, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </StackPanel>
+              </Grid>
             </Border>
-            <TextBlock Grid.Column="1" Text="→" FontSize="22" Margin="10,0" VerticalAlignment="Center" Opacity="0.5" />
-            <Border Grid.Column="2" CornerRadius="6" Background="#20808080" Padding="14">
-              <StackPanel Orientation="Horizontal" Spacing="10">
+            <Border Classes="status" ToolTip.Tip="{Binding RecognitionLine.FullText}">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                 <Ellipse Width="14" Height="14" Fill="{Binding RecognitionBrush}" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding RecognitionText}" TextWrapping="Wrap" VerticalAlignment="Center" />
-              </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                  <TextBlock Classes="text" Text="{Binding RecognitionLine.Text}" />
+                  <TextBlock Classes="detail" Text="{Binding RecognitionLine.Detail}" IsVisible="{Binding RecognitionLine.Detail, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </StackPanel>
+              </Grid>
             </Border>
-            <TextBlock Grid.Column="3" Text="→" FontSize="22" Margin="10,0" VerticalAlignment="Center" Opacity="0.5" />
-            <Border Grid.Column="4" CornerRadius="6" Background="#20808080" Padding="14">
-              <StackPanel Orientation="Horizontal" Spacing="10">
+            <Border Classes="status" ToolTip.Tip="{Binding HellboardLine.FullText}">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                 <Ellipse Width="14" Height="14" Fill="{Binding HellboardBrush}" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding HellboardText}" TextWrapping="Wrap" VerticalAlignment="Center" />
-              </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                  <TextBlock Classes="text" Text="{Binding HellboardLine.Text}" />
+                  <TextBlock Classes="detail" Text="{Binding HellboardLine.Detail}" IsVisible="{Binding HellboardLine.Detail, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </StackPanel>
+              </Grid>
             </Border>
-          </Grid>
+          </WrapPanel>
 
           <!-- Loadout -->
           <StackPanel Spacing="10">
@@ -89,7 +122,19 @@
 
           <StackPanel Spacing="10">
             <TextBlock Text="{Binding MultiFunctionTitle}" FontSize="16" FontWeight="SemiBold" />
-            <ItemsControl ItemsSource="{Binding MultiFunction}" ItemTemplate="{StaticResource SmallTile}" ItemsPanel="{StaticResource Horizontal}" />
+            <!-- Groups by origin, each in a thin frame; groups and tiles wrap, a tile never breaks -->
+            <ItemsControl ItemsSource="{Binding MultiFunctionGroups}" ItemsPanel="{StaticResource Wrap}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:MultiFunctionGroupViewModel">
+                  <Border BorderBrush="#40FFFFFF" BorderThickness="1" CornerRadius="6" Padding="8,4,0,0" Margin="0,0,10,10">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="{Binding Title}" FontSize="11" Opacity="0.6" />
+                      <ItemsControl ItemsSource="{Binding Tiles}" ItemTemplate="{StaticResource SmallTile}" ItemsPanel="{StaticResource Wrap}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </StackPanel>
 
           <Border IsVisible="{Binding Warning, Converter={x:Static ObjectConverters.IsNotNull}}"
@@ -98,7 +143,8 @@
           </Border>
 
           <StackPanel Orientation="Horizontal" Spacing="10">
-            <Button Content="Recognize loadout now" Command="{Binding RecognizeNowCommand}" />
+            <Button Content="Recognize loadout now" Command="{Binding RecognizeNowCommand}" IsVisible="{Binding IsGameRunning}"
+                    ToolTip.Tip="Only while Helldivers 2 is running; not while it is minimized." />
             <Button Content="Set as default on the Hellboard" Command="{Binding HellboardStatus.SetAsDefaultCommand}"
                     ToolTip.Tip="Saves the current loadout in the Hellboard's flash; it is used after power-up without the Companion." />
             <TextBlock Text="{Binding HellboardStatus.DefaultResult}" VerticalAlignment="Center" Opacity="0.7" TextWrapping="Wrap" />
@@ -627,4 +673,5 @@
     </TabItem>
 
   </TabControl>
+  </Panel>
 </Window>

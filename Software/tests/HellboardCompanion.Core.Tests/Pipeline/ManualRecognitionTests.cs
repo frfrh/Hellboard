@@ -48,6 +48,18 @@ public sealed class ManualRecognitionTests : IDisposable
     }
 
     [Fact]
+    public async Task Hotkey_without_the_game_reports_that_it_is_not_running()
+    {
+        using var pipeline = CreatePipeline(PartionPrepare, new RecognitionOptions { Mode = RecognitionMode.ManualOnly }, gameRunning: false);
+
+        var result = await pipeline.RecognizeManuallyAsync();
+
+        result.Problem.Should().Be(ManualRecognitionResult.GameNotRunning);
+        result.Locked.Should().BeFalse();
+        result.Frames.Should().Be(0);
+    }
+
+    [Fact]
     public async Task Hotkey_on_the_loadout_screen_locks_in_the_loadout()
     {
         using var pipeline = CreatePipeline(PartionPrepare, new RecognitionOptions { Mode = RecognitionMode.ManualOnly });
@@ -161,7 +173,8 @@ public sealed class ManualRecognitionTests : IDisposable
     private LoadoutHistory History() =>
         new(new PlatformPaths(Path.Combine(_dataRoot, "roaming"), Path.Combine(_dataRoot, "local")));
 
-    private LoadoutPipeline CreatePipeline(string? frameFile, RecognitionOptions options, string? withoutIcon = null, StratagemCatalog? catalog = null)
+    private LoadoutPipeline CreatePipeline(string? frameFile, RecognitionOptions options, string? withoutIcon = null, StratagemCatalog? catalog = null,
+        bool gameRunning = true)
     {
         Frame? frame = frameFile is null ? null : LocalScenes.Load(LocalScenes.Get(frameFile));
         var paths = new PlatformPaths(Path.Combine(_dataRoot, "roaming"), Path.Combine(_dataRoot, "local"));
@@ -179,7 +192,8 @@ public sealed class ManualRecognitionTests : IDisposable
 
         var width = frame?.Width ?? 1920;
         var height = frame?.Height ?? 1080;
-        var grabber = new GameFrameGrabber(FakeGameLocator.Running(width, height), new FakeFrameSource(frame));
+        var game = gameRunning ? FakeGameLocator.Running(width, height) : new FakeGameLocator(GameSnapshot.NotRunning);
+        var grabber = new GameFrameGrabber(game, new FakeFrameSource(frame));
         var pipeline = new LoadoutPipeline(grabber, iconStore, new LoadoutHistory(paths), options, paths, NullLogger<LoadoutPipeline>.Instance, catalog ?? StratagemCatalog.LoadSeed());
         pipeline.Start();
         return pipeline;
