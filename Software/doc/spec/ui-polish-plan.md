@@ -35,12 +35,28 @@ The previews were rendered with the headless screenshot approach of `Software/to
 
 ## 2. Status chain (game → recognition → Hellboard)
 
-**Today:** a grid with three equally wide columns and two arrows. At narrow widths the texts overlap (see the narrow previews).
+**Today:** a grid with three equally wide columns and two arrows. Each text sits in a horizontal `StackPanel` next to its dot; there it gets unlimited width, so `TextWrapping="Wrap"` never takes effect and a long text runs out of its field into the arrow and the next field. This already happens on a real screen at the minimum width of 900 px: "Helldivers 2 runs on DISPLAY1 (2560×1440)" needs about 320 px, a column offers about 260 px (user screenshot 2026-10-17, see also the narrow previews). Some texts are much longer – the Hellboard field can show "Hellboard connected (COM8) – firmware 2.0.0 is outdated, 2.1.1 is available on the Hellboard tab" (about 100 characters) or a free-text message from the board.
 
 **Plan:**
 
 - The three status entries are placed in a **`WrapPanel`**: when the window gets too narrow for all three, the last ones move to the next line; when it gets wider again, they come back. This follows every width change automatically (it is layout, no code).
-- **An entry never breaks inside:** each entry is one non-wrapping row (dot + text, `TextWrapping="NoWrap"`). Should a single text ever be wider than the window (not possible at the minimum width of 900 px with today's texts), it is cut with "…" and the full text is shown as tooltip.
+- **Short text and detail line:** each entry shows a short status as its first line (always short enough for one line, never wrapped) and, if needed, a smaller, dimmer detail line below it. Only the detail line may wrap – inside its own entry, never into a neighbour. The entry grows in height, the WrapPanel moves whole entries to the next line, so an entry is never split. Entries have a maximum width (about 360 px); the full text (short text + detail) is also the tooltip of the entry.
+
+  | Field | Short text | Detail line |
+  |-|-|-|
+  | Game | Helldivers 2 running | DISPLAY1 · 2560×1440 |
+  | | Helldivers 2 minimized / starting … / not running | – |
+  | Recognition | Loadout confirmed | Ready (or: screen closed, manual) |
+  | | Loadout screen | selecting |
+  | | Waiting | for the game / for the loadout screen |
+  | Hellboard | Hellboard connected | COM8 |
+  | | Firmware outdated | COM8 · 2.0.0 → 2.1.1, update on the Hellboard tab |
+  | | Firmware not compatible | install the firmware on the Hellboard tab |
+  | | Companion too old | the Hellboard firmware is newer – update Hellboard Companion |
+  | | Hellboard without protocol | COM8 · message of the board |
+  | | Hellboard simulator / Installing firmware … / Dry run / No Hellboard connected | – |
+
+  The colour of the dot stays as today (good / attention / problem / inactive). The view model gets a `…Detail` property per field next to the existing text (`GameText` + `GameDetail` etc.); unit tests check the texts of every state, and that no short text is longer than about 28 characters.
 - **Arrows:** a separate arrow element would end up at the end or start of a line after wrapping. Instead each entry gets a **chevron shape** (pointed right edge, notched left edge, like the Helldivers UI) – the flow direction stays visible on one line and on several lines.
 - Entries have a common minimum width, so on one line they still look like a balanced row.
 
@@ -73,7 +89,7 @@ The previews were rendered with the headless screenshot approach of `Software/to
 
 ## 5. Testing
 
-- The headless screenshot tool renders the overview at 900, 1200 and 1600 px width with long and short texts and 2/8/16 multi-function entries – checked visually, and kept as a script for later changes.
+- The headless screenshot tool renders the overview at 900, 1200 and 1600 px width with long and short texts (incl. the outdated-firmware and board-message details) and 2/8/16 multi-function entries – checked visually, and kept as a script for later changes.
 - Unit tests for the multi-function grouping and for the visibility of the recognize button (game states).
 - Check on the user's machine: resize the window live, dark/light Windows theme (the app stays dark), high DPI (150 %).
 
@@ -81,7 +97,7 @@ The previews were rendered with the headless screenshot approach of `Software/to
 
 | Step | Effort |
 |-|-|
-| Status chain with wrap panel and chevrons | small |
+| Status chain with wrap panel, chevrons, short text and detail line (incl. view model and tests) | small to medium |
 | Multi-function groups with frames and wrapping (incl. view model and tests) | medium |
 | Recognize button / tray / hotkey depending on the game | small |
 | Background (chosen option) incl. resize test | small to medium |
@@ -92,5 +108,6 @@ All in one round of work; the background last, so the layout changes can be judg
 
 1. **Background:** option 1, 2, 3 or 4 – or a combination (e.g. 1 + hazard stripes of 2)?
 2. **Arrows in the status chain:** chevron-shaped entries (recommended) or no direction marks at all?
+   The short texts and detail lines of section 2 are part of the plan (requested 2026-10-17); their wording can still be adjusted.
 3. **Group frames** in every mode (recommended) or only with "fixed list + automatic detection"?
 4. **Recognize button without the game:** hidden (as requested) – and should the hotkey without the game show a short notice (recommended) or do nothing?
