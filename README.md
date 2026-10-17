@@ -12,6 +12,21 @@ The Hellboard Companion is a Windows app that puts your stratagems on the Hellbo
 
 Download it from the [releases](https://github.com/frfrh/Hellboard/releases). More details: [`Software/README.md`](Software/README.md).
 
+### Three stratagems need a one-time setup
+
+The game draws three stratagems differently from the icon set the Companion compares with, so they are reported as *not recognized* at first:
+
+- **EAT-17 Expendable Anti-Tank** and **EAT-411 Leveller** – the game adds a small badge to the icon.
+- **TD-220 Bastion MK XVI** – the icon set shows the Maelstrom for it. Until you set it up, a Maelstrom may also be taken for the Bastion.
+
+Teach the Companion how they look in your game – it takes about a minute and is needed only once:
+
+1. Put **all three** into your loadout on the loadout screen (plus any fourth stratagem) and press *Ready* (or close the screen).
+2. Open the Companion and go to the **History** tab. You find one entry *Problem: stratagem not recognized* with a picture of the slot for each of them.
+3. In each entry, choose the stratagem under **This is …** and click **Use as reference**.
+
+From now on they are recognized and shown with their in-game picture. The pictures stay on your PC; the **Stratagems** tab lists them (*Only with reference*) and can remove them. The same works for any other stratagem that is not recognized, e.g. after a game update changed an icon.
+
 ## Folders
 
 ##### [Firmware](https://github.com/frfrh/Hellboard/tree/master/Firmware)
