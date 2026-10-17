@@ -23,7 +23,7 @@ public sealed class FirmwareInstallerTests
     {
         var large = new byte[5000];
         Random.Shared.NextBytes(large);
-        var bundle = new FirmwareBundle([new FirmwareFile("main.py", Bytes("new main")), new FirmwareFile("stratagems.json", large)]);
+        var bundle = new FirmwareBundle("1.0.0", [new FirmwareFile("main.py", Bytes("new main")), new FirmwareFile("stratagems.json", large)]);
 
         _repl.Enter();
         new FirmwareInstaller(_repl).Install(bundle);
@@ -40,7 +40,7 @@ public sealed class FirmwareInstallerTests
     {
         _board.Files["macro.py"] = Bytes("old");
         _board.Files["macro.py.bak"] = Bytes("older");
-        var bundle = new FirmwareBundle([new FirmwareFile("main.py", Bytes("new main"))], ["macro.py"]);
+        var bundle = new FirmwareBundle("1.0.0", [new FirmwareFile("main.py", Bytes("new main"))], ["macro.py"]);
 
         _repl.Enter();
         new FirmwareInstaller(_repl).Install(bundle);
@@ -53,7 +53,7 @@ public sealed class FirmwareInstallerTests
     public void A_checksum_mismatch_leaves_the_old_files_untouched()
     {
         _board.CorruptWritesTo = "stratagems.json";
-        var bundle = new FirmwareBundle([new FirmwareFile("main.py", Bytes("new main")), new FirmwareFile("stratagems.json", Bytes("{}"))]);
+        var bundle = new FirmwareBundle("1.0.0", [new FirmwareFile("main.py", Bytes("new main")), new FirmwareFile("stratagems.json", Bytes("{}"))]);
 
         _repl.Enter();
         var install = () => new FirmwareInstaller(_repl).Install(bundle);
@@ -67,7 +67,7 @@ public sealed class FirmwareInstallerTests
     public void A_failure_while_activating_restores_the_replaced_files()
     {
         _board.FailSwapOf = "stratagems.json";
-        var bundle = new FirmwareBundle([new FirmwareFile("main.py", Bytes("new main")), new FirmwareFile("stratagems.json", Bytes("{}"))]);
+        var bundle = new FirmwareBundle("1.0.0", [new FirmwareFile("main.py", Bytes("new main")), new FirmwareFile("stratagems.json", Bytes("{}"))]);
 
         _repl.Enter();
         var install = () => new FirmwareInstaller(_repl).Install(bundle);
@@ -109,13 +109,13 @@ public sealed class FirmwareInstallerTests
         try
         {
             File.WriteAllText(Path.Combine(dir, "a.py"), "print(1)");
-            File.WriteAllText(Path.Combine(dir, "manifest.json"), $$"""{"files": [{"source": "a.py", "target": "{{target.Replace("\"", "\\\"")}}"}]}""");
+            File.WriteAllText(Path.Combine(dir, "manifest.json"), $$"""{"version": "1.0.0", "files": [{"source": "a.py", "target": "{{target.Replace("\"", "\\\"")}}"}]}""");
 
             var load = () => FirmwareBundle.Load(Path.Combine(dir, "manifest.json"));
 
             if (valid)
             {
-                load().Files.Should().ContainSingle().Which.Target.Should().Be(target);
+                load().Files.Select(f => f.Target).Should().Equal(FirmwareBundle.VersionFile, target);
             }
             else
             {

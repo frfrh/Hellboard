@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
@@ -144,6 +145,26 @@ public sealed partial class StratagemCatalog
     }
 
     public CatalogEntry? Find(string id) => _entries.GetValueOrDefault(id);
+
+    /// <summary>
+    /// The catalog in the format of <c>doc/stratagems.json</c> with one stratagem per line, as the firmware
+    /// reads it on the board (F11); includes the user's own entries.
+    /// </summary>
+    public string ToBoardJson()
+    {
+        var categories = new JsonObject();
+        foreach (var group in _entries.Values.GroupBy(e => e.Category).OrderBy(g => g.Key, StringComparer.Ordinal))
+        {
+            categories[group.Key] = group.First().Color;
+        }
+
+        var lines = _entries.Values
+            .OrderBy(e => e.Category, StringComparer.Ordinal)
+            .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(e => "    " + new JsonObject { ["id"] = e.Id, ["name"] = e.Name, ["category"] = e.Category, ["code"] = e.Sequence }.ToJsonString());
+        return "{\n  \"version\": 1,\n  \"categories\": " + categories.ToJsonString() + ",\n  \"stratagems\": [\n"
+            + string.Join(",\n", lines) + "\n  ]\n}\n";
+    }
 
     private static Stream OpenBuiltIn() =>
         typeof(StratagemCatalog).Assembly.GetManifestResourceStream(ListResourceName)

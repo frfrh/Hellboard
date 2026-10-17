@@ -80,6 +80,7 @@ public sealed partial class HellboardStatusViewModel : ObservableObject, IDispos
             HellboardStatus.NotFound => "No Hellboard found",
             HellboardStatus.NoProtocol => $"Hellboard on {state.Port} – {state.Message}",
             HellboardStatus.Connected => $"Connected on {state.Port}",
+            HellboardStatus.Updating => $"Installing firmware on {state.Port} …",
             _ => state.Status.ToString(),
         };
         Firmware = state.Info is { } info ? $"{info.Firmware} (protocol {info.Protocol}, MicroPython {info.MicroPython})" : "–";

@@ -66,4 +66,33 @@ public static class LoadoutTransferBuilder
 
         return new LoadoutTransfer(new HellboardLoadout(stratagems, mission), notTransferable);
     }
+
+    /// <summary>
+    /// Before any loadout was locked: keeps what the board currently has (<paramref name="board"/>) and only
+    /// applies the multi-function list of the settings, so a changed fixed list reaches the board at once.
+    /// In <see cref="MultiFunctionMode.AutoDetect"/> nothing is known yet, so the board's list stays.
+    /// </summary>
+    public static LoadoutTransfer BuildMultiFunctionOnly(HellboardLoadout board, StratagemCatalog catalog, MultiFunctionOptions options)
+    {
+        if (options.Mode == MultiFunctionMode.AutoDetect)
+        {
+            return new LoadoutTransfer(board, []);
+        }
+
+        var notTransferable = new List<string>();
+        var mission = new List<StratagemDefinition>();
+        foreach (var id in options.FixedList.Distinct(StringComparer.Ordinal).Take(MaxMissionStratagems))
+        {
+            if (catalog.Find(id) is { IsTransferable: true } entry)
+            {
+                mission.Add(new StratagemDefinition(entry.Name, entry.Color, entry.Sequence!));
+            }
+            else
+            {
+                notTransferable.Add(id);
+            }
+        }
+
+        return new LoadoutTransfer(board with { MissionStratagems = mission }, notTransferable);
+    }
 }

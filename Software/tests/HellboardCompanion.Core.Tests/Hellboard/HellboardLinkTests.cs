@@ -18,11 +18,11 @@ public sealed class HellboardLinkTests
     public async Task Locked_loadout_is_sent_to_the_board()
     {
         using var link = Start(HellboardConnectionMode.Simulator);
-        await WaitFor(() => link.State.Status == HellboardStatus.Connected);
+        await WaitFor(() => link.State.Status == HellboardStatus.Connected && link.Simulator?.SetLoadoutCount == 1);
 
         link.Submit(LoadoutA);
 
-        await WaitFor(() => link.Simulator!.SetLoadoutCount == 1);
+        await WaitFor(() => link.Simulator!.SetLoadoutCount == 2);
         link.Simulator!.Stratagems![3]!["name"]!.GetValue<string>().Should().Be("Mortar Sentry");
         link.Simulator.MissionStratagems!.AsArray().Select(s => s!["name"]!.GetValue<string>()).Should().Equal("SOS Beacon");
         link.State.LastSent!.Stratagems[0]!.Name.Should().Be("Eagle 500KG Bomb");
@@ -32,45 +32,63 @@ public sealed class HellboardLinkTests
     public async Task Same_loadout_is_not_sent_twice_but_a_changed_one_is()
     {
         using var link = Start(HellboardConnectionMode.Simulator);
-        await WaitFor(() => link.State.Status == HellboardStatus.Connected);
+        await WaitFor(() => link.State.Status == HellboardStatus.Connected && link.Simulator?.SetLoadoutCount == 1);
 
         link.Submit(LoadoutA);
-        await WaitFor(() => link.Simulator!.SetLoadoutCount == 1);
+        await WaitFor(() => link.Simulator!.SetLoadoutCount == 2);
         link.Submit(LoadoutA with { Timestamp = DateTimeOffset.Now, Source = LockSource.Manual });
         link.Submit(LoadoutB);
 
-        await WaitFor(() => link.Simulator!.SetLoadoutCount == 2);
+        await WaitFor(() => link.Simulator!.SetLoadoutCount == 3);
         await Task.Delay(200, TestContext.Current.CancellationToken);
-        link.Simulator!.SetLoadoutCount.Should().Be(2);
+        link.Simulator!.SetLoadoutCount.Should().Be(3);
     }
 
     [Fact]
     public async Task Restarted_board_gets_the_loadout_again()
     {
         using var link = Start(HellboardConnectionMode.Simulator);
-        await WaitFor(() => link.State.Status == HellboardStatus.Connected);
+        await WaitFor(() => link.State.Status == HellboardStatus.Connected && link.Simulator?.SetLoadoutCount == 1);
         link.Submit(LoadoutA);
-        await WaitFor(() => link.Simulator!.SetLoadoutCount == 1);
+        await WaitFor(() => link.Simulator!.SetLoadoutCount == 2);
 
         link.Simulator!.Restart();
 
-        await WaitFor(() => link.Simulator.SetLoadoutCount == 2);
+        await WaitFor(() => link.Simulator.SetLoadoutCount == 3);
     }
 
     [Fact]
     public async Task Flash_is_written_only_on_set_as_default()
     {
         using var link = Start(HellboardConnectionMode.Simulator);
-        await WaitFor(() => link.State.Status == HellboardStatus.Connected);
+        await WaitFor(() => link.State.Status == HellboardStatus.Connected && link.Simulator?.SetLoadoutCount == 1);
         link.Submit(LoadoutA);
         link.Submit(LoadoutB);
-        await WaitFor(() => link.Simulator!.SetLoadoutCount == 2);
+        await WaitFor(() => link.Simulator!.SetLoadoutCount == 3);
         link.Simulator!.SaveCount.Should().Be(0, "transfers must not write the flash (F3)");
 
         await link.SetAsDefaultAsync();
 
         link.Simulator.SaveCount.Should().Be(1);
         link.Simulator.SavedDefault.Should().Contain("Eagle Strafing Run");
+    }
+
+    [Fact]
+    public async Task Fixed_multi_function_list_is_sent_before_any_loadout_was_locked()
+    {
+        var multiFunction = new MultiFunctionOptions { Mode = MultiFunctionMode.FixedListAndAutoDetect, FixedList = ["seaf_artillery", "eagle_rearm"] };
+        using var link = new HellboardLink(new HellboardOptions { Mode = HellboardConnectionMode.Simulator }, multiFunction, Catalog, NullLogger<HellboardLink>.Instance);
+        link.Start();
+
+        await WaitFor(() => link.Simulator?.SetLoadoutCount == 1);
+        link.Simulator!.MissionStratagems!.AsArray().Select(s => s!["name"]!.GetValue<string>()).Should().Equal("SEAF Artillery", "Eagle Rearm");
+        link.Simulator.Stratagems!.AsArray().Should().AllSatisfy(s => s.Should().BeNull(), "the slots of the board are kept");
+
+        multiFunction.FixedList = ["sos_beacon"];
+        link.ApplySettings();
+
+        await WaitFor(() => link.Simulator.SetLoadoutCount == 2);
+        link.Simulator.MissionStratagems!.AsArray().Should().ContainSingle();
     }
 
     [Fact]

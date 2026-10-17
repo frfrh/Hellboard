@@ -134,6 +134,38 @@
           </StackPanel>
 
           <StackPanel Spacing="10">
+            <TextBlock Text="Firmware" FontSize="18" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+              <TextBlock Grid.Row="0" Text="On the Hellboard" Opacity="0.7" />
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding BoardFirmware}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="1" Text="Included in the Companion" Opacity="0.7" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding BundledFirmware}" TextWrapping="Wrap" />
+            </Grid>
+            <TextBlock Text="A newer firmware is available for this Hellboard." IsVisible="{Binding IsUpdateAvailable}" Foreground="#FFC107" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding !IsConfirmingUpdate}">
+              <Button Content="Update Hellboard firmware …" Command="{Binding RequestUpdateCommand}"
+                      ToolTip.Tip="Installs the firmware included in the Companion on the Hellboard." />
+              <TextBlock Text="{Binding UpdateResult}" VerticalAlignment="Center" Opacity="0.8" TextWrapping="Wrap" MaxWidth="560" />
+            </StackPanel>
+            <Border IsVisible="{Binding IsConfirmingUpdate}" BorderBrush="#FFC107" BorderThickness="1" CornerRadius="4" Padding="12">
+              <StackPanel Spacing="10">
+                <TextBlock Text="{Binding UpdateDetails}" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Button Content="Start update" Command="{Binding StartUpdateCommand}" />
+                  <Button Content="Cancel" Command="{Binding CancelUpdateCommand}" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+            <ItemsControl ItemsSource="{Binding UpdateSteps}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <TextBlock Text="{Binding}" Opacity="0.8" FontFamily="Consolas,Menlo,monospace" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+
+          <StackPanel Spacing="10">
             <TextBlock Text="Configuration" FontSize="18" FontWeight="SemiBold" />
             <TextBlock Opacity="0.7" TextWrapping="Wrap"
                        Text="Changes are sent to the Hellboard immediately and stay in its memory until it restarts. Save them on the Hellboard to keep them without the Companion." />

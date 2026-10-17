@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using System.Collections.Concurrent;
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using HellboardCompanion.Core.Hellboard.Update;
 using HellboardCompanion.Core.Loadout;
 using HellboardCompanion.Core.Platform;
 using Microsoft.Extensions.Logging;
@@ -41,6 +43,9 @@ public enum HellboardStatus
 
     /// <summary>Connected; the board answered <c>ping</c>.</summary>
     Connected,
+
+    /// <summary>The firmware is being installed (implementation plan §6.10).</summary>
+    Updating,
 }
 
 public sealed record HellboardState(
@@ -77,6 +82,7 @@ public sealed class HellboardLink : IDisposable
     private readonly StratagemCatalog _catalog;
     private readonly ISerialPortDiscovery? _discovery;
     private readonly Func<string, IHellboardConnection> _openSerial;
+    private readonly Func<string, IReplPort> _openRepl;
     private readonly ILogger<HellboardLink> _logger;
     private readonly ConcurrentQueue<Func<Task>> _requests = new();
     private readonly SemaphoreSlim _wake = new(0);
@@ -93,6 +99,7 @@ public sealed class HellboardLink : IDisposable
     private LockedLoadout? _lastLocked;
     private bool _resendRequired;
     private JsonObject? _lastConfig;
+    private HellboardLoadout? _boardLoadout;
     private bool _configResendRequired;
     private Task? _loop;
 
@@ -103,9 +110,11 @@ public sealed class HellboardLink : IDisposable
         ILogger<HellboardLink> logger,
         ISerialPortDiscovery? discovery = null,
         Func<string, IHellboardConnection>? openSerial = null,
-        BoardOptions? board = null)
+        BoardOptions? board = null,
+        Func<string, IReplPort>? openRepl = null)
     {
         _board = board ?? new BoardOptions();
+        _openRepl = openRepl ?? (port => new SerialReplPort(port));
         _options = options;
         _multiFunction = multiFunction;
         _catalog = catalog;
@@ -199,6 +208,65 @@ public sealed class HellboardLink : IDisposable
         _logger.LogInformation("Hellboard: configuration saved on the board");
         Update(State with { ConfigSaved = response["configSaved"]?.GetValue<bool>() ?? true });
     });
+
+    /// <summary>
+    /// Installs <paramref name="bundle"/> on the board (implementation plan §6.10): a board with the protocol
+    /// is asked to stop (<c>enterUpdateMode</c>, F8), a board with an older firmware is stopped with Ctrl-C.
+    /// The files are written and verified through the raw REPL and only then swapped in; on any failure the
+    /// old files stay or are restored. Afterwards the board restarts and the link connects again.
+    /// </summary>
+    public Task UpdateFirmwareAsync(FirmwareBundle bundle, IProgress<string>? progress = null)
+    {
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Enqueue(async () =>
+        {
+            try
+            {
+                if (_options.Mode != HellboardConnectionMode.Serial || State.Port is not { } port
+                    || State.Status is not (HellboardStatus.Connected or HellboardStatus.NoProtocol))
+                {
+                    throw new InvalidOperationException("No Hellboard connected over USB.");
+                }
+
+                _logger.LogInformation("Hellboard firmware update to {Version} on {Port}", bundle.Version, port);
+                if (_client is not null)
+                {
+                    progress?.Report("Stopping the Hellboard program");
+                    try
+                    {
+                        await _client.EnterUpdateModeAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (ex is TimeoutException or IOException or HellboardException)
+                    {
+                        // falls back to Ctrl-C in the raw REPL
+                    }
+                }
+
+                Disconnect();
+                Update(State with { Status = HellboardStatus.Updating, Info = null, Message = null, ConfigSaved = null });
+                await Task.Run(() => Install(port, bundle, progress)).ConfigureAwait(false);
+                _logger.LogInformation("Hellboard firmware {Version} installed", bundle.Version);
+                progress?.Report("Restarting the Hellboard");
+                completion.SetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Hellboard firmware update failed");
+                completion.SetException(ex);
+            }
+            finally
+            {
+                _noProtocolUntil.Clear();
+                _resendRequired = true;
+                _configResendRequired = true;
+                if (State.Status == HellboardStatus.Updating)
+                {
+                    Update(State with { Status = HellboardStatus.NotFound, Port = null });
+                }
+            }
+        });
+        return completion.Task;
+    }
 
     /// <summary>"Set as default" (F3): writes the board's current loadout to its flash.</summary>
     public Task SetAsDefaultAsync() => RunOnLink(async client =>
@@ -367,6 +435,38 @@ public sealed class HellboardLink : IDisposable
         }
     }
 
+    private void Install(string port, FirmwareBundle bundle, IProgress<string>? progress)
+    {
+        // The port was just closed; Windows may need a moment before it can be opened again.
+        IReplPort? replPort = null;
+        for (var attempt = 0; replPort is null; attempt++)
+        {
+            try
+            {
+                replPort = _openRepl(port);
+            }
+            catch (Exception ex) when (attempt < 10 && ex is IOException or UnauthorizedAccessException)
+            {
+                Thread.Sleep(300);
+            }
+        }
+
+        using (replPort)
+        {
+            var repl = new MicroPythonRawRepl(replPort);
+            progress?.Report("Connecting to MicroPython");
+            repl.Enter();
+            try
+            {
+                new FirmwareInstaller(repl).Install(bundle, progress);
+            }
+            finally
+            {
+                repl.ExitAndSoftReset();
+            }
+        }
+    }
+
     private async Task<bool> OpenAsync(IHellboardConnection connection, string port)
     {
         var client = new HellboardClient(connection);
@@ -423,15 +523,35 @@ public sealed class HellboardLink : IDisposable
             _logger.LogDebug("Hellboard log not available: {Error}", ex.Message);
         }
 
+        var state = await client.GetStateAsync().ConfigureAwait(false);
+        ReadBoardLoadout(state);
         if (!_board.Adopted)
         {
-            var state = await client.GetStateAsync().ConfigureAwait(false);
             if (state["config"] is JsonObject config)
             {
                 BoardConfiguration.Adopt(config, _board, _catalog);
                 _logger.LogInformation("Hellboard: configuration of the board taken over (first connect)");
                 BoardConfigAdopted?.Invoke(this, EventArgs.Empty);
             }
+        }
+    }
+
+    /// <summary>Remembers the loadout the board reports, for applying the multi-function list before any loadout was locked.</summary>
+    private void ReadBoardLoadout(JsonObject state)
+    {
+        try
+        {
+            var stratagems = state["stratagems"]?.Deserialize<List<StratagemDefinition?>>();
+            var mission = state["missionStratagems"]?.Deserialize<List<StratagemDefinition>>();
+            if (stratagems is { Count: 4 } && mission is not null)
+            {
+                _boardLoadout = new HellboardLoadout(stratagems, mission);
+                BuildPending();
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogDebug("Hellboard state not readable: {Error}", ex.Message);
         }
     }
 
@@ -492,12 +612,20 @@ public sealed class HellboardLink : IDisposable
 
     private void BuildPending()
     {
-        if (_lastLocked is null)
+        LoadoutTransfer transfer;
+        if (_lastLocked is not null)
+        {
+            transfer = LoadoutTransferBuilder.Build(_lastLocked, _catalog, _multiFunction);
+        }
+        else if (_boardLoadout is not null)
+        {
+            transfer = LoadoutTransferBuilder.BuildMultiFunctionOnly(_boardLoadout, _catalog, _multiFunction);
+        }
+        else
         {
             return;
         }
 
-        var transfer = LoadoutTransferBuilder.Build(_lastLocked, _catalog, _multiFunction);
         if (transfer.NotTransferable.Count > 0)
         {
             _logger.LogWarning("Not transferable (no input sequence in the catalog): {Ids}", string.Join(", ", transfer.NotTransferable));
@@ -548,6 +676,11 @@ public sealed class HellboardLink : IDisposable
                 // The board restarted: it runs its saved default again, so send loadout and configuration.
                 Enqueue(async () =>
                 {
+                    if (_lastLocked is null && _client is not null)
+                    {
+                        ReadBoardLoadout(await _client.GetStateAsync().ConfigureAwait(false));
+                    }
+
                     _resendRequired = true;
                     _configResendRequired = true;
                     await SendPendingAsync().ConfigureAwait(false);

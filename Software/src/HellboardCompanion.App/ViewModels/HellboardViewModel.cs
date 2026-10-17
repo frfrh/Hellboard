@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HellboardCompanion.Core.Configuration;
 using HellboardCompanion.Core.Hellboard;
+using HellboardCompanion.Core.Hellboard.Update;
 
 namespace HellboardCompanion.App.ViewModels;
 
@@ -34,6 +35,8 @@ public sealed partial class HellboardViewModel : ObservableObject, IDisposable
     private readonly HellboardLink? _link;
     private readonly DispatcherTimer _saveTimer;
     private readonly List<HellboardLogEntry> _entries = [];
+    private readonly Lazy<FirmwareBundle?> _bundle;
+    private HellboardState? _state;
 
     [ObservableProperty]
     private string _configState = "–";
@@ -45,12 +48,45 @@ public sealed partial class HellboardViewModel : ObservableObject, IDisposable
     [NotifyCanExecuteChangedFor(nameof(SaveConfigCommand))]
     private bool _isConnected;
 
+    [ObservableProperty]
+    private string _boardFirmware = "–";
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RequestUpdateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartUpdateCommand))]
+    private bool _canUpdate;
+
+    [ObservableProperty]
+    private bool _isUpdateAvailable;
+
+    [ObservableProperty]
+    private bool _isConfirmingUpdate;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RequestUpdateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartUpdateCommand))]
+    private bool _isUpdating;
+
+    [ObservableProperty]
+    private string? _updateResult;
+
     public HellboardViewModel(SettingsStore? store, HellboardLink? link, StratagemCatalog catalog, HellboardStatusViewModel status)
     {
         _store = store;
         _board = store?.Settings.Board ?? new BoardOptions();
         _link = link;
         Status = status;
+        _bundle = new Lazy<FirmwareBundle?>(() =>
+        {
+            try
+            {
+                return FirmwareBundle.LoadEmbedded(catalog);
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
+        });
         _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
         _saveTimer.Tick += (_, _) =>
         {
@@ -194,6 +230,74 @@ public sealed partial class HellboardViewModel : ObservableObject, IDisposable
         }
     }
 
+    // ---- firmware update (implementation plan §6.10) --------------------------------------------
+
+    public string BundledFirmware => _bundle.Value?.Version ?? "not available";
+
+    /// <summary>What the update installs, shown before it starts.</summary>
+    public string UpdateDetails => _bundle.Value is { } bundle
+        ? $"Installs firmware {bundle.Version} ({bundle.Files.Count} files: {string.Join(", ", bundle.Files.Select(f => f.Target))}). "
+          + "The configuration saved on the Hellboard is kept. Every file is checked on the board before the old files are replaced; if anything fails, the old firmware stays. "
+          + "Do not unplug the Hellboard during the update (about one minute)."
+        : string.Empty;
+
+    public ObservableCollection<string> UpdateSteps { get; } = [];
+
+    [RelayCommand(CanExecute = nameof(CanStartUpdate))]
+    private void RequestUpdate()
+    {
+        UpdateResult = null;
+        IsConfirmingUpdate = true;
+    }
+
+    [RelayCommand]
+    private void CancelUpdate() => IsConfirmingUpdate = false;
+
+    [RelayCommand(CanExecute = nameof(CanStartUpdate))]
+    private async Task StartUpdateAsync()
+    {
+        if (_link is null || _bundle.Value is not { } bundle)
+        {
+            return;
+        }
+
+        IsConfirmingUpdate = false;
+        IsUpdating = true;
+        UpdateSteps.Clear();
+        UpdateResult = "Updating …";
+        var progress = new Progress<string>(step => UpdateSteps.Add($"{DateTime.Now:HH:mm:ss}  {step}"));
+        try
+        {
+            await _link.UpdateFirmwareAsync(bundle, progress);
+            UpdateResult = $"Firmware {bundle.Version} installed – the Hellboard restarts and connects again.";
+        }
+        catch (Exception ex)
+        {
+            UpdateResult = $"Update failed: {ex.Message} The previous firmware is still on the Hellboard.";
+        }
+        finally
+        {
+            IsUpdating = false;
+            UpdateCanUpdate();
+        }
+    }
+
+    private bool CanStartUpdate() => CanUpdate && !IsUpdating;
+
+    private void UpdateCanUpdate()
+    {
+        var state = _state;
+        CanUpdate = _bundle.Value is not null && state is { Status: HellboardStatus.Connected or HellboardStatus.NoProtocol, Port: not null } && !IsUpdating;
+        BoardFirmware = state switch
+        {
+            { Status: HellboardStatus.Connected, Info: { } info } => info.Firmware ?? "unknown",
+            { Status: HellboardStatus.NoProtocol } => "older firmware without Companion support",
+            { Status: HellboardStatus.Updating } => "updating …",
+            _ => "–",
+        };
+        IsUpdateAvailable = CanUpdate && (state?.Status == HellboardStatus.NoProtocol || state?.Info?.Firmware != _bundle.Value?.Version);
+    }
+
     // ---- log ---------------------------------------------------------------------------------
 
     public ObservableCollection<HellboardLogLineViewModel> LogLines { get; } = [];
@@ -247,6 +351,8 @@ public sealed partial class HellboardViewModel : ObservableObject, IDisposable
 
     private void ApplyState(HellboardState state)
     {
+        _state = state;
+        UpdateCanUpdate();
         IsConnected = state.Status == HellboardStatus.Connected;
         ConfigState = !IsConnected
             ? "Not connected – the configuration is sent as soon as the Hellboard is connected."

@@ -1,5 +1,7 @@
 # hellboard-upload
 
+> Users install firmware updates from the **Hellboard tab of the Companion** ("Update Hellboard firmware"). This tool is for development: it installs the files of the working tree without building the Companion.
+
 Installs the Hellboard firmware files onto the board – a replacement for uploading the files one by one with MicroPico. Development tool of phase P7; its Core classes (`HellboardCompanion.Core.Hellboard.Update`) become the firmware updater of the Companion (implementation plan §6.10).
 
 ## What it does

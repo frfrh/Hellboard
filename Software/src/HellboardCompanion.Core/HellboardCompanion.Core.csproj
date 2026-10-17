@@ -9,6 +9,9 @@
     <EmbeddedResource Include="..\..\assets\layouts\loadout-v1.json" LogicalName="HellboardCompanion.Core.Layout.loadout-v1.json" />
     <!-- Single source of the stratagem input codes, shared with the firmware (repository root). -->
     <EmbeddedResource Include="..\..\..\doc\stratagems.json" LogicalName="HellboardCompanion.Core.Hellboard.stratagems.json" Link="stratagems.json" />
+    <!-- Firmware bundle for the updater in the Companion (implementation plan §6.10); the stratagem list is generated from the catalog. -->
+    <EmbeddedResource Include="..\..\..\Firmware\manifest.json;..\..\..\Firmware\config.json;..\..\..\Firmware\main.py" LogicalName="Firmware/%(Filename)%(Extension)" Link="Firmware\%(Filename)%(Extension)" Visible="false" />
+    <EmbeddedResource Include="..\..\..\Firmware\libs\**\*.py" LogicalName="Firmware/libs/%(RecursiveDir)%(Filename)%(Extension)" Link="Firmware\libs\%(RecursiveDir)%(Filename)%(Extension)" Visible="false" />
   </ItemGroup>
 
   <ItemGroup>

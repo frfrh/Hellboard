@@ -15,7 +15,16 @@ from hid import Hid
 from leds import Leds
 from protocol import Protocol, ProtocolError, VERSION as PROTOCOL_VERSION, send
 
-FIRMWARE_VERSION = '2.0.0-dev'
+def _firmware_version():
+    """version.json is written by the installer from the version in Firmware/manifest.json."""
+    try:
+        with open('version.json') as f:
+            return json.load(f).get('version', 'unknown')
+    except (OSError, ValueError):
+        return 'dev'
+
+
+FIRMWARE_VERSION = _firmware_version()
 
 # Button name -> GPIO. Row 1: fixed 1_1 / 1_2, multi-function 1_3, cycle key 1_4. Row 2: loadout.
 PINS = {'1_4': 0, '1_3': 1, '1_2': 2, '1_1': 3, '2_1': 29, '2_2': 28, '2_3': 27, '2_4': 26}
