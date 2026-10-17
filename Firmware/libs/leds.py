@@ -13,20 +13,14 @@ class Leds:
         self._last = None
 
     def set_brightness(self, brightness):
-        b = brightness
-        self._colors = {
-            'yellow': (b << 16) + (b << 8),
-            'red': b << 16,
-            'green': b << 8,
-            'blue': b,
-            'white': (b << 16) + (b << 8) + b,
-            None: 0,
-        }
+        self._colors = _palette(brightness)
+        self._bright = _palette(max(brightness, CONFIRM))
         self._last = None
 
-    def show(self, colors):
-        """colors: one color name (or None = off) per LED, in chain order."""
-        self._write([self._colors.get(c, 0) for c in colors])
+    def show(self, colors, bright=False):
+        """colors: one color name (or None = off) per LED, in chain order; bright: flash feedback (F4)."""
+        palette = self._bright if bright else self._colors
+        self._write([palette.get(c, 0) for c in colors])
 
     def confirm(self, count):
         """All LEDs white, as feedback for a key press."""
@@ -42,6 +36,17 @@ class Leds:
             data.extend(_byte(value >> 16 & 0xFF))
             data.extend(_byte(value & 0xFF))
         self._spi.write(data)
+
+
+def _palette(b):
+    return {
+        'yellow': (b << 16) + (b << 8),
+        'red': b << 16,
+        'green': b << 8,
+        'blue': b,
+        'white': (b << 16) + (b << 8) + b,
+        None: 0,
+    }
 
 
 def _byte(byte):

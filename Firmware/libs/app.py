@@ -30,6 +30,13 @@ LOOP_MS = 50
 MAX_MISSION = 16
 LOG_LEVELS = ('debug', 'info', 'warn', 'error')
 
+# Feedback on the board (decision F4)
+MESSAGE_MS = 2000           # a message replaces the separator line for this long
+FLASH_STEP_MS = 120         # LED flash: on, off, on, off
+FLASH_STEPS = 4
+PC_TIMEOUT_MS = 15000       # the Companion pings every 10 s; no request for longer = no PC
+SEPARATOR = '----------------'
+
 
 def _copy(value):
     return json.loads(json.dumps(value))
@@ -90,6 +97,11 @@ class App:
         for name in PINS:
             self.pins[name] = Pin(PINS[name], Pin.IN, Pin.PULL_UP)
         self.last_cycle = time.ticks_ms()
+        self.last_request = None
+        self.message = None
+        self.message_since = 0
+        self.flash = None           # None, 'colors' (received / saved) or 'error'
+        self.flash_since = 0
 
     def stratagem(self, button):
         if button == MULTI:
@@ -104,10 +116,7 @@ class App:
                 self.protocol.poll()
                 pressed = self.handle_buttons()
                 self.draw()
-                if pressed:
-                    self.leds.confirm(len(ORDER))
-                else:
-                    self.leds.show([self.color(b) for b in ORDER])
+                self.show_leds(pressed)
             except Exception as e:
                 log.error('Main loop: %s' % e)
                 self.hid.release_all()
@@ -146,6 +155,39 @@ class App:
         stratagem = self.stratagem(button)
         return stratagem.color if stratagem else None
 
+    def pc_connected(self):
+        return self.last_request is not None and time.ticks_diff(time.ticks_ms(), self.last_request) < PC_TIMEOUT_MS
+
+    def notify(self, message, flash=None):
+        """Shows a message for MESSAGE_MS instead of the separator line and optionally flashes the LEDs (F4)."""
+        now = time.ticks_ms()
+        self.message = message
+        self.message_since = now
+        if flash:
+            self.flash = flash
+            self.flash_since = now
+
+    def show_leds(self, pressed):
+        if pressed:
+            self.leds.confirm(len(ORDER))
+            return
+        if self.flash and time.ticks_diff(time.ticks_ms(), self.flash_since) < FLASH_STEP_MS * FLASH_STEPS:
+            if time.ticks_diff(time.ticks_ms(), self.flash_since) // FLASH_STEP_MS % 2:
+                self.leds.show([None] * len(ORDER))
+            elif self.flash == 'error':
+                self.leds.show(['red'] * len(ORDER), bright=True)
+            else:
+                self.leds.show([self.color(b) for b in ORDER], bright=True)
+            return
+        self.flash = None
+        self.leds.show([self.color(b) for b in ORDER])
+
+    def separator(self):
+        if self.message and time.ticks_diff(time.ticks_ms(), self.message_since) < MESSAGE_MS:
+            return self.message
+        self.message = None
+        return SEPARATOR[:-2] + 'PC' if self.pc_connected() else SEPARATOR
+
     def draw(self):
         def name(button):
             stratagem = self.stratagem(button)
@@ -153,7 +195,7 @@ class App:
 
         self.display.show((
             (4, name(MULTI)),
-            (18, '----------------'),
+            (18, self.separator()),
             (24, name('2_1')),
             (34, name('2_2')),
             (44, name('2_3')),
@@ -163,6 +205,17 @@ class App:
     # ---- protocol (hellboard-protocol.md section 4) --------------------------------------------
 
     def handle_request(self, command, request):
+        if not self.pc_connected():
+            self.notify('PC connected')
+        self.last_request = time.ticks_ms()
+        try:
+            return self._handle(command, request)
+        except ProtocolError as e:
+            if e.code != 'unknown_command':
+                self.notify('Transfer error', 'error')
+            raise
+
+    def _handle(self, command, request):
         if command == 'ping':
             return {'board': 'hellboard', 'fw': FIRMWARE_VERSION, 'protocol': PROTOCOL_VERSION,
                     'micropython': '.'.join(str(x) for x in sys.implementation.version)}
@@ -178,11 +231,13 @@ class App:
             self._save({'loadout': [self._definition(self.slots[b]) for b in LOADOUT],
                         'multiFunction': [s.to_dict() for s in self.multi]})
             log.info('Loadout saved as default')
+            self.notify('Default saved', 'colors')
             return {}
         if command == 'saveConfig':
             self._save(self.config)
             self.persisted = _copy(self.config)
             log.info('Configuration saved')
+            self.notify('Config saved', 'colors')
             return {'configSaved': True}
         if command == 'getLog':
             return {'entries': log.entries()}
@@ -211,6 +266,7 @@ class App:
         self.index = 0
         self.source = 'pc'
         log.info('Loadout received: %s' % self._describe())
+        self.notify('Loadout received', 'colors')
         return {}
 
     def _set_config(self, changes):

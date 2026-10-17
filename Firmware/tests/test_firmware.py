@@ -13,6 +13,7 @@ time.ticks_diff = lambda a, b: a - b
 
 pressed = set()
 reports = []
+spi_writes = []
 
 machine = types.ModuleType('machine')
 class Pin:
@@ -22,7 +23,7 @@ class Pin:
 class SPI:
     MSB = 0
     def __init__(self, *a, **k): pass
-    def write(self, data): pass
+    def write(self, data): spi_writes.append(bytes(data))
 class I2C:
     def __init__(self, *a, **k): pass
 machine.Pin, machine.SPI, machine.I2C = Pin, SPI, I2C
@@ -86,6 +87,25 @@ assert r['stratagems'][0]['name'] == 'Grenade Launcher'
 mg = {'name': 'Machine Gun', 'color': 'blue', 'sequence': 'DLDUR'}
 r = request({'v': 1, 'id': 3, 'cmd': 'setLoadout', 'stratagems': [mg, None, None, None], 'missionStratagems': [{'name': 'Hellbomb', 'color': 'yellow', 'sequence': 'DULDURDU'}]})
 assert r['ok'], r
+
+# feedback (F4): message instead of the separator, LEDs flash in their colors, then PC indicator
+import display
+assert a.separator() == 'Loadout received', a.separator()
+spi_writes.clear()
+a.show_leds(False)                       # flash phase 1: bright colors
+_t[0] += app.FLASH_STEP_MS
+a.show_leds(False)                       # phase 2: off
+assert len(spi_writes) == 2 and spi_writes[0] != spi_writes[1]
+assert spi_writes[1] == bytes(b'\x92\x49\x24' * 3 * 8), 'all LEDs off in the flash pause'
+_t[0] += app.MESSAGE_MS
+assert a.separator() == '--------------PC', a.separator()
+assert a.flash is not None
+a.show_leds(False)
+assert a.flash is None, 'flash finished'
+_t[0] += app.PC_TIMEOUT_MS
+assert a.separator() == app.SEPARATOR, 'no request for 15 s: PC indicator off'
+assert display.fit('StA-X3 W.A.S.P. Launcher') == 'StA-X3 W.A.S.P. '
+assert display.fit('Castellan’s') == 'Castellan?s'
 assert a.slots['2_1'].name == 'Machine Gun' and a.slots['2_2'] is None and a.multi[0].name == 'Hellbomb'
 
 # repeated id -> same answer, not executed again
@@ -94,6 +114,11 @@ assert r2 == r and a.slots['2_1'].name == 'Machine Gun'
 
 r = request({'v': 1, 'id': 4, 'cmd': 'setLoadout', 'stratagems': [mg], 'missionStratagems': []})
 assert not r['ok'] and r['error'] == 'invalid_loadout', r
+assert a.separator() == 'Transfer error' and a.flash == 'error'
+spi_writes.clear()
+a.show_leds(False)
+red = bytes(spi_writes[0])
+assert red != bytes(b'\x92\x49\x24' * 3 * 8)
 r = request({'v': 1, 'id': 5, 'cmd': 'setLoadout', 'stratagems': [{'name': 'X', 'color': 'blue', 'sequence': 'UXD'}, None, None, None], 'missionStratagems': []})
 assert r['error'] == 'invalid_loadout', r
 

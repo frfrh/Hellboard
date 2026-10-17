@@ -34,5 +34,13 @@ class Display:
         self._lines = lines
         self._oled.fill(0)
         for y, text in lines:
-            self._oled.text(text, 0, y)
+            self._oled.text(fit(text), 0, y)
         self._oled.show()
+
+
+def fit(text, width=WIDTH // 8):
+    """Fits a full name into one display line (8 px font): characters the font cannot show become '?',
+    longer names are cut. The only place where names are shortened (protocol section 4.2) - a scrolling
+    text for long names can be added here later."""
+    text = ''.join(c if ' ' <= c <= '~' else '?' for c in text)
+    return text[:width]
