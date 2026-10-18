@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="HellboardCompanion.App.CompanionApp"
              Name="Hellboard Companion"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Dark">
 
   <Application.Styles>
     <FluentTheme />

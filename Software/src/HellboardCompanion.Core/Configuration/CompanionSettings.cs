@@ -42,8 +42,23 @@ public sealed class UiOptions
     public HistoryFilter HistoryFilter { get; set; } = HistoryFilter.Important;
 }
 
+/// <summary>What the close button (X) of the window does.</summary>
+public enum CloseAction
+{
+    /// <summary>The window closes, the Companion keeps running in the system tray.</summary>
+    KeepRunningInTray,
+
+    /// <summary>The Companion exits.</summary>
+    Exit,
+}
+
 public sealed class GeneralOptions
 {
     /// <summary>Start Hellboard Companion when the user signs in.</summary>
     public bool StartWithWindows { get; set; }
+
+    /// <summary>Start with only the tray icon instead of opening the window.</summary>
+    public bool StartMinimized { get; set; }
+
+    public CloseAction CloseAction { get; set; } = CloseAction.KeepRunningInTray;
 }

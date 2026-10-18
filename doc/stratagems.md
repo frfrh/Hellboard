@@ -43,7 +43,7 @@ UTF-8 JSON, **exactly one stratagem object per line**. This is a hard rule, not 
 ## Decisions
 
 - **SSSD Delivery:** `DDDUU` (Fandom wiki) until further notice; the 7-arrow variant `DDDDDUU` (wiki.gg, DiversHub) is considered too long. *(2026-10-16)*
-- **Cremator:** code from wiki.gg, unverified (DiversHub differs). *(2026-10-16)*
+- **Cremator:** `DDRDUU` verified in game (wiki.gg correct, DiversHub wrong). *(2026-10-18)*
 - **TD-110 Maelstrom:** `LDRDLDULR` verified in game (wiki.gg correct, DiversHub wrong). *(2026-10-16)*
 
 Checked against helldivers.wiki.gg, DiversHub and the Fandom wiki on 2026-10-16: 115 stratagems.

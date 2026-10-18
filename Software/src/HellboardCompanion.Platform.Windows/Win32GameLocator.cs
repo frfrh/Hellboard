@@ -31,6 +31,7 @@ public sealed class Win32GameLocator : IGameLocator
     private nint _foregroundHook;
     private uint _hookedProcessId;
     private nint _window;
+    private nint _lastForegroundLogged;
     private volatile GameSnapshot _current = GameSnapshot.NotRunning;
 
     public Win32GameLocator(GameLocatorOptions options, ILogger<Win32GameLocator> logger)
@@ -130,22 +131,50 @@ public sealed class Win32GameLocator : IGameLocator
 
     private GameSnapshot DetermineSnapshot()
     {
-        var processId = FindProcessId();
-        HookProcess(processId);
-
-        if (processId == 0)
+        // There can be several processes with the game's name (seen on a Windows 10 PC: the game was found
+        // for a moment, then only "starting" for a quarter of an hour). The game is the one with the window.
+        var processIds = FindProcessIds();
+        if (processIds.Count == 0)
         {
+            HookProcess(0);
             _window = 0;
             return GameSnapshot.NotRunning;
         }
 
-        if (_window == 0 || !IsWindow(_window) || GetProcessIdOfWindow(_window) != processId)
+        if (_window == 0 || !IsWindow(_window) || !(processIds.Contains(GetProcessIdOfWindow(_window)) || TitleOf(_window) == _options.WindowTitle))
         {
-            _window = FindMainWindow(processId);
+            _window = FindMainWindow(processIds);
+            if (_window == 0)
+            {
+                // Seen on a Windows 10 PC: the game process had no enumerable window at all. Fall back to the
+                // window title, then to the foreground window if it belongs to the game.
+                _window = FindWindowByTitle(_options.WindowTitle);
+                var foreground = GetForegroundWindow();
+                if (_window == 0 && foreground != 0 && processIds.Contains(GetProcessIdOfWindow(foreground)))
+                {
+                    _window = foreground;
+                }
+
+                if (_window != 0)
+                {
+                    _logger.LogInformation("Game window found without the process list: {Window}", Describe(_window));
+                }
+            }
         }
+
+        var processId = _window != 0 ? GetProcessIdOfWindow(_window) : processIds.Min();
+        HookProcess(processId);
 
         if (_window == 0)
         {
+            if (_current.Status != GameStatus.Starting || _lastForegroundLogged != GetForegroundWindow())
+            {
+                _lastForegroundLogged = GetForegroundWindow();
+                _logger.LogInformation(
+                    "Game process(es) {Processes} without a visible main window: {Windows}; foreground window: {Foreground}",
+                    string.Join(", ", processIds), DescribeWindows(processIds), _lastForegroundLogged == 0 ? "none" : Describe(_lastForegroundLogged));
+            }
+
             return GameSnapshot.Starting;
         }
 
@@ -197,12 +226,12 @@ public sealed class Win32GameLocator : IGameLocator
         }
     }
 
-    private uint FindProcessId()
+    private HashSet<uint> FindProcessIds()
     {
         var processes = Process.GetProcessesByName(_options.ProcessName);
         try
         {
-            return processes.Length > 0 ? (uint)processes[0].Id : 0;
+            return processes.Select(p => (uint)p.Id).ToHashSet();
         }
         finally
         {
@@ -242,14 +271,14 @@ public sealed class Win32GameLocator : IGameLocator
         return processId;
     }
 
-    /// <summary>The largest visible, unowned, non-tool window of the process.</summary>
-    private static nint FindMainWindow(uint processId)
+    /// <summary>The largest visible, unowned, non-tool window of the processes.</summary>
+    private static nint FindMainWindow(HashSet<uint> processIds)
     {
         nint best = 0;
         long bestArea = 0;
         EnumWindowsProc callback = (hwnd, _) =>
         {
-            if (GetProcessIdOfWindow(hwnd) == processId
+            if (processIds.Contains(GetProcessIdOfWindow(hwnd))
                 && IsWindowVisible(hwnd)
                 && GetWindow(hwnd, GW_OWNER) == 0
                 && (GetWindowLongPtr(hwnd, GWL_EXSTYLE) & WS_EX_TOOLWINDOW) == 0
@@ -269,6 +298,70 @@ public sealed class Win32GameLocator : IGameLocator
         EnumWindows(Marshal.GetFunctionPointerForDelegate(callback), 0);
         GC.KeepAlive(callback);
         return best;
+    }
+
+    /// <summary>The largest visible top-level window with exactly this title.</summary>
+    private static nint FindWindowByTitle(string title)
+    {
+        nint best = 0;
+        long bestArea = 0;
+        EnumWindowsProc callback = (hwnd, _) =>
+        {
+            if (IsWindowVisible(hwnd) && GetWindowRect(hwnd, out var rect) && TitleOf(hwnd) == title)
+            {
+                var area = PixelRect.FromEdges(rect.Left, rect.Top, rect.Right, rect.Bottom).Area;
+                if (area > bestArea)
+                {
+                    best = hwnd;
+                    bestArea = area;
+                }
+            }
+
+            return true;
+        };
+
+        EnumWindows(Marshal.GetFunctionPointerForDelegate(callback), 0);
+        GC.KeepAlive(callback);
+        return best;
+    }
+
+    private static string TitleOf(nint window)
+    {
+        var buffer = new char[256];
+        var length = GetWindowText(window, buffer, buffer.Length);
+        return length > 0 ? new string(buffer, 0, length) : string.Empty;
+    }
+
+    /// <summary>Title, class, process and size of a window, for the log.</summary>
+    private static string Describe(nint window)
+    {
+        var className = new char[256];
+        var classLength = GetClassName(window, className, className.Length);
+        GetWindowRect(window, out var rect);
+        return $"\"{TitleOf(window)}\" class {new string(className, 0, Math.Max(0, classLength))}, process {GetProcessIdOfWindow(window)}, "
+            + $"{rect.Right - rect.Left}×{rect.Bottom - rect.Top}{(IsWindowVisible(window) ? string.Empty : " hidden")}";
+    }
+
+    /// <summary>All top-level windows of the processes with what excludes them, for the log (diagnosis on other PCs).</summary>
+    private static string DescribeWindows(HashSet<uint> processIds)
+    {
+        var windows = new List<string>();
+        EnumWindowsProc callback = (hwnd, _) =>
+        {
+            if (processIds.Contains(GetProcessIdOfWindow(hwnd)) && GetWindowRect(hwnd, out var rect))
+            {
+                windows.Add($"{GetProcessIdOfWindow(hwnd)}: {rect.Right - rect.Left}×{rect.Bottom - rect.Top}"
+                    + (IsWindowVisible(hwnd) ? string.Empty : " hidden")
+                    + (GetWindow(hwnd, GW_OWNER) != 0 ? " owned" : string.Empty)
+                    + ((GetWindowLongPtr(hwnd, GWL_EXSTYLE) & WS_EX_TOOLWINDOW) != 0 ? " tool" : string.Empty));
+            }
+
+            return true;
+        };
+
+        EnumWindows(Marshal.GetFunctionPointerForDelegate(callback), 0);
+        GC.KeepAlive(callback);
+        return windows.Count == 0 ? "no windows" : string.Join("; ", windows.Take(10));
     }
 
     private static PixelRect GetClientBounds(nint window)

@@ -52,6 +52,33 @@ public sealed class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void The_window_opens_on_start_and_the_close_button_keeps_the_tray_icon_by_default()
+    {
+        Directory.CreateDirectory(_paths.ConfigDirectory);
+        File.WriteAllText(Path.Combine(_paths.ConfigDirectory, "config.json"), """{ "general": { "startWithWindows": true } }""");   // settings of 0.6.x
+
+        var store = SettingsStore.Load(_paths);
+
+        store.Settings.General.StartMinimized.Should().BeFalse();
+        store.Settings.General.CloseAction.Should().Be(CloseAction.KeepRunningInTray);
+    }
+
+    [Fact]
+    public void Start_and_close_behavior_survive_a_restart()
+    {
+        var store = SettingsStore.Load(_paths);
+        store.Settings.General.StartMinimized = true;
+        store.Settings.General.CloseAction = CloseAction.Exit;
+        store.Save();
+
+        var reloaded = SettingsStore.Load(_paths);
+
+        reloaded.Settings.General.StartMinimized.Should().BeTrue();
+        reloaded.Settings.General.CloseAction.Should().Be(CloseAction.Exit);
+        File.ReadAllText(store.FilePath).Should().Contain("\"Exit\"");
+    }
+
+    [Fact]
     public void Missing_values_get_their_defaults()
     {
         Directory.CreateDirectory(_paths.ConfigDirectory);

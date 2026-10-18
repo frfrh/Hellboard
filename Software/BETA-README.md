@@ -19,7 +19,9 @@ On the first start the app needs an internet connection: it downloads the strata
 recognition from GitHub (`nvigneux/Helldivers-2-Stratagems-icons-svg`). The first start also takes a few
 seconds longer because the bundled native libraries are unpacked.
 
-The app runs in the system tray. Left-click the tray icon to open the window.
+The app opens its window and keeps running in the system tray; left-click the tray icon to open the window
+again. In *Settings → General* you can let it start with only the tray icon, and let the close button (X)
+exit the app instead of keeping it in the tray.
 
 ## Requirements
 

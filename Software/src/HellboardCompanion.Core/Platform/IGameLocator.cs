@@ -21,6 +21,12 @@ public sealed class GameLocatorOptions
     /// <summary>Process name without extension.</summary>
     public string ProcessName { get; set; } = "helldivers2";
 
+    /// <summary>
+    /// Title of the game window. Used when no window can be found through the process (seen on a Windows 10
+    /// PC: the process had no enumerable window).
+    /// </summary>
+    public string WindowTitle { get; set; } = "HELLDIVERS™ 2";
+
     /// <summary>Forces a monitor by device name (e.g. <c>\\.\DISPLAY2</c>) if the automatic detection fails.</summary>
     public string? MonitorOverride { get; set; }
 }

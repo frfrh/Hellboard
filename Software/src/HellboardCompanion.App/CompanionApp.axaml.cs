@@ -29,6 +29,7 @@ public sealed partial class CompanionApp : Application
     private readonly IServiceProvider? _services;
     private MainWindow? _mainWindow;
     private bool _openingMainWindow;
+    private bool _exiting;
     private StratagemImages? _images;
 
     /// <summary>Used by the XAML previewer only.</summary>
@@ -66,6 +67,11 @@ public sealed partial class CompanionApp : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+
+        if (_services?.GetService<GeneralOptions>() is { StartMinimized: false })
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(ShowMainWindow);   // default: open the window; otherwise only the tray icon
+        }
     }
 
     /// <summary>"Recognize loadout now" in the tray menu only while the game window can be captured.</summary>
@@ -85,8 +91,16 @@ public sealed partial class CompanionApp : Application
 
     private void OnRecognizeNowClicked(object? sender, EventArgs e) => _ = _services?.GetService<ManualTriggerService>()?.TriggerAsync();
 
-    private void OnExitClicked(object? sender, EventArgs e)
+    private void OnExitClicked(object? sender, EventArgs e) => Exit();
+
+    private void Exit()
     {
+        if (_exiting)
+        {
+            return;
+        }
+
+        _exiting = true;
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.Shutdown();
@@ -118,6 +132,10 @@ public sealed partial class CompanionApp : Application
             {
                 viewModel.Dispose();
                 _mainWindow = null;
+                if (_services?.GetService<GeneralOptions>() is { CloseAction: CloseAction.Exit })
+                {
+                    Exit();   // setting "Close button (X)": exit instead of keeping the tray icon
+                }
             };
             _mainWindow = window;
             window.Show();

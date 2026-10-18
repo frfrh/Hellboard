@@ -2,7 +2,7 @@
 
 Windows companion app for the [Hellboard](../README.md): it watches the Helldivers 2 loadout screen, recognizes the selected stratagems and transfers them to the Hellboard.
 
-> Status: released (0.6.1) – all phases of the [implementation plan](doc/spec/implementation-plan.md) are done except P7b (switch to the official MicroPython).
+> Status: released (0.7.0) – all phases of the [implementation plan](doc/spec/implementation-plan.md) are done except P7b (switch to the official MicroPython).
 
 ## Requirements
 
@@ -18,7 +18,7 @@ Windows companion app for the [Hellboard](../README.md): it watches the Helldive
 dotnet run --project src/HellboardCompanion.Desktop.Windows
 ```
 
-The app starts in the system tray. Left-click the tray icon or choose *Open* to show the window; *Exit* ends the app.
+The app opens its window and keeps running in the system tray. Left-click the tray icon or choose *Open* to show the window; *Exit* ends the app. *Settings → General* sets whether it starts with only the tray icon and whether the close button (X) exits the app instead of keeping it in the tray.
 Logs are written to `%LOCALAPPDATA%\HellboardCompanion\logs`.
 
 ## Release package
@@ -54,7 +54,7 @@ Reference pages for development and for extending the stratagem catalog (input c
 | Source | Content | Notes |
 |-|-|-|
 | [Helldivers Wiki (wiki.gg) – Stratagems](https://helldivers.wiki.gg/wiki/Stratagems) | 116 stratagems with input code, incl. rare mission objectives (Portable Comms Relay, Tactical Video Camera, E-711 Extraction Drill, Aquifer Drill) | Most complete source (checked 2026-10-16). Lists SSSD Delivery twice (↓↓↓↑↑ and ↓↓↓↓↓↑↑). Reinforcement Pods share the code of Upload Data. |
-| [DiversHub – Stratagems](https://divershub.app/de/database/stratagems) | 111 stratagems with input code, cooldown and full designation (German UI) | Checked 2026-10-16. Differs from wiki.gg for Cremator (DiversHub ↓←↑←↑↑ = code of GL-28, wiki.gg ↓↓→↓↑↑) and TD-110 Maelstrom (DiversHub starts with ↑, wiki.gg with ← like all other vehicles). |
+| [DiversHub – Stratagems](https://divershub.app/de/database/stratagems) | 111 stratagems with input code, cooldown and full designation (German UI) | Checked 2026-10-16. Wrong for Cremator (DiversHub ↓←↑←↑↑ = code of GL-28; ↓↓→↓↑↑ of wiki.gg verified in game 2026-10-18) and TD-110 Maelstrom (DiversHub starts with ↑; wiki.gg with ← verified in game). |
 | [Helldivers Wiki (Fandom) – Stratagem Codes](https://helldivers.fandom.com/wiki/Stratagem_Codes) | 81 stratagems with input code, cooldown and designation | Missing newer Warbonds. SSSD Delivery differs from DiversHub. |
 | [Icon repository nvigneux/Helldivers-2-Stratagems-icons-svg](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg) | Stratagem SVG icons, the ids and English names of the catalog | Downloaded at runtime by the catalog updater (implementation plan §6.11). |
 | [`doc/spec/stratagem-names-de.md`](doc/spec/stratagem-names-de.md) | English ↔ German names read from the game | Own notes. |
