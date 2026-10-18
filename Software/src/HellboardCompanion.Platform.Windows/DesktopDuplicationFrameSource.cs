@@ -101,13 +101,18 @@ public sealed class DesktopDuplicationFrameSource(ILogger<DesktopDuplicationFram
     {
         private readonly ID3D11Device _device;
         private readonly IDXGIOutputDuplication _duplication;
+        private readonly ILogger _logger;
+        private readonly float _sdrWhite;
         private ID3D11Texture2D? _staging;
+        private Format _format;
 
-        private Session(string deviceName, ID3D11Device device, IDXGIOutputDuplication duplication)
+        private Session(string deviceName, ID3D11Device device, IDXGIOutputDuplication duplication, ILogger logger, float sdrWhite)
         {
             DeviceName = deviceName;
             _device = device;
             _duplication = duplication;
+            _logger = logger;
+            _sdrWhite = sdrWhite;
         }
 
         public string DeviceName { get; }
@@ -140,10 +145,12 @@ public sealed class DesktopDuplicationFrameSource(ILogger<DesktopDuplicationFram
 
                             try
                             {
-                                using var output1 = output.QueryInterface<IDXGIOutput1>();
-                                var duplication = output1.DuplicateOutput(device);
-                                logger.LogInformation("Desktop duplication started for {Monitor} on {Adapter}", monitor.DeviceName, adapter.Description1.Description);
-                                return new Session(monitor.DeviceName, device, duplication);
+                                var duplication = Duplicate(output, device, logger);
+                                var sdrWhite = Interop.DisplayConfig.SdrWhiteLevel(monitor.DeviceName);
+                                logger.LogInformation(
+                                    "Desktop duplication started for {Monitor} on {Adapter}, format {Format}, SDR white level {SdrWhite}",
+                                    monitor.DeviceName, adapter.Description1.Description, duplication.Description.ModeDescription.Format, sdrWhite?.ToString("F2") ?? "unknown");
+                                return new Session(monitor.DeviceName, device, duplication, logger, (float)(sdrWhite ?? 1));
                             }
                             catch (Exception ex)
                             {
@@ -158,6 +165,34 @@ public sealed class DesktopDuplicationFrameSource(ILogger<DesktopDuplicationFram
 
             logger.LogWarning("Monitor {Monitor} not found among the DXGI outputs", monitor.DeviceName);
             return null;
+        }
+
+        /// <summary>
+        /// Asks for the desktop's own format among 8-bit BGRA and 16-bit float (DuplicateOutput1, Windows 10 1703+):
+        /// an HDR desktop then comes as linear scRGB, which <see cref="PixelFormats.FromScRgbHalf"/> converts
+        /// with the monitor's SDR white level. The classic DuplicateOutput delivered an image that read as 8-bit
+        /// looked like colored noise on a Windows 10 PC with HDR. Falls back to DuplicateOutput where
+        /// DuplicateOutput1 is not available.
+        /// </summary>
+        private static IDXGIOutputDuplication Duplicate(IDXGIOutput output, ID3D11Device device, ILogger logger)
+        {
+            using (var output5 = output.QueryInterfaceOrNull<IDXGIOutput5>())
+            {
+                if (output5 is not null)
+                {
+                    try
+                    {
+                        return output5.DuplicateOutput1(device, [Format.B8G8R8A8_UNorm, Format.R16G16B16A16_Float]);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogInformation(ex, "DuplicateOutput1 is not available, using DuplicateOutput");
+                    }
+                }
+            }
+
+            using var output1 = output.QueryInterface<IDXGIOutput1>();
+            return output1.DuplicateOutput(device);
         }
 
         public AcquireOutcome TryAcquire(uint timeoutMs)
@@ -178,7 +213,15 @@ public sealed class DesktopDuplicationFrameSource(ILogger<DesktopDuplicationFram
                 using (resource)
                 using (var texture = resource!.QueryInterface<ID3D11Texture2D>())
                 {
-                    _staging ??= CreateStaging(texture.Description);
+                    if (_staging is null)
+                    {
+                        _format = texture.Description.Format;
+                        _staging = CreateStaging(texture.Description);
+                        if (_format is not (Format.B8G8R8A8_UNorm or Format.R10G10B10A2_UNorm or Format.R16G16B16A16_Float))
+                        {
+                            _logger.LogWarning("Desktop image in format {Format}, which is not supported – the capture will be wrong", _format);
+                        }
+                    }
                     _device.ImmediateContext.CopyResource(_staging, texture);
                     HasImage = true;
                 }
@@ -198,12 +241,26 @@ public sealed class DesktopDuplicationFrameSource(ILogger<DesktopDuplicationFram
             var mapped = context.Map(_staging!, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
             try
             {
+                var sourcePixelBytes = _format == Format.R16G16B16A16_Float ? 8 : 4;
                 var rowBytes = local.Width * Frame.BytesPerPixel;
                 var pixels = new byte[local.Height * rowBytes];
-                var source = (byte*)mapped.DataPointer + (local.Y * mapped.RowPitch) + (local.X * Frame.BytesPerPixel);
+                var source = (byte*)mapped.DataPointer + (local.Y * mapped.RowPitch) + (local.X * sourcePixelBytes);
                 for (var y = 0; y < local.Height; y++)
                 {
-                    new ReadOnlySpan<byte>(source + (y * mapped.RowPitch), rowBytes).CopyTo(pixels.AsSpan(y * rowBytes));
+                    var row = source + (y * mapped.RowPitch);
+                    var target = pixels.AsSpan(y * rowBytes, rowBytes);
+                    switch (_format)
+                    {
+                        case Format.R10G10B10A2_UNorm:
+                            PixelFormats.FromR10G10B10A2(new ReadOnlySpan<uint>(row, local.Width), target);
+                            break;
+                        case Format.R16G16B16A16_Float:
+                            PixelFormats.FromScRgbHalf(new ReadOnlySpan<Half>(row, local.Width * 4), target, _sdrWhite);
+                            break;
+                        default:
+                            new ReadOnlySpan<byte>(row, rowBytes).CopyTo(target);
+                            break;
+                    }
                 }
 
                 return new Frame(screen, pixels, DateTimeOffset.Now);
