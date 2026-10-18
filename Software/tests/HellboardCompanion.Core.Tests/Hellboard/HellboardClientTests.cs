@@ -93,6 +93,54 @@ public sealed class HellboardClientTests
         events.Should().Equal("hello");
     }
 
+    [Fact]
+    public async Task The_first_probe_sends_one_line_only()
+    {
+        var connection = new LossyConnection(new SimulatedHellboard(), dropFirst: int.MaxValue);   // never answers, like the old firmware
+        using var client = new HellboardClient(connection);
+
+        var probe = () => client.ProbeAsync(TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken);
+
+        await probe.Should().ThrowAsync<TimeoutException>();
+        connection.Sent.Should().ContainSingle("every line stays in the old firmware's small USB buffer");
+    }
+
+    [Fact]
+    public async Task The_first_probe_waits_for_a_firmware_that_is_still_starting()
+    {
+        var board = new SimulatedHellboard();
+        var connection = new DelayedConnection(board, TimeSpan.FromMilliseconds(600));
+        using var client = new HellboardClient(connection);
+
+        var info = await client.ProbeAsync(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
+
+        info.Protocol.Should().Be(1);
+    }
+
+    /// <summary>Hands the lines to the board after a delay, like a firmware that shows its logo first.</summary>
+    private sealed class DelayedConnection(SimulatedHellboard inner, TimeSpan delay) : IHellboardConnection
+    {
+        public string Description => "Delayed";
+
+        public event EventHandler<string>? LineReceived
+        {
+            add => inner.LineReceived += value;
+            remove => inner.LineReceived -= value;
+        }
+
+        public event EventHandler? Closed
+        {
+            add => inner.Closed += value;
+            remove => inner.Closed -= value;
+        }
+
+        public void WriteLine(string line) => _ = Task.Delay(delay).ContinueWith(_ => inner.WriteLine(line), TaskScheduler.Default);
+
+        public void Dispose()
+        {
+        }
+    }
+
     /// <summary>Drops the first outgoing lines, like a board that was busy.</summary>
     private sealed class LossyConnection(SimulatedHellboard inner, int dropFirst) : IHellboardConnection
     {

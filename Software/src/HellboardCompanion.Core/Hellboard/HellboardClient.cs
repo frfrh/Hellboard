@@ -44,6 +44,18 @@ public sealed class HellboardClient : IDisposable
         return response.Deserialize<HellboardInfo>(JsonOptions)!;
     }
 
+    /// <summary>
+    /// First contact with a board: one <c>ping</c>, sent once, with a long wait. An old firmware never
+    /// reads the port, so everything sent stays in its small USB buffer (256 bytes) – once that is full,
+    /// even the Ctrl-C of the firmware updater cannot get through. A firmware that is still starting
+    /// (logo) reads the line from the buffer a moment later.
+    /// </summary>
+    public async Task<HellboardInfo> ProbeAsync(TimeSpan wait, CancellationToken cancellationToken = default)
+    {
+        var response = await SendAsync("ping", null, cancellationToken, attempts: 1, timeout: wait).ConfigureAwait(false);
+        return response.Deserialize<HellboardInfo>(JsonOptions)!;
+    }
+
     public Task SetLoadoutAsync(HellboardLoadout loadout, CancellationToken cancellationToken = default) =>
         SendAsync("setLoadout", request =>
         {
@@ -88,8 +100,10 @@ public sealed class HellboardClient : IDisposable
         _sequential.Dispose();
     }
 
-    private async Task<JsonObject> SendAsync(string command, Action<JsonObject>? addParameters, CancellationToken cancellationToken)
+    private async Task<JsonObject> SendAsync(string command, Action<JsonObject>? addParameters, CancellationToken cancellationToken,
+        int? attempts = null, TimeSpan? timeout = null)
     {
+        var tries = attempts ?? _retries + 1;
         await _sequential.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -98,14 +112,14 @@ public sealed class HellboardClient : IDisposable
             addParameters?.Invoke(request);
             var line = request.ToJsonString();
 
-            for (var attempt = 0; attempt <= _retries; attempt++)
+            for (var attempt = 0; attempt < tries; attempt++)
             {
                 var completion = new TaskCompletionSource<JsonObject>(TaskCreationOptions.RunContinuationsAsynchronously);
                 _pending[id] = completion;
                 _connection.WriteLine(line);
                 try
                 {
-                    var response = await completion.Task.WaitAsync(_timeout, cancellationToken).ConfigureAwait(false);
+                    var response = await completion.Task.WaitAsync(timeout ?? _timeout, cancellationToken).ConfigureAwait(false);
                     if (response["ok"]?.GetValue<bool>() == true)
                     {
                         return response;
@@ -125,7 +139,7 @@ public sealed class HellboardClient : IDisposable
                 }
             }
 
-            throw new TimeoutException($"The Hellboard did not answer '{command}' ({_retries + 1} attempts).");
+            throw new TimeoutException($"The Hellboard did not answer '{command}' ({tries} attempts).");
         }
         finally
         {
