@@ -164,6 +164,30 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 
     public bool AutostartAvailable => _autostart is not null;
 
+    public IReadOnlyList<Choice<bool>> StartChoices { get; } =
+    [
+        new(false, "Open the window"),
+        new(true, "Only the tray icon"),
+    ];
+
+    public Choice<bool> StartMinimized
+    {
+        get => StartChoices.First(c => c.Value == _settings.General.StartMinimized);
+        set => Change(() => _settings.General.StartMinimized = value.Value);
+    }
+
+    public IReadOnlyList<Choice<CloseAction>> CloseChoices { get; } =
+    [
+        new(CloseAction.KeepRunningInTray, "Close the window, keep running in the tray"),
+        new(CloseAction.Exit, "Exit Hellboard Companion"),
+    ];
+
+    public Choice<CloseAction> CloseButton
+    {
+        get => CloseChoices.First(c => c.Value == _settings.General.CloseAction);
+        set => Change(() => _settings.General.CloseAction = value.Value);
+    }
+
     // ---- stratagem icons (implementation plan §6.11) -----------------------------------------
 
     /// <summary>Number of icons, last check and its result.</summary>

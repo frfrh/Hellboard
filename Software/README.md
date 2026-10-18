@@ -18,7 +18,7 @@ Windows companion app for the [Hellboard](../README.md): it watches the Helldive
 dotnet run --project src/HellboardCompanion.Desktop.Windows
 ```
 
-The app starts in the system tray. Left-click the tray icon or choose *Open* to show the window; *Exit* ends the app.
+The app opens its window and keeps running in the system tray. Left-click the tray icon or choose *Open* to show the window; *Exit* ends the app. *Settings → General* sets whether it starts with only the tray icon and whether the close button (X) exits the app instead of keeping it in the tray.
 Logs are written to `%LOCALAPPDATA%\HellboardCompanion\logs`.
 
 ## Release package
