@@ -31,7 +31,7 @@
     {"id": "c4_pack", "name": "C4 Pack", "designation": "B/MD C4 Pack", "category": "Support weapon", "code": "DRUURU", "notes": null},
     {"id": "commando", "name": "Commando", "designation": "MLS-4X Commando", "category": "Support weapon", "code": "DLUDR", "notes": null},
     {"id": "cqc_20", "name": "CQC-20", "designation": "CQC-20 Breaching Hammer", "category": "Support weapon", "code": "DLRLU", "notes": null},
-    {"id": "cremator", "name": "Cremator", "designation": "B/FLAM-80 Cremator", "category": "Support weapon", "code": "DDRDUU", "notes": "Unverified: wiki.gg; DiversHub lists DLULUU (the code of GL-28)"},
+    {"id": "cremator", "name": "Cremator", "designation": "B/FLAM-80 Cremator", "category": "Support weapon", "code": "DDRDUU", "notes": "Verified in game 2026-10-18 (wiki.gg correct; DiversHub wrongly lists DLULUU, the code of GL-28)"},
     {"id": "defoliation_tool", "name": "Defoliation Tool", "designation": "CQC-9 Defoliation Tool", "category": "Support weapon", "code": "DLRRD", "notes": null},
     {"id": "eat_411", "name": "EAT-411", "designation": "EAT-411 Leveller", "category": "Support weapon", "code": "DDLUD", "notes": null},
     {"id": "epoch", "name": "Epoch", "designation": "PLAS-45 Epoch", "category": "Support weapon", "code": "DLULR", "notes": null},
