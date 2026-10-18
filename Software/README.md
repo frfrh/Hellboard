@@ -2,7 +2,7 @@
 
 Windows companion app for the [Hellboard](../README.md): it watches the Helldivers 2 loadout screen, recognizes the selected stratagems and transfers them to the Hellboard.
 
-> Status: released (0.6.1) – all phases of the [implementation plan](doc/spec/implementation-plan.md) are done except P7b (switch to the official MicroPython).
+> Status: released (0.7.0) – all phases of the [implementation plan](doc/spec/implementation-plan.md) are done except P7b (switch to the official MicroPython).
 
 ## Requirements
 
