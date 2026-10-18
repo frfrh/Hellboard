@@ -165,6 +165,34 @@ public sealed class HellboardLinkTests
         link.State.Message.Should().Contain("firmware");
     }
 
+    /// <summary>
+    /// The old firmware never reads the port: every ping stays in its 256-byte USB buffer, and once it is
+    /// full the firmware updater cannot stop the firmware any more ("semaphore timeout").
+    /// </summary>
+    [Fact]
+    public async Task An_old_firmware_is_asked_only_once_until_it_is_plugged_in_again()
+    {
+        var discovery = new SwitchableDiscovery { Ports = ["COM8"] };
+        var written = new List<string>();
+        using var link = new HellboardLink(
+            new HellboardOptions { Mode = HellboardConnectionMode.Serial },
+            new MultiFunctionOptions(),
+            Catalog,
+            NullLogger<HellboardLink>.Instance,
+            discovery,
+            _ => new RecordingSilentConnection(written));
+        link.Start();
+
+        await WaitFor(() => link.State.Status == HellboardStatus.NoProtocol, TimeSpan.FromSeconds(10));
+        await Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);   // more than two search intervals
+        written.Should().ContainSingle("one ping, sent once, and no further checks while the board stays plugged in");
+
+        discovery.Ports = [];
+        await WaitFor(() => link.State.Status == HellboardStatus.NotFound);
+        discovery.Ports = ["COM8"];
+        await WaitFor(() => written.Count == 2, TimeSpan.FromSeconds(10));
+    }
+
     [Fact]
     public async Task Blocking_write_of_an_old_firmware_releases_the_port()
     {
@@ -281,5 +309,43 @@ public sealed class HellboardLinkTests
     private sealed class FakeDiscovery(params string[] ports) : ISerialPortDiscovery
     {
         public IReadOnlyList<string> FindPorts(string usbVendorId) => ports;
+    }
+
+    /// <summary>Board can be "unplugged" and "plugged in" again.</summary>
+    private sealed class SwitchableDiscovery : ISerialPortDiscovery
+    {
+        public volatile string[] Ports = [];
+
+        public IReadOnlyList<string> FindPorts(string usbVendorId) => Ports;
+    }
+
+    /// <summary>Like the old firmware: takes what is written (into its buffer) and never answers.</summary>
+    private sealed class RecordingSilentConnection(List<string> written) : IHellboardConnection
+    {
+        public string Description => "COM8";
+
+        public event EventHandler<string>? LineReceived
+        {
+            add { }
+            remove { }
+        }
+
+        public event EventHandler? Closed
+        {
+            add { }
+            remove { }
+        }
+
+        public void WriteLine(string line)
+        {
+            lock (written)
+            {
+                written.Add(line);
+            }
+        }
+
+        public void Dispose()
+        {
+        }
     }
 }

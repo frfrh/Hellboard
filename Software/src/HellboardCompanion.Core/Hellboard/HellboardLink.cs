@@ -73,7 +73,9 @@ public sealed class HellboardLink : IDisposable
     public const string UsbVendorId = "2E8A";
 
     private static readonly TimeSpan SearchInterval = TimeSpan.FromSeconds(2);
-    private static readonly TimeSpan NoProtocolRetryInterval = TimeSpan.FromSeconds(30);
+
+    /// <summary>Wait for the answer to the first ping: a firmware that is still starting (logo, 2 s) reads it a little later.</summary>
+    private static readonly TimeSpan ProbeWait = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(10);
     private const int MaxLogEntries = 500;
 
@@ -87,7 +89,14 @@ public sealed class HellboardLink : IDisposable
     private readonly ConcurrentQueue<Func<Task>> _requests = new();
     private readonly SemaphoreSlim _wake = new(0);
     private readonly CancellationTokenSource _stop = new();
-    private readonly Dictionary<string, DateTimeOffset> _noProtocolUntil = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Ports with a board that did not answer the first ping (old firmware). They are not asked again while
+    /// the port exists: the old firmware never reads the port, every further ping would fill its USB buffer
+    /// until the firmware updater cannot stop it any more ("semaphore timeout"). Unplugging the board
+    /// removes the port and with it the entry.
+    /// </summary>
+    private readonly HashSet<string> _silentPorts = new(StringComparer.OrdinalIgnoreCase);
     private readonly BoardOptions _board;
     private readonly List<HellboardLogEntry> _log = [];
     private readonly Lock _logLock = new();
@@ -182,7 +191,7 @@ public sealed class HellboardLink : IDisposable
             _appliedConnection = (_options.Mode, _options.Port);
             _logger.LogInformation("Hellboard connection changed to {Mode} {Port}", _options.Mode, _options.Port ?? "(auto)");
             Disconnect();
-            _noProtocolUntil.Clear();
+            _silentPorts.Clear();
             Update(State with
             {
                 Status = _options.Mode == HellboardConnectionMode.DryRun ? HellboardStatus.DryRun : HellboardStatus.NotFound,
@@ -256,7 +265,7 @@ public sealed class HellboardLink : IDisposable
             }
             finally
             {
-                _noProtocolUntil.Clear();
+                _silentPorts.Clear();   // the new firmware answers
                 _resendRequired = true;
                 _configResendRequired = true;
                 if (State.Status == HellboardStatus.Updating)
@@ -391,7 +400,8 @@ public sealed class HellboardLink : IDisposable
         }
 
         var ports = _options.Port is { } fixedPort ? [fixedPort] : _discovery?.FindPorts(UsbVendorId) ?? [];
-        var candidates = ports.Where(p => !_noProtocolUntil.TryGetValue(p, out var until) || until < DateTimeOffset.Now).ToList();
+        _silentPorts.RemoveWhere(p => !ports.Contains(p, StringComparer.OrdinalIgnoreCase));   // unplugged
+        var candidates = ports.Where(p => !_silentPorts.Contains(p)).ToList();
         if (ports.Count == 0)
         {
             Update(State with { Status = HellboardStatus.NotFound, Port = null, Info = null, Message = null });
@@ -427,10 +437,10 @@ public sealed class HellboardLink : IDisposable
                 return;
             }
 
-            // Old firmware without protocol: release the port and ask again later.
+            // Old firmware without protocol: release the port and do not ask again until the board is plugged in again.
             connection.Dispose();
-            _noProtocolUntil[port] = DateTimeOffset.Now + NoProtocolRetryInterval;
-            _logger.LogInformation("Hellboard on {Port} does not answer the protocol (old firmware); port released, next check in {Seconds} s", port, NoProtocolRetryInterval.TotalSeconds);
+            _silentPorts.Add(port);
+            _logger.LogInformation("Hellboard on {Port} does not answer the protocol (old firmware); port released, not checked again until it is plugged in again", port);
             Update(State with { Status = HellboardStatus.NoProtocol, Port = port, Info = null, Message = "The Hellboard firmware does not support the protocol yet (firmware update needed)." });
         }
     }
@@ -455,7 +465,17 @@ public sealed class HellboardLink : IDisposable
         {
             var repl = new MicroPythonRawRepl(replPort);
             progress?.Report("Connecting to MicroPython");
-            repl.Enter();
+            try
+            {
+                repl.Enter();
+            }
+            catch (Exception ex) when (ex is IOException or TimeoutException)
+            {
+                // Windows reports a write the board does not take as "semaphore timeout" (IOException).
+                throw new IOException(
+                    "The Hellboard does not accept data from the PC – its firmware does not read the USB port, and the port's buffer is full. "
+                    + "Unplug the Hellboard, plug it in again and start the update right away.", ex);
+            }
             try
             {
                 new FirmwareInstaller(repl).Install(bundle, progress);
@@ -473,7 +493,7 @@ public sealed class HellboardLink : IDisposable
         HellboardInfo info;
         try
         {
-            info = await client.PingAsync().ConfigureAwait(false);
+            info = await client.ProbeAsync(ProbeWait).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is TimeoutException or IOException)
         {
