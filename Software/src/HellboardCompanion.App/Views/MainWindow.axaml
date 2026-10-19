@@ -319,8 +319,8 @@
             <StackPanel Orientation="Horizontal" Spacing="16">
               <CheckBox IsChecked="{Binding OnlyWithoutCode}" Content="Only without code" />
               <CheckBox IsChecked="{Binding OnlyWithReference}" Content="Only with reference" />
-              <CheckBox IsChecked="{Binding OnlyWithProposal}" Content="Only with wiki.gg proposal" />
             </StackPanel>
+            <CheckBox IsChecked="{Binding OnlyWithProposal}" Content="Only with wiki.gg proposal" />
             <TextBlock Text="{Binding Summary}" Opacity="0.6" FontSize="12" />
           </StackPanel>
           <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}">
