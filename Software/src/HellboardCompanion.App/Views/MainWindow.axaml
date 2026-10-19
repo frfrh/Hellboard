@@ -520,6 +520,7 @@
           <StackPanel Spacing="10">
             <TextBlock Text="General" FontSize="18" FontWeight="SemiBold" />
             <CheckBox IsChecked="{Binding StartWithWindows}" IsEnabled="{Binding AutostartAvailable}" Content="Start Hellboard Companion with Windows" />
+            <CheckBox IsChecked="{Binding CheckForUpdates}" Content="Look for a new version at start (asks GitHub; takes effect at the next start)" />
             <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="8">
               <TextBlock Grid.Row="0" Text="On start, show" VerticalAlignment="Center" />
               <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding StartChoices}" SelectedItem="{Binding StartMinimized}" MinWidth="320" />

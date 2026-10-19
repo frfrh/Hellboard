@@ -201,6 +201,13 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         set => Change(() => _settings.General.CloseAction = value.Value);
     }
 
+    /// <summary>Look for a newer release on GitHub at start (the only GitHub query of the Companion).</summary>
+    public bool CheckForUpdates
+    {
+        get => _settings.General.CheckForUpdates;
+        set => Change(() => _settings.General.CheckForUpdates = value);
+    }
+
     // ---- stratagem icons (implementation plan §6.11) -----------------------------------------
 
     /// <summary>Number of icons, last check and its result.</summary>

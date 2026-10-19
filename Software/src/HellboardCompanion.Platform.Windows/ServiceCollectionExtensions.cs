@@ -19,6 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IGlobalHotkeys, Win32GlobalHotkeys>();
         services.AddSingleton<ISerialPortDiscovery, RegistrySerialPortDiscovery>();
         services.AddSingleton<IAutostart, RegistryAutostart>();
+        services.AddSingleton<INotifications, WindowsNotifications>();
         return services;
     }
 }

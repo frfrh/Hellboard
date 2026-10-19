@@ -1,0 +1,22 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Asks whether to download a newer Companion release (opens the release page in the browser). -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="HellboardCompanion.App.Views.UpdateWindow"
+        Title="Hellboard Companion – new version"
+        Icon="/Assets/hellboard.ico"
+        CanResize="False"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="CenterOwner">
+
+  <StackPanel Margin="24" Spacing="16" MaxWidth="460">
+    <TextBlock x:Name="TitleText" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+    <TextBlock x:Name="BodyText" TextWrapping="Wrap" />
+    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+      <Button Content="Download" Classes="accent" Click="OnDownloadClicked" IsDefault="True" />
+      <Button Content="Later" Click="OnLaterClicked" IsCancel="True" />
+      <Button Content="Skip this version" Click="OnSkipClicked" />
+    </StackPanel>
+  </StackPanel>
+
+</Window>

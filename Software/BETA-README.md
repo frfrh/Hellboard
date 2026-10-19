@@ -21,7 +21,10 @@ downloads the stratagem icons it uses for recognition from there. Both are check
 native libraries are unpacked.
 
 The app opens its window and keeps running in the system tray; left-click the tray icon to open the window
-again. In *Settings → General* you can let it start with only the tray icon, and let the close button (X)
+again. A few seconds after the start the app looks on GitHub for a newer version; if there is one, it asks
+whether to open the download page in your browser (with only the tray icon shown, Windows shows a
+notification first). You can skip a version or turn the check off in *Settings → General*.
+In *Settings → General* you can also let it start with only the tray icon, and let the close button (X)
 exit the app instead of keeping it in the tray.
 
 ## Requirements

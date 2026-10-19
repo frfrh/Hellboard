@@ -61,6 +61,10 @@ Reference pages for development and for extending the stratagem catalog (input c
 
 The input codes used by the project are maintained in one place only: [`doc/stratagems.json`](../doc/stratagems.json) in the repository root (format, naming rule and decisions: [`doc/stratagems.md`](../doc/stratagems.md)). New or corrected codes go there first (run `stratagem-sync` against the wiki; when sources disagree, check the code in the game and note decisions there); the software and the firmware take their codes from that list. The companion embeds the file at build time and builds its stratagem catalog from it (`StratagemCatalog`); `StratagemCatalogTests` check that it can be read. Between the built-in list and the user's list sits the wiki layer: the last stratagem table read from the wiki (`%LOCALAPPDATA%\HellboardCompanion\wiki\stratagems.json`, checked at most once a day, `WikiStratagemStore`). Users can add or correct stratagems without a new release in `%APPDATA%\HellboardCompanion\stratagems.json` (same format, entries replace or extend the built-in list and win over the wiki; see `doc/stratagems.md`).
 
+## Online access
+
+At runtime the Companion queries only two services: the stratagem table and icons of **helldivers.wiki.gg** (at most once a day, [plan](doc/spec/wiki-source-plan.md)) and the **GitHub releases** of `frfrh/Hellboard` at start to find a newer Companion (`CompanionUpdateChecker`; can be turned off in the settings). Companion releases are tagged `vX.Y.Z_companion`; other parts of the project use other tags.
+
 ## Acknowledgements
 
 A big thank you to the editors of the **[Helldivers Wiki](https://helldivers.wiki.gg/)** on wiki.gg. Their carefully maintained stratagem pages – input codes, designations and the traced stratagem icons – are the foundation of the Companion's stratagem catalog and proved more reliable and better maintained than any other source we compared. Wiki content is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
