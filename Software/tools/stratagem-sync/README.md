@@ -19,11 +19,11 @@ The catalog is never changed: check each difference and enter corrections by han
 
 ## Usage
 
-From `Software/`:
+From the repository root:
 
 ```powershell
-dotnet run tools/stratagem-sync/stratagem-sync.cs
-dotnet run tools/stratagem-sync/stratagem-sync.cs -- --catalog path/to/stratagems.json
+dotnet run Software/tools/stratagem-sync/stratagem-sync.cs
+dotnet run Software/tools/stratagem-sync/stratagem-sync.cs -- --catalog path/to/stratagems.json
 ```
 
 Exit code: `0` no differences, `1` differences found, `2` the wiki could not be read (offline, or the wiki changed its table – then `WikiClient` needs an update).

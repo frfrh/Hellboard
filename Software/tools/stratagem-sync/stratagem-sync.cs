@@ -6,7 +6,7 @@
 // catalog is never changed by this tool; differences are checked and entered by hand (doc/stratagems.md).
 // Reads the wiki with the same Core client as the Companion (WikiClient).
 //
-// Usage (from Software/):  dotnet run tools/stratagem-sync/stratagem-sync.cs -- [--catalog <path>]
+// Usage (from the repository root):  dotnet run Software/tools/stratagem-sync/stratagem-sync.cs -- [--catalog <path>]
 // Exit code: 0 = no differences, 1 = differences found, 2 = error.
 
 #:project ../../src/HellboardCompanion.Core/HellboardCompanion.Core.csproj

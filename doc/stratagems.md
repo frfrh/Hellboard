@@ -42,7 +42,7 @@ UTF-8 JSON, **exactly one stratagem object per line**. This is a hard rule, not 
 ^([[:alnum:]/\\]{1,10}-[[:alnum:]]{1,10})
 ```
 
-(model prefix plus one space) is removed **once**: `B/FLAM-80 Cremator` → `Cremator`, `AX/LAS-5 Rover` → `Rover`, `E/AT-12 Anti-Tank Emplacement` → `Anti-Tank Emplacement`, `GL-28 Belt-Fed Grenade Launcher` → `Belt-Fed Grenade Launcher`. Names without such a prefix stay as they are (`Orbital Laser`, `B/MD C4 Pack`). Hardly any player knows a stratagem by its model, so the short name is what the Hellboard shows and what the Companion sorts by; the Companion shows the full name. `StratagemCatalog.ShortName` implements the rule; a unit test checks that every `name` follows it and that no two names are equal. Users can still choose another name in their own list.
+(model prefix plus one space) is removed **once**: `B/FLAM-80 Cremator` → `Cremator`, `AX/LAS-5 Rover` → `Rover`, `E/AT-12 Anti-Tank Emplacement` → `Anti-Tank Emplacement`, `GL-28 Belt-Fed Grenade Launcher` → `Belt-Fed Grenade Launcher`. Names without such a prefix stay as they are (`Orbital Laser`, `B/MD C4 Pack`). Hardly any player knows a stratagem by its model, so the short name is what the Hellboard and the Overview tab of the Companion show and what the Companion sorts by; the other tabs of the Companion show the full name. `StratagemCatalog.ShortName` implements the rule; a unit test checks that every `name` follows it and that no two names are equal. Users can still choose another name in their own list.
 
 ## Rules
 
