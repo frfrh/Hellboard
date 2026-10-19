@@ -25,8 +25,23 @@ public sealed partial class CompanionUpdateChecker(HttpClient http)
 
     public static readonly string ReleasesApi = $"https://api.github.com/repos/{Repository}/releases?per_page=30";
 
-    /// <summary>The version of this build ("0.7.0" from "0.7.0+commit").</summary>
-    public static Version CurrentVersion { get; } = Version.TryParse(AppInfo.ShortVersion, out var version) ? version : new Version(0, 0, 0);
+    /// <summary>
+    /// Test switch: the update check takes this version as the running one (e.g. <c>0.6.0</c>), so the dialog and
+    /// the notification can be tried against a published release.
+    /// </summary>
+    public const string VersionOverrideVariable = "HELLBOARD_COMPANION_VERSION";
+
+    /// <summary>The version of this build ("0.7.0" from "0.7.0+commit"), or the test switch <see cref="VersionOverrideVariable"/>.</summary>
+    public static Version CurrentVersion { get; } = VersionOf(Environment.GetEnvironmentVariable(VersionOverrideVariable));
+
+    /// <summary>Whether <see cref="CurrentVersion"/> comes from the test switch.</summary>
+    public static bool IsVersionOverridden => CurrentVersion.ToString(3) != AppInfo.ShortVersion;
+
+    /// <summary>The override if it is a version like "0.6.0", the version of this build otherwise.</summary>
+    public static Version VersionOf(string? versionOverride) =>
+        Version.TryParse(versionOverride, out var forced) && forced.Build >= 0 ? forced
+        : Version.TryParse(AppInfo.ShortVersion, out var version) ? version
+        : new Version(0, 0, 0);
 
     /// <summary>The newest published Companion release, <c>null</c> if there is none.</summary>
     /// <exception cref="HttpRequestException">GitHub is not reachable or refused the request (e.g. rate limit).</exception>

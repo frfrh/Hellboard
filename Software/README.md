@@ -65,6 +65,8 @@ The input codes used by the project are maintained in one place only: [`doc/stra
 
 At runtime the Companion queries only two services: the stratagem table and icons of **helldivers.wiki.gg** (at most once a day, [plan](doc/spec/wiki-source-plan.md)) and the **GitHub releases** of `frfrh/Hellboard` at start to find a newer Companion (`CompanionUpdateChecker`; can be turned off in the settings). Companion releases are tagged `vX.Y.Z_companion`; other parts of the project use other tags.
 
+To try the update dialog and the notification against a published release, start the Companion with the environment variable `HELLBOARD_COMPANION_VERSION` set to an older version (e.g. `0.6.0`); the log notes when it is set.
+
 ## Acknowledgements
 
 A big thank you to the editors of the **[Helldivers Wiki](https://helldivers.wiki.gg/)** on wiki.gg. Their carefully maintained stratagem pages – input codes, designations and the traced stratagem icons – are the foundation of the Companion's stratagem catalog and proved more reliable and better maintained than any other source we compared. Wiki content is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).

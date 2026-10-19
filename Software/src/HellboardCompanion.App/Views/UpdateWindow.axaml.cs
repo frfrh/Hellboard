@@ -26,7 +26,7 @@ public sealed partial class UpdateWindow : Window
         : this()
     {
         TitleText.Text = $"Hellboard Companion {release.VersionText} is available";
-        BodyText.Text = $"You are using version {AppInfo.ShortVersion}. Download opens the release page in your browser, "
+        BodyText.Text = $"You are using version {CompanionUpdateChecker.CurrentVersion.ToString(3)}. Download opens the release page in your browser, "
             + "where you find the installer and the ZIP package.";
     }
 

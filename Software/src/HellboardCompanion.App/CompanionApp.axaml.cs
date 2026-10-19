@@ -97,9 +97,16 @@ public sealed partial class CompanionApp : Application
         try
         {
             await Task.Delay(TimeSpan.FromSeconds(3));
+            if (CompanionUpdateChecker.IsVersionOverridden)
+            {
+                logger?.LogWarning("Update check as version {Version} ({Variable} is set)", CompanionUpdateChecker.CurrentVersion.ToString(3),
+                    CompanionUpdateChecker.VersionOverrideVariable);
+            }
+
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
             release = await new CompanionUpdateChecker(http).FindUpdateAsync(general.SkippedVersion);
-            logger?.LogInformation("Update check: {Result}", release is null ? $"{AppInfo.ShortVersion} is up to date" : $"{release.Tag} available");
+            logger?.LogInformation("Update check: {Result}", release is null
+                ? $"{CompanionUpdateChecker.CurrentVersion.ToString(3)} is up to date" : $"{release.Tag} available");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException)
         {

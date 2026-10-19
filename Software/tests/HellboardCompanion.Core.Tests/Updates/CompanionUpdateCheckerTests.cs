@@ -49,6 +49,17 @@ public sealed class CompanionUpdateCheckerTests
     }
 
     [Theory]
+    [InlineData("0.6.0", "0.6.0")]
+    [InlineData(" ", null)]
+    [InlineData("0.6", null)]   // needs three parts
+    [InlineData("old", null)]
+    [InlineData(null, null)]
+    public void The_test_switch_overrides_the_version_of_the_build(string? value, string? expected)
+    {
+        CompanionUpdateChecker.VersionOf(value).ToString(3).Should().Be(expected ?? AppInfo.ShortVersion);
+    }
+
+    [Theory]
     [InlineData("[]")]
     [InlineData("""[{"tag_name": "v1.0.0_companion", "html_url": "https://example.com/v1", "draft": false, "prerelease": false}]""")]   // not a GitHub page
     public void No_release_without_a_matching_companion_release(string json)
