@@ -179,10 +179,10 @@ public sealed partial class HistoryViewModel : ObservableObject, IDisposable
         } + (loadout.IsComplete ? string.Empty : " – incomplete"),
         loadout.Stratagems.Select(id => id is null
             ? StratagemTileViewModel.Empty
-            : new StratagemTileViewModel(id, _catalog.Find(id)?.Name ?? id, _images.Get(id))).ToList(),
+            : new StratagemTileViewModel(id, _catalog.Find(id)?.FullName ?? id, _images.Get(id))).ToList(),
         loadout.MissionStratagems.Count == 0
             ? "–"
-            : string.Join(", ", loadout.MissionStratagems.Select(id => _catalog.Find(id)?.Name ?? id)));
+            : string.Join(", ", loadout.MissionStratagems.Select(id => _catalog.Find(id)?.FullName ?? id)));
 
     private HistoryEntryViewModel ToEntry(RecognitionProblem problem) => new(
         problem.Timestamp.LocalDateTime.ToString("g"),
@@ -197,7 +197,7 @@ public sealed partial class HistoryViewModel : ObservableObject, IDisposable
         string.Empty,
         problem.Message,
         LoadImage(problem.ImagePath),
-        problem.StratagemId is { } id ? new StratagemTileViewModel(id, _catalog.Find(id)?.Name ?? id, _images.Get(id)) : null,
+        problem.StratagemId is { } id ? new StratagemTileViewModel(id, _catalog.Find(id)?.FullName ?? id, _images.Get(id)) : null,
         ToReference(problem));
 
     /// <summary>Unrecognized slot with its image: the user can say which stratagem it is.</summary>
@@ -213,7 +213,7 @@ public sealed partial class HistoryViewModel : ObservableObject, IDisposable
         var choices = _catalog.Entries
             .Where(e => (e.Category == "Mission") == (slot == ReferenceSlot.Mission))
             .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(e => new Choice<string>(e.Id, e.Name))
+            .Select(e => new Choice<string>(e.Id, e.FullName))
             .ToList();
         return new ProblemReferenceViewModel(_references, path, slot, choices);
     }

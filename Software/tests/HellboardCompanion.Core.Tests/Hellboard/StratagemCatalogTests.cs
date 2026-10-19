@@ -20,14 +20,47 @@ public sealed class StratagemCatalogTests
     }
 
     [Theory]
-    [InlineData("eagle_500kg_bomb", "Eagle 500KG Bomb", "Eagle", "red", "URDDD")]
-    [InlineData("machine_gun", "Machine Gun", "Support weapon", "blue", "DLDUR")]
-    [InlineData("anti_tank_emplacement", "Anti-Tank Emplacement", "Defensive", "green", "DULRRR")]
-    [InlineData("reinforce", "Reinforce", "Mission", "yellow", "UDRLU")]
-    [InlineData("sssd_delivery", "SSSD Delivery", "Mission", "yellow", "DDDUU")]
-    public void Entries_carry_name_color_and_sequence(string id, string name, string category, string color, string sequence)
+    [InlineData("eagle_500kg_bomb", "Eagle 500kg Bomb", "Eagle 500kg Bomb", "Eagle", "red", "URDDD")]
+    [InlineData("machine_gun", "Machine Gun", "MG-43 Machine Gun", "Support weapon", "blue", "DLDUR")]
+    [InlineData("anti_tank_emplacement", "Anti-Tank Emplacement", "E/AT-12 Anti-Tank Emplacement", "Defensive", "green", "DULRRR")]
+    [InlineData("reinforce", "Reinforce", "Reinforce", "Mission", "yellow", "UDRLU")]
+    [InlineData("sssd_delivery", "SSSD Delivery", "SSSD Delivery", "Mission", "yellow", "DDDUU")]
+    public void Entries_carry_names_color_and_sequence(string id, string name, string designation, string category, string color, string sequence)
     {
-        Catalog.Find(id).Should().Be(new CatalogEntry(id, name, category, color, sequence));
+        Catalog.Find(id).Should().Be(new CatalogEntry(id, name, category, color, sequence, designation));
+        Catalog.Find(id)!.FullName.Should().Be(designation);
+    }
+
+    [Theory]
+    [InlineData("B/FLAM-80 Cremator", "Cremator")]
+    [InlineData("AX/LAS-5 Rover", "Rover")]
+    [InlineData("E/AT-12 Anti-Tank Emplacement", "Anti-Tank Emplacement")]   // removed once, "Anti-Tank" stays
+    [InlineData("GL-28 Belt-Fed Grenade Launcher", "Belt-Fed Grenade Launcher")]
+    [InlineData("StA-X3 W.A.S.P. Launcher", "W.A.S.P. Launcher")]
+    [InlineData("MD-I4 Incendiary Mines", "Incendiary Mines")]
+    [InlineData("40-K Meltagun", "Meltagun")]
+    [InlineData("Orbital Laser", "Orbital Laser")]
+    [InlineData("Activate E-711 Extraction Drill", "Activate E-711 Extraction Drill")]   // prefix only at the start
+    [InlineData("B/MD C4 Pack", "B/MD C4 Pack")]   // no '-': not a model prefix
+    public void The_short_name_is_the_full_name_without_model_prefix(string fullName, string shortName)
+    {
+        StratagemCatalog.ShortName(fullName).Should().Be(shortName);
+    }
+
+    [Fact]
+    public void Every_built_in_name_is_the_short_name_of_its_designation()
+    {
+        // Rule of doc/stratagems.md: designation = wiki page name, name = designation without model prefix.
+        Catalog.Entries.Where(e => e.Name != StratagemCatalog.ShortName(e.FullName))
+            .Select(e => $"{e.Id}: \"{e.Name}\" instead of \"{StratagemCatalog.ShortName(e.FullName)}\"")
+            .Should().BeEmpty();
+        Catalog.Entries.Should().OnlyContain(e => e.Designation != null);
+    }
+
+    [Fact]
+    public void Short_names_are_unique()
+    {
+        Catalog.Entries.GroupBy(e => e.Name, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1).Select(g => g.Key).Should().BeEmpty();
     }
 
     [Fact]
@@ -90,13 +123,13 @@ public sealed class StratagemCatalogTests
     [Fact]
     public void User_entries_replace_built_in_ones_and_add_new_ones()
     {
-        var builtIn = ToStream("""{"version": 1, "categories": {"Mission": "yellow"}, "stratagems": [{"id": "a", "name": "A", "category": "Mission", "code": "U"}, {"id": "b", "name": "B", "category": "Mission", "code": "D"}]}""");
+        var builtIn = ToStream("""{"version": 1, "categories": {"Mission": "yellow"}, "stratagems": [{"id": "a", "name": "A", "category": "Mission", "code": "U"}, {"id": "b", "name": "B", "designation": "Model-1 B", "category": "Mission", "code": "D"}]}""");
         var user = ToStream("""{"$comment": "x", "version": 1, "categories": {"Custom": "white"}, "stratagems": [{"id": "b", "name": "B fixed", "category": "Mission", "code": "LR"}, {"id": "c", "name": "C", "category": "Custom", "code": null}]}""");
 
         var catalog = StratagemCatalog.Parse(builtIn, user);
 
         catalog.Find("a")!.Sequence.Should().Be("U");
-        catalog.Find("b").Should().Be(new CatalogEntry("b", "B fixed", "Mission", "yellow", "LR"));
+        catalog.Find("b").Should().Be(new CatalogEntry("b", "B fixed", "Mission", "yellow", "LR", "Model-1 B"));   // keeps the full name
         catalog.Find("c").Should().Be(new CatalogEntry("c", "C", "Custom", "white", null));
         catalog.UserIds.Should().BeEquivalentTo("b", "c");
     }

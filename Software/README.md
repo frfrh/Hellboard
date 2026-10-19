@@ -49,17 +49,21 @@ Screenshots of the game are copyrighted game content. Put them into `tests/testD
 
 ## Knowledge base
 
-Reference pages for development and for extending the stratagem catalog (input codes, names, designations). They are looked up **manually** by developers; the software never queries them.
+Reference pages for development and for extending the stratagem catalog (input codes, names, designations). **helldivers.wiki.gg is the authoritative source** (decided 2026-10-19): [`tools/stratagem-sync`](tools/stratagem-sync/README.md) reads its stratagem table through the MediaWiki API and compares it with the catalog; the Companion will use the same client to pick up new stratagems ([plan](doc/spec/wiki-source-plan.md)). The other pages are looked up **manually** only.
 
 | Source | Content | Notes |
 |-|-|-|
-| [Helldivers Wiki (wiki.gg) – Stratagems](https://helldivers.wiki.gg/wiki/Stratagems) | 116 stratagems with input code, incl. rare mission objectives (Portable Comms Relay, Tactical Video Camera, E-711 Extraction Drill, Aquifer Drill) | Most complete source (checked 2026-10-16). Lists SSSD Delivery twice (↓↓↓↑↑ and ↓↓↓↓↓↑↑). Reinforcement Pods share the code of Upload Data. |
+| [Helldivers Wiki (wiki.gg) – Stratagems](https://helldivers.wiki.gg/wiki/Stratagems) | 118 stratagems with input code, designation, type and icon (Cargo table `Stratagems`), incl. rare mission objectives (Portable Comms Relay, Tactical Video Camera, E-711 Extraction Drill, Aquifer Drill) | **Authoritative** (2026-10-19). Most complete and most correct source; Cremator and TD-110 Maelstrom verified in game. Lists SSSD Delivery twice (↓↓↓↑↑ and ↓↓↓↓↓↑↑). Reinforcement Pods share the code of Upload Data. Content under CC BY-NC-SA 4.0. |
 | [DiversHub – Stratagems](https://divershub.app/de/database/stratagems) | 111 stratagems with input code, cooldown and full designation (German UI) | Checked 2026-10-16. Wrong for Cremator (DiversHub ↓←↑←↑↑ = code of GL-28; ↓↓→↓↑↑ of wiki.gg verified in game 2026-10-18) and TD-110 Maelstrom (DiversHub starts with ↑; wiki.gg with ← verified in game). |
 | [Helldivers Wiki (Fandom) – Stratagem Codes](https://helldivers.fandom.com/wiki/Stratagem_Codes) | 81 stratagems with input code, cooldown and designation | Missing newer Warbonds. SSSD Delivery differs from DiversHub. |
 | [Icon repository nvigneux/Helldivers-2-Stratagems-icons-svg](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg) | Stratagem SVG icons, the ids and English names of the catalog | Downloaded at runtime by the catalog updater (implementation plan §6.11). |
 | [`doc/spec/stratagem-names-de.md`](doc/spec/stratagem-names-de.md) | English ↔ German names read from the game | Own notes. |
 
-The input codes used by the project are maintained in one place only: [`doc/stratagems.json`](../doc/stratagems.json) in the repository root (format and decisions: [`doc/stratagems.md`](../doc/stratagems.md)). New or corrected codes go there first (compare the sources above; when they disagree, check the code in the game and note decisions there); the software and the firmware take their codes from that list. The companion embeds the file at build time and builds its stratagem catalog from it (`StratagemCatalog`); `StratagemCatalogTests` check that it can be read. Users can add or correct stratagems without a new release in `%APPDATA%\HellboardCompanion\stratagems.json` (same format, entries replace or extend the built-in list; see `doc/stratagems.md`).
+The input codes used by the project are maintained in one place only: [`doc/stratagems.json`](../doc/stratagems.json) in the repository root (format, naming rule and decisions: [`doc/stratagems.md`](../doc/stratagems.md)). New or corrected codes go there first (run `stratagem-sync` against the wiki; when sources disagree, check the code in the game and note decisions there); the software and the firmware take their codes from that list. The companion embeds the file at build time and builds its stratagem catalog from it (`StratagemCatalog`); `StratagemCatalogTests` check that it can be read. Users can add or correct stratagems without a new release in `%APPDATA%\HellboardCompanion\stratagems.json` (same format, entries replace or extend the built-in list; see `doc/stratagems.md`).
+
+## Acknowledgements
+
+A big thank you to the editors of the **[Helldivers Wiki](https://helldivers.wiki.gg/)** on wiki.gg. Their carefully maintained stratagem pages – input codes, designations and the traced stratagem icons – are the foundation of the Companion's stratagem catalog and proved more reliable and better maintained than any other source we compared. Wiki content is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
 ## License
 

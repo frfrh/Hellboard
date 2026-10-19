@@ -27,18 +27,29 @@ UTF-8 JSON, **exactly one stratagem object per line**. This is a hard rule, not 
 |-|-|
 | `version` | Format version, currently `1`. Incremented only on incompatible changes. |
 | `categories` | Category → LED color (`red`, `blue`, `green`, `yellow`). Every stratagem's `category` must be listed here. |
-| `id` | Stable key, lowercase `a-z0-9_`. Equals the icon id of the companion software (file name slug in the icon repository `nvigneux/Helldivers-2-Stratagems-icons-svg`). Never change an existing id. |
-| `name` | Short English name (icon repository name). Sent to the Hellboard in full; shortened only on the display. |
-| `designation` | Full in-game designation, for reference. |
+| `id` | Stable key, lowercase `a-z0-9_`. Existing ids are slugs of the names in the former icon repository `nvigneux/Helldivers-2-Stratagems-icons-svg`; a new stratagem gets the slug of its icon name in the wiki (`stratagem-sync` suggests it). Never change an existing id (the firmware configuration, user lists, reference images and the history refer to it). |
+| `name` | Short name: `designation` without its model prefix (see *Names*). Sent to the Hellboard in full (shortened only on its display) and used for sorting in the Companion. |
+| `designation` | Full name = **page name in the [Helldivers wiki](https://helldivers.wiki.gg/wiki/Stratagems)**, exactly (e.g. `B/FLAM-80 Cremator`, `SoS Beacon`). Shown in the Companion; used to match the wiki's stratagem table. |
 | `category` | `Orbital`, `Eagle`, `Support weapon`, `Backpack`, `Vehicle`, `Defensive` or `Mission`. |
 | `code` | Input code as letters `U` `D` `L` `R` (↑ ↓ ← →), 1–10 arrows; `null` if not known yet – the software then shows the stratagem but cannot send it to the Hellboard. |
 | `notes` | Unverified or disputed codes, missing icons and other remarks; `null` if the code agrees in every source that lists it. |
 
+## Names
+
+`designation` is the full name from the wiki, `name` is derived from it: the first match of the regular expression
+
+```
+^([[:alnum:]/\\]{1,10}-[[:alnum:]]{1,10})
+```
+
+(model prefix plus one space) is removed **once**: `B/FLAM-80 Cremator` → `Cremator`, `AX/LAS-5 Rover` → `Rover`, `E/AT-12 Anti-Tank Emplacement` → `Anti-Tank Emplacement`, `GL-28 Belt-Fed Grenade Launcher` → `Belt-Fed Grenade Launcher`. Names without such a prefix stay as they are (`Orbital Laser`, `B/MD C4 Pack`). Hardly any player knows a stratagem by its model, so the short name is what the Hellboard shows and what the Companion sorts by; the Companion shows the full name. `StratagemCatalog.ShortName` implements the rule; a unit test checks that every `name` follows it and that no two names are equal. Users can still choose another name in their own list.
+
 ## Rules
 
 - Every code must be unique among the stratagems a player can have at the same time. Known overlap: Reinforcement Pods and Upload Data (same code in all sources).
-- A code taken from only one source or disputed between sources gets a note until it is checked in the game.
-- Sources for looking up codes are listed in the knowledge base of [`Software/README.md`](../Software/README.md#knowledge-base). They are only read manually; no part of the project queries them automatically.
+- **The Helldivers wiki ([helldivers.wiki.gg](https://helldivers.wiki.gg/wiki/Stratagems)) is the authoritative source** for codes, designations and categories (decided 2026-10-19: more reliable and maintained faster than the other sources). Before a release, run [`stratagem-sync`](../Software/tools/stratagem-sync/README.md): it compares this file with the wiki's stratagem table and suggests lines for new stratagems. Take over what is right; differences that stay (decisions below) are noted here.
+- A code checked in the game wins over every source; it gets a note with the date.
+- Other sources (knowledge base of [`Software/README.md`](../Software/README.md#knowledge-base)) are only looked up manually, e.g. to check a disputed code.
 
 ## Decisions
 
@@ -46,4 +57,4 @@ UTF-8 JSON, **exactly one stratagem object per line**. This is a hard rule, not 
 - **Cremator:** `DDRDUU` verified in game (wiki.gg correct, DiversHub wrong). *(2026-10-18)*
 - **TD-110 Maelstrom:** `LDRDLDULR` verified in game (wiki.gg correct, DiversHub wrong). *(2026-10-16)*
 
-Checked against helldivers.wiki.gg, DiversHub and the Fandom wiki on 2026-10-16: 115 stratagems.
+Checked against helldivers.wiki.gg, DiversHub and the Fandom wiki on 2026-10-16: 115 stratagems. Names and designations aligned with helldivers.wiki.gg on 2026-10-19 (`stratagem-sync`: only SSSD Delivery differs, as decided; AMW-20 Apex and LAS-44 Nova have no code yet).

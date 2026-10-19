@@ -15,7 +15,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace HellboardCompanion.App.ViewModels;
 
 /// <summary>One stratagem in the editor list.</summary>
-public sealed record StratagemEditorItem(string Id, string Name, string Category, string? Code, string Source, Bitmap? Icon, string? SvgPath, int ReferenceCount = 0)
+/// <param name="Name">Short name, sent to the Hellboard and used for sorting.</param>
+/// <param name="FullName">Full name (wiki designation) shown in the Companion.</param>
+public sealed record StratagemEditorItem(string Id, string Name, string FullName, string Category, string? Code, string Source, Bitmap? Icon, string? SvgPath,
+    int ReferenceCount = 0)
 {
     public bool HasReference => ReferenceCount > 0;
 
@@ -346,11 +349,11 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
     {
         var icons = _icons?.Icons ?? [];
         var items = _catalog.Entries.Select(e => new StratagemEditorItem(
-            e.Id, e.Name, e.Category, e.Sequence, SourceOf(e.Id), _images.Get(e.Id), icons.FirstOrDefault(i => i.Id == e.Id)?.SvgPath,
+            e.Id, e.Name, e.FullName, e.Category, e.Sequence, SourceOf(e.Id), _images.Get(e.Id), icons.FirstOrDefault(i => i.Id == e.Id)?.SvgPath,
             _references?.Count(e.Id) ?? 0)).ToList();
         foreach (var icon in icons.Where(i => _catalog.Find(i.Id) is null))
         {
-            items.Add(new StratagemEditorItem(icon.Id, icon.Name, GuessCategory(icon.SvgPath), null, "New icon – no code yet", _images.Get(icon.Id), icon.SvgPath,
+            items.Add(new StratagemEditorItem(icon.Id, icon.Name, icon.Name, GuessCategory(icon.SvgPath), null, "New icon – no code yet", _images.Get(icon.Id), icon.SvgPath,
                 _references?.Count(icon.Id) ?? 0));
         }
 
@@ -375,7 +378,8 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
         var search = SearchText.Trim();
         Items.Clear();
         foreach (var item in _all.Where(i => (!OnlyWithoutCode || !i.HasCode) && (!OnlyWithReference || i.HasReference)
-                     && (search.Length == 0 || i.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || i.Id.Contains(search, StringComparison.OrdinalIgnoreCase))))
+                     && (search.Length == 0 || i.FullName.Contains(search, StringComparison.OrdinalIgnoreCase) || i.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                         || i.Id.Contains(search, StringComparison.OrdinalIgnoreCase))))
         {
             Items.Add(item);
         }

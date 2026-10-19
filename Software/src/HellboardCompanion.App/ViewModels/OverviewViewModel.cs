@@ -233,11 +233,11 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
         var tiles = (multiFunction ?? []).Select(definition =>
         {
             var entry = _catalog.Entries.FirstOrDefault(e => e.Name == definition.Name);
-            return new StratagemTileViewModel(entry?.Id, definition.Name, _images.Get(entry?.Id));
+            return new StratagemTileViewModel(entry?.Id, entry?.FullName ?? definition.Name, _images.Get(entry?.Id));
         }).ToList();
         SetMultiFunction(tiles);
         Warning = state?.NotTransferable.Count > 0
-            ? $"Not transferable yet (no input sequence known): {string.Join(", ", state.NotTransferable.Select(id => _catalog.Find(id)?.Name ?? id))}"
+            ? $"Not transferable yet (no input sequence known): {string.Join(", ", state.NotTransferable.Select(id => _catalog.Find(id)?.FullName ?? id))}"
             : null;
     }
 

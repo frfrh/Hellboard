@@ -7,12 +7,17 @@ using System.Text.RegularExpressions;
 
 namespace HellboardCompanion.Core.Hellboard;
 
+/// <param name="Name">Short name: sent to the Hellboard and used for sorting (wiki-source-plan §3.3).</param>
 /// <param name="Category">Category from <c>doc/stratagems.json</c>, e.g. "Orbital" or "Mission".</param>
 /// <param name="Color">LED color of the category: yellow, red, green or blue.</param>
 /// <param name="Sequence">Arrow sequence of U/D/L/R; <c>null</c> = not known yet (editor, implementation plan §6.12).</param>
-public sealed record CatalogEntry(string Id, string Name, string Category, string Color, string? Sequence)
+/// <param name="Designation">Full name = page name in the Helldivers wiki, e.g. "B/FLAM-80 Cremator"; <c>null</c> if unknown.</param>
+public sealed record CatalogEntry(string Id, string Name, string Category, string Color, string? Sequence, string? Designation = null)
 {
     public bool IsTransferable => !string.IsNullOrEmpty(Sequence);
+
+    /// <summary>Name shown in the Companion: the full designation, the short name if there is none.</summary>
+    public string FullName => Designation ?? Name;
 }
 
 /// <summary>
@@ -146,7 +151,8 @@ public sealed partial class StratagemCatalog
                 var index = items.FindIndex(i => i.Id == item.Id);
                 if (index >= 0)
                 {
-                    items[index] = item;
+                    // The user list has no designation: a corrected code or name keeps the full name of the built-in entry.
+                    items[index] = item with { Designation = item.Designation ?? items[index].Designation };
                 }
                 else
                 {
@@ -165,7 +171,7 @@ public sealed partial class StratagemCatalog
             }
         }
 
-        var entries = items.Select(i => new CatalogEntry(i.Id!, i.Name!, i.Category!, categories[i.Category!], i.Code));
+        var entries = items.Select(i => new CatalogEntry(i.Id!, i.Name!, i.Category!, categories[i.Category!], i.Code, i.Designation));
         var catalog = new StratagemCatalog(entries);
         catalog._userIds = userIds;
         catalog._categories = categories;
@@ -173,6 +179,13 @@ public sealed partial class StratagemCatalog
     }
 
     public CatalogEntry? Find(string id) => _entries.GetValueOrDefault(id);
+
+    /// <summary>
+    /// Short name of a stratagem: its full name without the model prefix, removed once
+    /// ("B/FLAM-80 Cremator" → "Cremator", "GL-28 Belt-Fed Grenade Launcher" → "Belt-Fed Grenade Launcher").
+    /// Hardly any player knows a stratagem by its model (wiki-source-plan §3.3).
+    /// </summary>
+    public static string ShortName(string fullName) => ModelPrefix().Replace(fullName, string.Empty, 1);
 
     /// <summary>
     /// The catalog in the format of <c>doc/stratagems.json</c> with one stratagem per line, as the firmware
@@ -259,8 +272,12 @@ public sealed partial class StratagemCatalog
     [GeneratedRegex("^[UDLR]+$")]
     private static partial Regex CodePattern();
 
+    /// <summary>Model prefix of a full name, e.g. "B/FLAM-80 " or "AX/LAS-5 " (user rule, 2026-10-19).</summary>
+    [GeneratedRegex(@"^([\p{L}\p{N}/\\]{1,10}-[\p{L}\p{N}]{1,10}) ")]
+    private static partial Regex ModelPrefix();
+
     private sealed record StratagemList(int Version, Dictionary<string, string>? Categories, List<StratagemItem>? Stratagems);
 
-    /// <summary>One line of the list; <c>designation</c> and <c>notes</c> are not needed here.</summary>
-    private sealed record StratagemItem(string? Id, string? Name, string? Category, string? Code);
+    /// <summary>One line of the list; <c>notes</c> are not needed here.</summary>
+    private sealed record StratagemItem(string? Id, string? Name, string? Category, string? Code, string? Designation = null);
 }

@@ -112,7 +112,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     private List<StratagemTileViewModel> BuildAvailable() => _catalog.Entries
         .Where(e => e.IsTransferable)
         .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
-        .Select(e => new StratagemTileViewModel(e.Id, e.Name, null))
+        .Select(e => new StratagemTileViewModel(e.Id, e.FullName, null))
         .ToList();
 
     /// <summary>The stratagem editor changed the catalog: new stratagems can be added to the fixed list.</summary>
@@ -326,7 +326,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     }
 
     private StratagemTileViewModel Tile(string id) =>
-        new(id, _catalog.Find(id)?.Name ?? id, _images.Get(id), _catalog.Find(id)?.IsTransferable == false ? "no input sequence yet" : null);
+        new(id, _catalog.Find(id)?.FullName ?? id, _images.Get(id), _catalog.Find(id)?.IsTransferable == false ? "no input sequence yet" : null);
 
     private void OnHotkeyChanged(object? sender, EventArgs e) => Avalonia.Threading.Dispatcher.UIThread.Post(UpdateHotkeyStatus);
 
