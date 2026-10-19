@@ -16,8 +16,10 @@ No .NET runtime is needed either way – the EXE is self-contained. Windows Smar
 app is from an unknown publisher (it is not code-signed). Choose *More info* → *Run anyway*.
 
 On the first start the app needs an internet connection: it downloads the stratagem icons it uses for
-recognition from GitHub (`nvigneux/Helldivers-2-Stratagems-icons-svg`). The first start also takes a few
-seconds longer because the bundled native libraries are unpacked.
+recognition from GitHub (`nvigneux/Helldivers-2-Stratagems-icons-svg`) and reads the stratagem list of the
+[Helldivers wiki](https://helldivers.wiki.gg/wiki/Stratagems) (new stratagems and their input codes). Both are
+checked again at most once a day. The first start also takes a few seconds longer because the bundled
+native libraries are unpacked.
 
 The app opens its window and keeps running in the system tray; left-click the tray icon to open the window
 again. In *Settings → General* you can let it start with only the tray icon, and let the close button (X)

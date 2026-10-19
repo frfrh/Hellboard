@@ -169,11 +169,12 @@ public sealed partial class CompanionApp : Application
             new OverviewViewModel(
                 _services.GetService<IGameLocator>(), _services.GetService<LoadoutPipeline>(), _services.GetService<HellboardLink>(),
                 catalog, _images, _services.GetService<ManualTriggerService>(), hellboard, _services.GetService<LoadoutHistory>(), _services.GetService<MultiFunctionOptions>()),
-            new SettingsViewModel(_services.GetRequiredService<SettingsStore>(), catalog, _images, _services.GetService<ManualTriggerService>(), _services.GetService<IAutostart>(), _services.GetService<StratagemIconStore>()),
+            new SettingsViewModel(_services.GetRequiredService<SettingsStore>(), catalog, _images, _services.GetService<ManualTriggerService>(), _services.GetService<IAutostart>(), _services.GetService<StratagemIconStore>(),
+                _services.GetService<WikiStratagemStore>()),
             new HistoryViewModel(_services.GetService<LoadoutHistory>(), _services.GetService<LoadoutPipeline>(), catalog, _images, _services.GetRequiredService<SettingsStore>(),
                 _services.GetService<StratagemReferenceStore>()),
             new HellboardViewModel(_services.GetRequiredService<SettingsStore>(), _services.GetService<HellboardLink>(), catalog, hellboard),
             new StratagemEditorViewModel(catalog, _services.GetService<StratagemIconStore>(), _images, _services.GetService<Microsoft.Extensions.Logging.ILogger<StratagemEditorViewModel>>(),
-                _services.GetService<StratagemReferenceStore>()));
+                _services.GetService<StratagemReferenceStore>(), _services.GetService<WikiStratagemStore>()));
     }
 }

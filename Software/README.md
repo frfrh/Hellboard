@@ -49,7 +49,7 @@ Screenshots of the game are copyrighted game content. Put them into `tests/testD
 
 ## Knowledge base
 
-Reference pages for development and for extending the stratagem catalog (input codes, names, designations). **helldivers.wiki.gg is the authoritative source** (decided 2026-10-19): [`tools/stratagem-sync`](tools/stratagem-sync/README.md) reads its stratagem table through the MediaWiki API and compares it with the catalog; the Companion will use the same client to pick up new stratagems ([plan](doc/spec/wiki-source-plan.md)). The other pages are looked up **manually** only.
+Reference pages for development and for extending the stratagem catalog (input codes, names, designations). **helldivers.wiki.gg is the authoritative source** (decided 2026-10-19): [`tools/stratagem-sync`](tools/stratagem-sync/README.md) reads its stratagem table through the MediaWiki API and compares it with the catalog; the Companion uses the same client to pick up new stratagems and missing codes at runtime and proposes different codes in its Stratagems tab ([plan](doc/spec/wiki-source-plan.md)). The other pages are looked up **manually** only.
 
 | Source | Content | Notes |
 |-|-|-|
@@ -59,7 +59,7 @@ Reference pages for development and for extending the stratagem catalog (input c
 | [Icon repository nvigneux/Helldivers-2-Stratagems-icons-svg](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg) | Stratagem SVG icons, the ids and English names of the catalog | Downloaded at runtime by the catalog updater (implementation plan §6.11). |
 | [`doc/spec/stratagem-names-de.md`](doc/spec/stratagem-names-de.md) | English ↔ German names read from the game | Own notes. |
 
-The input codes used by the project are maintained in one place only: [`doc/stratagems.json`](../doc/stratagems.json) in the repository root (format, naming rule and decisions: [`doc/stratagems.md`](../doc/stratagems.md)). New or corrected codes go there first (run `stratagem-sync` against the wiki; when sources disagree, check the code in the game and note decisions there); the software and the firmware take their codes from that list. The companion embeds the file at build time and builds its stratagem catalog from it (`StratagemCatalog`); `StratagemCatalogTests` check that it can be read. Users can add or correct stratagems without a new release in `%APPDATA%\HellboardCompanion\stratagems.json` (same format, entries replace or extend the built-in list; see `doc/stratagems.md`).
+The input codes used by the project are maintained in one place only: [`doc/stratagems.json`](../doc/stratagems.json) in the repository root (format, naming rule and decisions: [`doc/stratagems.md`](../doc/stratagems.md)). New or corrected codes go there first (run `stratagem-sync` against the wiki; when sources disagree, check the code in the game and note decisions there); the software and the firmware take their codes from that list. The companion embeds the file at build time and builds its stratagem catalog from it (`StratagemCatalog`); `StratagemCatalogTests` check that it can be read. Between the built-in list and the user's list sits the wiki layer: the last stratagem table read from the wiki (`%LOCALAPPDATA%\HellboardCompanion\wiki\stratagems.json`, checked at most once a day, `WikiStratagemStore`). Users can add or correct stratagems without a new release in `%APPDATA%\HellboardCompanion\stratagems.json` (same format, entries replace or extend the built-in list and win over the wiki; see `doc/stratagems.md`).
 
 ## Acknowledgements
 

@@ -26,6 +26,12 @@ public sealed record WikiStratagem(string Page, string Title, string Type, strin
         _ => "Mission",
     };
 
+    /// <summary>Short name: the page name without model prefix (wiki-source-plan §3.3).</summary>
+    public string ShortName => Hellboard.StratagemCatalog.ShortName(Page);
+
+    /// <summary>Id for a stratagem the catalog does not know yet: slug of the icon name, of the short name for a placeholder icon.</summary>
+    public string NewId => StratagemIcon.ToId(IconName.Length > 0 ? IconName : ShortName);
+
     /// <summary>Name of the icon without suffix, e.g. "Cremator"; empty for a placeholder icon of an unreleased stratagem.</summary>
     public string IconName => Image.Contains("Fallback Icon", StringComparison.OrdinalIgnoreCase)
         ? string.Empty

@@ -4,6 +4,10 @@
 
 > Status: the companion software embeds `stratagems.json` at build time and builds its stratagem catalog (names, LED colors, codes) from it; its unit tests fail if the file is invalid. The firmware gets the file unchanged on the board (`Firmware/manifest.json`) and reads it line by line; its `config.json` refers to stratagems by `id` (decision F11).
 
+## Wiki layer (no new release needed)
+
+The Companion reads the stratagem table of helldivers.wiki.gg at most once a day (and on *Settings → Check now*) and keeps it in `%LOCALAPPDATA%\HellboardCompanion\wiki\stratagems.json`. Between this file and the user list it **adds new stratagems**, **fills in missing codes** and keeps designations and short names current. A wiki code that differs from the code in use is **never applied automatically**: the Stratagems tab shows it as a proposal (with the note of this file, e.g. a check in the game); *Take over wiki code* writes it into the user list, *Keep current code* hides it until the wiki lists yet another code.
+
 ## User list (no new release needed)
 
 Users can add stratagems or correct codes themselves on the *Stratagems* tab of the Companion, which writes `%APPDATA%\HellboardCompanion\stratagems.json` (Linux: `~/.config/HellboardCompanion/stratagems.json`). The Companion creates it as an empty template on the first start. Same format as this file; an entry with the id of a built-in stratagem **replaces** it, a new id **adds** a stratagem, user categories add to the built-in ones. The built-in list still updates with every release, so corrections reach users who have their own list. An invalid user list is ignored with a warning in the log; changes made in the Companion apply immediately, changes made by hand after a restart. Corrections that are useful for everyone should come back into this file.

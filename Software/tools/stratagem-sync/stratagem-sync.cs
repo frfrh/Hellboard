@@ -53,25 +53,19 @@ Console.WriteLine($"Catalog:  {catalogPath} ({catalog.Count} stratagems)");
 Console.WriteLine($"wiki.gg:  {wiki.Count} stratagem rows ({WikiClient.StratagemsPage})");
 
 // --- Matching ------------------------------------------------------------------------------------------
-// A wiki row belongs to the catalog entry whose designation is its page name (rule of doc/stratagems.md).
-// Rows without such an entry are matched by the slug of their page, title or icon name, so a renamed page
-// shows up as a different designation instead of a new stratagem. Icon names shared by several rows are not used.
-var sharedIcons = wiki.GroupBy(r => StratagemIcon.ToId(r.IconName)).Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet();
+// Same rules as the Companion (WikiMatching): by page name = designation, otherwise by slug.
 var matches = catalog.ToDictionary(e => e, _ => new List<WikiStratagem>());
+var byId = catalog.ToDictionary(e => e.Id);
 var unmatched = new List<WikiStratagem>();
-foreach (var row in wiki)
+foreach (var (row, id) in WikiMatching.Match(wiki, catalog.Select(e => new WikiMatchKey(e.Id, e.Name, e.Designation)).ToList()))
 {
-    var icon = StratagemIcon.ToId(row.IconName);
-    string[] keys = [StratagemIcon.ToId(row.Page), StratagemIcon.ToId(row.Title), .. icon.Length == 0 || sharedIcons.Contains(icon) ? Array.Empty<string>() : [icon]];
-    var entry = catalog.FirstOrDefault(e => e.Designation == row.Page)
-        ?? catalog.FirstOrDefault(e => new[] { e.Id, StratagemIcon.ToId(e.Name), StratagemIcon.ToId(e.Designation) }.Intersect(keys).Any());
-    if (entry is null)
+    if (id is null)
     {
         unmatched.Add(row);
     }
     else
     {
-        matches[entry].Add(row);
+        matches[byId[id]].Add(row);
     }
 }
 
@@ -141,8 +135,8 @@ static string Arrows(string? code) => code is null ? "(none)" : string.Concat(co
 // Id from the icon name (closest to the names players know), the short name for a placeholder icon.
 static string JsonLine(WikiStratagem row)
 {
-    var name = StratagemCatalog.ShortName(row.Page);
-    var id = StratagemIcon.ToId(row.IconName.Length > 0 ? row.IconName : name);
+    var name = row.ShortName;
+    var id = row.NewId;
     var code = row.Code is null ? "null" : $"\"{row.Code}\"";
     var notes = row.Code is null ? "No code on wiki.gg yet" : $"Code from wiki.gg ({DateTime.Now:yyyy-MM-dd}), not verified in game";
     return JsonSerializer.Serialize(new Dictionary<string, string?>
