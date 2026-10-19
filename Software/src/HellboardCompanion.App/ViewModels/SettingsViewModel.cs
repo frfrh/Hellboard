@@ -27,6 +27,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     private readonly ManualTriggerService? _trigger;
     private readonly IAutostart? _autostart;
     private readonly StratagemIconStore? _iconStore;
+    private readonly WikiStratagemStore? _wikiStore;
 
     [ObservableProperty]
     private string _hotkeyText;
@@ -52,12 +53,19 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         StratagemImages images,
         ManualTriggerService? trigger,
         IAutostart? autostart,
-        StratagemIconStore? iconStore = null)
+        StratagemIconStore? iconStore = null,
+        WikiStratagemStore? wikiStore = null)
     {
         _iconStore = iconStore;
         if (_iconStore is not null)
         {
             _iconStore.UpdateFinished += OnIconUpdateFinished;
+        }
+
+        _wikiStore = wikiStore;
+        if (_wikiStore is not null)
+        {
+            _wikiStore.UpdateFinished += OnIconUpdateFinished;
         }
 
         _store = store;
@@ -112,11 +120,16 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     private List<StratagemTileViewModel> BuildAvailable() => _catalog.Entries
         .Where(e => e.IsTransferable)
         .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
-        .Select(e => new StratagemTileViewModel(e.Id, e.Name, null))
+        .Select(e => new StratagemTileViewModel(e.Id, e.FullName, null))
         .ToList();
 
     /// <summary>The stratagem editor changed the catalog: new stratagems can be added to the fixed list.</summary>
-    private void OnCatalogChanged(object? sender, EventArgs e) => Avalonia.Threading.Dispatcher.UIThread.Post(() => AvailableStratagems = BuildAvailable());
+    private void OnCatalogChanged(object? sender, EventArgs e) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+    {
+        AvailableStratagems = BuildAvailable();
+        OnPropertyChanged(nameof(WikiStatus));
+        OnPropertyChanged(nameof(IconsWithoutCode));
+    });
 
     public ObservableCollection<StratagemTileViewModel> FixedList { get; } = [];
 
@@ -188,6 +201,13 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         set => Change(() => _settings.General.CloseAction = value.Value);
     }
 
+    /// <summary>Look for a newer release on GitHub at start (the only GitHub query of the Companion).</summary>
+    public bool CheckForUpdates
+    {
+        get => _settings.General.CheckForUpdates;
+        set => Change(() => _settings.General.CheckForUpdates = value);
+    }
+
     // ---- stratagem icons (implementation plan §6.11) -----------------------------------------
 
     /// <summary>Number of icons, last check and its result.</summary>
@@ -197,6 +217,16 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
           + (_iconStore.LastResult?.CheckedAt is { } at ? $", checked {at.LocalDateTime:g}" : string.Empty)
           + (_iconStore.LastError is { } error ? $" – last check failed: {error}"
              : _iconStore.LastResult is { Checked: true } result ? $" – {result.Summary}" : string.Empty);
+
+    /// <summary>Stratagem table of helldivers.wiki.gg: rows, last check, open code proposals (wiki-source-plan §3.2).</summary>
+    public string WikiStatus => _wikiStore is null
+        ? "–"
+        : $"{_wikiStore.Stratagems.Count} stratagems on wiki.gg"
+          + (_wikiStore.CheckedAt is { } at ? $", checked {at.LocalDateTime:g}" : ", not checked yet")
+          + (_wikiStore.LastError is { } error ? $" – last check failed: {error}" : string.Empty)
+          + (_wikiStore.OpenProposals(_catalog) is { Count: > 0 } proposals
+              ? $" – {proposals.Count} code proposal(s) in the Stratagems tab"
+              : string.Empty);
 
     /// <summary>Icons in the repository whose stratagem has no input code yet (new stratagems).</summary>
     public string? IconsWithoutCode => _iconStore?.WithoutCode(_catalog) is { Count: > 0 } icons
@@ -212,7 +242,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanCheckIcons))]
     private async Task CheckIconsAsync()
     {
-        if (_iconStore is null)
+        if (_iconStore is null && _wikiStore is null)
         {
             return;
         }
@@ -220,7 +250,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         IsCheckingIcons = true;
         try
         {
-            await _iconStore.UpdateAsync(force: true);
+            // The icon store reads the wiki's stratagem table first.
+            await (_iconStore?.UpdateAsync(force: true) ?? _wikiStore!.UpdateAsync(force: true));
         }
         finally
         {
@@ -228,11 +259,12 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         }
     }
 
-    private bool CanCheckIcons() => _iconStore is not null && !IsCheckingIcons;
+    private bool CanCheckIcons() => (_iconStore is not null || _wikiStore is not null) && !IsCheckingIcons;
 
     private void OnIconUpdateFinished(object? sender, EventArgs e) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
     {
         OnPropertyChanged(nameof(IconStatus));
+        OnPropertyChanged(nameof(WikiStatus));
         OnPropertyChanged(nameof(IconsWithoutCode));
     });
 
@@ -242,6 +274,11 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         if (_iconStore is not null)
         {
             _iconStore.UpdateFinished -= OnIconUpdateFinished;
+        }
+
+        if (_wikiStore is not null)
+        {
+            _wikiStore.UpdateFinished -= OnIconUpdateFinished;
         }
 
         if (_trigger is not null)
@@ -326,7 +363,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     }
 
     private StratagemTileViewModel Tile(string id) =>
-        new(id, _catalog.Find(id)?.Name ?? id, _images.Get(id), _catalog.Find(id)?.IsTransferable == false ? "no input sequence yet" : null);
+        new(id, _catalog.Find(id)?.FullName ?? id, _images.Get(id), _catalog.Find(id)?.IsTransferable == false ? "no input sequence yet" : null);
 
     private void OnHotkeyChanged(object? sender, EventArgs e) => Avalonia.Threading.Dispatcher.UIThread.Post(UpdateHotkeyStatus);
 

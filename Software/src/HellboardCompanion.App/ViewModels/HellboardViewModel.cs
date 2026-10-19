@@ -125,7 +125,7 @@ public sealed partial class HellboardViewModel : ObservableObject, IDisposable
         .. _catalog.Entries
             .Where(e => e.IsTransferable)
             .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(e => new Choice<string?>(e.Id, e.Name)),
+            .Select(e => new Choice<string?>(e.Id, e.FullName)),
     ];
 
     private void OnCatalogChanged(object? sender, EventArgs e) => Dispatcher.UIThread.Post(() =>

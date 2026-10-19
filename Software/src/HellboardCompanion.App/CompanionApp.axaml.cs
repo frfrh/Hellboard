@@ -14,7 +14,10 @@ using HellboardCompanion.Core.Loadout;
 using HellboardCompanion.Core.Hellboard;
 using HellboardCompanion.Core.Pipeline;
 using HellboardCompanion.Core.Platform;
+using HellboardCompanion.Core;
+using HellboardCompanion.Core.Updates;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace HellboardCompanion.App;
 
@@ -31,6 +34,9 @@ public sealed partial class CompanionApp : Application
     private bool _openingMainWindow;
     private bool _exiting;
     private StratagemImages? _images;
+
+    /// <summary>Newer release found while only the tray icon was shown; offered when the window opens.</summary>
+    private CompanionRelease? _pendingUpdate;
 
     /// <summary>Used by the XAML previewer only.</summary>
     public CompanionApp()
@@ -71,6 +77,84 @@ public sealed partial class CompanionApp : Application
         if (_services?.GetService<GeneralOptions>() is { StartMinimized: false })
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(ShowMainWindow);   // default: open the window; otherwise only the tray icon
+        }
+
+        if (_services?.GetService<GeneralOptions>() is { CheckForUpdates: true } general)
+        {
+            _ = CheckForUpdateAsync(general);
+        }
+    }
+
+    /// <summary>
+    /// Looks for a newer release a few seconds after the start (decided 2026-10-19). With the window open the
+    /// user is asked right away; with only the tray icon Windows shows a notification and the question follows
+    /// when the window is opened. Offline or on a GitHub error nothing happens (logged only).
+    /// </summary>
+    private async Task CheckForUpdateAsync(GeneralOptions general)
+    {
+        var logger = _services?.GetService<ILogger<CompanionApp>>();
+        CompanionRelease? release;
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3));
+            if (CompanionUpdateChecker.IsVersionOverridden)
+            {
+                logger?.LogWarning("Update check as version {Version} ({Variable} is set)", CompanionUpdateChecker.CurrentVersion.ToString(3),
+                    CompanionUpdateChecker.VersionOverrideVariable);
+            }
+
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            release = await new CompanionUpdateChecker(http).FindUpdateAsync(general.SkippedVersion);
+            logger?.LogInformation("Update check: {Result}", release is null
+                ? $"{CompanionUpdateChecker.CurrentVersion.ToString(3)} is up to date" : $"{release.Tag} available");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException)
+        {
+            logger?.LogInformation("Update check not possible: {Error}", ex.Message);
+            return;
+        }
+
+        if (release is null)
+        {
+            return;
+        }
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_mainWindow is not null)
+            {
+                _ = OfferUpdateAsync(release);
+                return;
+            }
+
+            _pendingUpdate = release;
+            const string title = "New Hellboard Companion version";
+            var body = $"Version {release.VersionText} is available. Open the Companion to download it.";
+            if (_services?.GetService<INotifications>()?.Show(title, body) != true)
+            {
+                ToastWindow.Show(title, body);
+            }
+        });
+    }
+
+    /// <summary>Asks whether to download <paramref name="release"/>: opens its page in the browser, or remembers a skipped version.</summary>
+    private async Task OfferUpdateAsync(CompanionRelease release)
+    {
+        if (_mainWindow is not { } owner)
+        {
+            return;
+        }
+
+        _pendingUpdate = null;
+        switch (await new UpdateWindow(release).ShowDialog<UpdateChoice?>(owner))
+        {
+            case UpdateChoice.Download:
+                await owner.Launcher.LaunchUriAsync(new Uri(release.Url));
+                break;
+            case UpdateChoice.Skip when _services?.GetService<SettingsStore>() is { } settings:
+                settings.Settings.General.SkippedVersion = release.VersionText;
+                settings.Save();
+                break;
         }
     }
 
@@ -140,6 +224,10 @@ public sealed partial class CompanionApp : Application
             _mainWindow = window;
             window.Show();
             window.Activate();
+            if (_pendingUpdate is { } release)
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = OfferUpdateAsync(release));   // found while only the tray icon was shown
+            }
         }
         finally
         {
@@ -169,11 +257,12 @@ public sealed partial class CompanionApp : Application
             new OverviewViewModel(
                 _services.GetService<IGameLocator>(), _services.GetService<LoadoutPipeline>(), _services.GetService<HellboardLink>(),
                 catalog, _images, _services.GetService<ManualTriggerService>(), hellboard, _services.GetService<LoadoutHistory>(), _services.GetService<MultiFunctionOptions>()),
-            new SettingsViewModel(_services.GetRequiredService<SettingsStore>(), catalog, _images, _services.GetService<ManualTriggerService>(), _services.GetService<IAutostart>(), _services.GetService<StratagemIconStore>()),
+            new SettingsViewModel(_services.GetRequiredService<SettingsStore>(), catalog, _images, _services.GetService<ManualTriggerService>(), _services.GetService<IAutostart>(), _services.GetService<StratagemIconStore>(),
+                _services.GetService<WikiStratagemStore>()),
             new HistoryViewModel(_services.GetService<LoadoutHistory>(), _services.GetService<LoadoutPipeline>(), catalog, _images, _services.GetRequiredService<SettingsStore>(),
                 _services.GetService<StratagemReferenceStore>()),
             new HellboardViewModel(_services.GetRequiredService<SettingsStore>(), _services.GetService<HellboardLink>(), catalog, hellboard),
             new StratagemEditorViewModel(catalog, _services.GetService<StratagemIconStore>(), _images, _services.GetService<Microsoft.Extensions.Logging.ILogger<StratagemEditorViewModel>>(),
-                _services.GetService<StratagemReferenceStore>()));
+                _services.GetService<StratagemReferenceStore>(), _services.GetService<WikiStratagemStore>()));
     }
 }

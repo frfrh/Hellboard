@@ -61,4 +61,10 @@ public sealed class GeneralOptions
     public bool StartMinimized { get; set; }
 
     public CloseAction CloseAction { get; set; } = CloseAction.KeepRunningInTray;
+
+    /// <summary>Look for a newer Companion release on GitHub at start.</summary>
+    public bool CheckForUpdates { get; set; } = true;
+
+    /// <summary>Release the user chose to skip ("0.8.0"); a later release is offered again.</summary>
+    public string? SkippedVersion { get; set; }
 }

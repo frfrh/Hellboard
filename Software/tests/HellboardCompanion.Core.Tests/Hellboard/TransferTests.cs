@@ -15,7 +15,7 @@ public sealed class TransferTests
     {
         Catalog.Entries.Should().HaveCountGreaterThanOrEqualTo(100);
         var bomb = Catalog.Find("eagle_500kg_bomb")!;
-        bomb.Name.Should().Be("Eagle 500KG Bomb");
+        bomb.Name.Should().Be("Eagle 500kg Bomb");
         bomb.Color.Should().Be("red");
         bomb.Sequence.Should().Be("URDDD");
         Catalog.Find("hellbomb")!.Sequence.Should().Be("DULDURDU");
@@ -25,9 +25,9 @@ public sealed class TransferTests
     [Fact]
     public void Full_names_are_transferred_without_shortening()
     {
-        var transfer = LoadoutTransferBuilder.Build(Locked(["sta_x3_w_a_s_p_launcher", null, null, null], []), Catalog, new MultiFunctionOptions());
+        var transfer = LoadoutTransferBuilder.Build(Locked(["gl_28", null, null, null], []), Catalog, new MultiFunctionOptions());
 
-        transfer.Loadout.Stratagems[0]!.Name.Should().Be("StA-X3 W.A.S.P. Launcher");
+        transfer.Loadout.Stratagems[0]!.Name.Should().Be("Belt-Fed Grenade Launcher");
         transfer.Loadout.Stratagems[0]!.Name.Length.Should().BeGreaterThan(16);
     }
 
@@ -38,14 +38,14 @@ public sealed class TransferTests
         var transfer = LoadoutTransferBuilder.Build(
             Locked(["eagle_500kg_bomb", null, "td_110_maelstrom", "not_in_catalog"], []), catalog, new MultiFunctionOptions());
 
-        transfer.Loadout.Stratagems.Select(s => s?.Name).Should().Equal("Eagle 500KG Bomb", null, null, null);
+        transfer.Loadout.Stratagems.Select(s => s?.Name).Should().Equal("Eagle 500kg Bomb", null, null, null);
         transfer.NotTransferable.Should().Equal("td_110_maelstrom", "not_in_catalog");
     }
 
     [Theory]
-    [InlineData(MultiFunctionMode.FixedList, new[] { "SOS Beacon", "Eagle Rearm" })]
-    [InlineData(MultiFunctionMode.AutoDetect, new[] { "Hellbomb", "SOS Beacon" })]
-    [InlineData(MultiFunctionMode.FixedListAndAutoDetect, new[] { "SOS Beacon", "Eagle Rearm", "Hellbomb" })]
+    [InlineData(MultiFunctionMode.FixedList, new[] { "SoS Beacon", "Eagle Rearm" })]
+    [InlineData(MultiFunctionMode.AutoDetect, new[] { "Hellbomb", "SoS Beacon" })]
+    [InlineData(MultiFunctionMode.FixedListAndAutoDetect, new[] { "SoS Beacon", "Eagle Rearm", "Hellbomb" })]
     public void Multi_function_list_follows_the_selected_mode(MultiFunctionMode mode, string[] expected)
     {
         var options = new MultiFunctionOptions { Mode = mode, FixedList = ["sos_beacon", "eagle_rearm"] };

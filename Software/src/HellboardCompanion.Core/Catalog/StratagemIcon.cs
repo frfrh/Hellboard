@@ -4,11 +4,15 @@ using System.Text;
 
 namespace HellboardCompanion.Core.Catalog;
 
-/// <summary>
-/// A stratagem icon from the icon repository (implementation plan §6.11): file name = display name,
-/// folder = ship module or warbond.
-/// </summary>
-public sealed record StratagemIcon(string Id, string Name, string Group, string SvgPath)
+/// <summary>A stratagem icon (wiki-source-plan §4).</summary>
+/// <param name="Id">Catalog id of the stratagem.</param>
+/// <param name="Group">Wiki type (e.g. "Sentry"); folder of the former icon repository for its icons.</param>
+/// <param name="ImagePath">SVG, or a PNG with transparency derived from a wiki icon with background.</param>
+/// <param name="Recognizable">
+/// <c>false</c> if several stratagems share the image (e.g. the drills): it is shown, but cannot tell them apart
+/// in the recognition.
+/// </param>
+public sealed record StratagemIcon(string Id, string Name, string Group, string ImagePath, bool Recognizable = true)
 {
     /// <summary>Stable id derived from the display name, e.g. "Eagle 500KG Bomb" → "eagle_500kg_bomb".</summary>
     public static string ToId(string name)
@@ -28,16 +32,4 @@ public sealed record StratagemIcon(string Id, string Name, string Group, string 
 
         return builder.ToString().TrimEnd('_');
     }
-
-    /// <summary>Reads all icons of a local copy of the repository (<c>&lt;root&gt;/&lt;group&gt;/&lt;name&gt;.svg</c>).</summary>
-    public static IReadOnlyList<StratagemIcon> LoadDirectory(string root) =>
-        Directory.EnumerateFiles(root, "*.svg", SearchOption.AllDirectories)
-            .Select(path =>
-            {
-                var name = Path.GetFileNameWithoutExtension(path);
-                var group = Path.GetFileName(Path.GetDirectoryName(path)) ?? string.Empty;
-                return new StratagemIcon(ToId(name), name, group, path);
-            })
-            .OrderBy(icon => icon.Id, StringComparer.Ordinal)
-            .ToList();
 }

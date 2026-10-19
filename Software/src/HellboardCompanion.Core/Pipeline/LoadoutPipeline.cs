@@ -378,7 +378,7 @@ public sealed class LoadoutPipeline : IDisposable
                 continue;
             }
 
-            var name = _catalog.Find(id)?.Name ?? id;
+            var name = _catalog.Find(id)?.FullName ?? id;
             RecordProblem(ProblemKind.NoInputSequence, $"{name}: input sequence not known yet – not sent to the Hellboard.", null, id);
         }
     }

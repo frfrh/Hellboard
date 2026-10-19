@@ -4,8 +4,8 @@ using System.Collections.Concurrent;
 using Avalonia.Media.Imaging;
 using HellboardCompanion.Core.Catalog;
 using HellboardCompanion.Core.Hellboard;
+using HellboardCompanion.Core.Recognition;
 using SkiaSharp;
-using Svg.Skia;
 
 namespace HellboardCompanion.App.Services;
 
@@ -72,7 +72,7 @@ public sealed class StratagemImages
 
         if (_iconStore?.Icons.FirstOrDefault(i => i.Id == id) is { } icon)
         {
-            return _cache[id] = Render(icon.SvgPath);
+            return _cache[id] = Render(icon.ImagePath);
         }
 
         // Only once the icons are loaded: on the first start they may still be downloading.
@@ -84,25 +84,11 @@ public sealed class StratagemImages
         return null;
     }
 
-    private static Bitmap? Render(string svgPath)
+    private static Bitmap? Render(string imagePath)
     {
         try
         {
-            using var svg = new SKSvg();
-            var picture = svg.Load(svgPath);
-            if (picture is null)
-            {
-                return null;
-            }
-
-            using var bitmap = new SKBitmap(Size, Size, SKColorType.Bgra8888, SKAlphaType.Premul);
-            using (var canvas = new SKCanvas(bitmap))
-            {
-                canvas.Clear(SKColors.Transparent);
-                canvas.Scale(Size / Math.Max(picture.CullRect.Width, picture.CullRect.Height));
-                canvas.DrawPicture(picture);
-            }
-
+            using var bitmap = SvgRenderer.RenderTransparent(imagePath, Size);
             return ToBitmap(bitmap);
         }
         catch (Exception)

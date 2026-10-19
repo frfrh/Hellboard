@@ -31,20 +31,24 @@ public sealed record SlotResult(SlotState State, string? StratagemId, double Sco
     };
 }
 
-/// <summary>Visual style of a slot type, used to render matching templates from the SVG icons.</summary>
-/// <param name="IconRatio">Icon size relative to the slot (measured on captures).</param>
+/// <summary>Visual style of a slot type, used to render matching templates from the icons.</summary>
+/// <param name="IconRatio">Icon frame size relative to the slot (measured on captures).</param>
 /// <param name="Background">Slot background (BGR).</param>
 /// <param name="ContentInset">Share of the slot excluded on each side when matching (frame decoration).</param>
 public sealed record SlotStyle(double IconRatio, Scalar Background, double ContentInset)
 {
-    /// <summary>Player stratagem slots: icon 87.5 % of the slot interior on neutral gray (P4 measurement).</summary>
-    public static SlotStyle PlayerSlot { get; } = new(0.875, new Scalar(47, 47, 47), 0);
+    /// <summary>
+    /// Player stratagem slots: the wiki icons are traced on the 256×256 frame of the game texture, so the icon
+    /// frame fills the slot interior (wiki-source-plan §1.1; the former repository icons were cropped: 87.5 %).
+    /// </summary>
+    public static SlotStyle PlayerSlot { get; } = new(1.0, new Scalar(47, 47, 47), 0);
 
     /// <summary>
-    /// Mission stratagem slots: white icon 86.7 % of the slot on olive; the beige frame with its
-    /// corner ornaments (≈ 15 % of the slot) is excluded (P4 measurement).
+    /// Mission stratagem slots: white icon on olive, the icon frame 99.1 % of the slot (P4 measurement 86.7 % with
+    /// the cropped repository icons, same factor); the beige frame with its corner ornaments (≈ 15 % of the slot)
+    /// is excluded.
     /// </summary>
-    public static SlotStyle MissionSlot { get; } = new(0.867, new Scalar(45, 59, 60), 0.15);
+    public static SlotStyle MissionSlot { get; } = new(0.991, new Scalar(45, 59, 60), 0.15);
 }
 
 /// <summary>
@@ -114,7 +118,9 @@ public sealed class StratagemSlotClassifier : IDisposable
             .Select(r => (r.Id, Template: LoadReference(r.Path, content)))
             .Where(r => r.Template is not null)
             .ToLookup(r => r.Id, r => r.Template!);
-        var unique = icons.GroupBy(icon => icon.Id).Where(g => !images.Contains(g.Key)).ToDictionary(g => g.Key, g => g.First().SvgPath);
+        // Icons shared by several stratagems cannot tell them apart (wiki-source-plan §4.2).
+        var unique = icons.Where(icon => icon.Recognizable).GroupBy(icon => icon.Id).Where(g => !images.Contains(g.Key))
+            .ToDictionary(g => g.Key, g => g.First().ImagePath);
         _templates = unique.ToDictionary(i => i.Key, i => new[] { Render(i.Value, iconSize) });
         foreach (var group in images)
         {

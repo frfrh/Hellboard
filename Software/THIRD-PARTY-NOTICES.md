@@ -34,8 +34,10 @@ copyright notice retained). The installer runtime shows this notice itself.
 
 ## Not bundled
 
-- **Stratagem icons** are downloaded at runtime from
-  https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg and stored locally on the user's PC.
-  They are not part of the release.
+- **Stratagem data and icons** (names, designations, types, input codes, the traced stratagem icons) are
+  read at runtime from the Helldivers Wiki, https://helldivers.wiki.gg/wiki/Stratagems, and stored locally
+  on the user's PC; they are not part of the release. Wiki content is licensed under CC BY-NC-SA 4.0
+  (https://creativecommons.org/licenses/by-nc-sa/4.0/). Thanks to the wiki editors, and to the icon tracers
+  (e.g. Dogo314). The built-in stratagem list of the release is maintained by hand with the help of the wiki.
 - **Helldivers 2** and all game content are property of Arrowhead Game Studios and Sony Interactive
   Entertainment. Hellboard Companion is a fan project and not affiliated with them.

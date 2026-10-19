@@ -24,8 +24,8 @@ public sealed class HellboardLinkTests
 
         await WaitFor(() => link.Simulator!.SetLoadoutCount == 2);
         link.Simulator!.Stratagems![3]!["name"]!.GetValue<string>().Should().Be("Mortar Sentry");
-        link.Simulator.MissionStratagems!.AsArray().Select(s => s!["name"]!.GetValue<string>()).Should().Equal("SOS Beacon");
-        link.State.LastSent!.Stratagems[0]!.Name.Should().Be("Eagle 500KG Bomb");
+        link.Simulator.MissionStratagems!.AsArray().Select(s => s!["name"]!.GetValue<string>()).Should().Equal("SoS Beacon");
+        link.State.LastSent!.Stratagems[0]!.Name.Should().Be("Eagle 500kg Bomb");
     }
 
     [Fact]
@@ -236,13 +236,15 @@ public sealed class HellboardLinkTests
         var multiFunction = new MultiFunctionOptions();
         using var link = new HellboardLink(new HellboardOptions { Mode = HellboardConnectionMode.Simulator }, multiFunction, Catalog, NullLogger<HellboardLink>.Instance);
         link.Start();
+        // Wait for the loadout sent on connect first: submitting before it made the count race (flaky test).
+        await WaitFor(() => link.State.Status == HellboardStatus.Connected && link.Simulator?.SetLoadoutCount == 1);
         link.Submit(LoadoutA);
-        await WaitFor(() => link.Simulator?.SetLoadoutCount == 1);
+        await WaitFor(() => link.Simulator!.SetLoadoutCount == 2);
 
         multiFunction.FixedList = ["sos_beacon", "eagle_rearm"];
         link.ApplySettings();
 
-        await WaitFor(() => link.Simulator!.SetLoadoutCount == 2);
+        await WaitFor(() => link.Simulator!.SetLoadoutCount == 3);
         link.Simulator!.MissionStratagems!.AsArray().Should().HaveCount(2);
     }
 

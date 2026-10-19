@@ -15,12 +15,16 @@ e.g. `C:\Tools\HellboardCompanion`, and start `HellboardCompanion.exe`.
 No .NET runtime is needed either way – the EXE is self-contained. Windows SmartScreen may warn that the
 app is from an unknown publisher (it is not code-signed). Choose *More info* → *Run anyway*.
 
-On the first start the app needs an internet connection: it downloads the stratagem icons it uses for
-recognition from GitHub (`nvigneux/Helldivers-2-Stratagems-icons-svg`). The first start also takes a few
-seconds longer because the bundled native libraries are unpacked.
+On the first start the app needs an internet connection: it reads the stratagem list of the
+[Helldivers wiki](https://helldivers.wiki.gg/wiki/Stratagems) (new stratagems and their input codes) and
+downloads the stratagem icons it uses for recognition from there. Both are checked again at most once a day. The first start also takes a few seconds longer because the bundled
+native libraries are unpacked.
 
 The app opens its window and keeps running in the system tray; left-click the tray icon to open the window
-again. In *Settings → General* you can let it start with only the tray icon, and let the close button (X)
+again. A few seconds after the start the app looks on GitHub for a newer version; if there is one, it asks
+whether to open the download page in your browser (with only the tray icon shown, Windows shows a
+notification first). You can skip a version or turn the check off in *Settings → General*.
+In *Settings → General* you can also let it start with only the tray icon, and let the close button (X)
 exit the app instead of keeping it in the tray.
 
 ## Requirements

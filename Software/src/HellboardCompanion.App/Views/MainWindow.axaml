@@ -320,6 +320,7 @@
               <CheckBox IsChecked="{Binding OnlyWithoutCode}" Content="Only without code" />
               <CheckBox IsChecked="{Binding OnlyWithReference}" Content="Only with reference" />
             </StackPanel>
+            <CheckBox IsChecked="{Binding OnlyWithProposal}" Content="Only with wiki.gg proposal" />
             <TextBlock Text="{Binding Summary}" Opacity="0.6" FontSize="12" />
           </StackPanel>
           <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}">
@@ -328,9 +329,10 @@
                 <Grid ColumnDefinitions="40,*" ColumnSpacing="10">
                   <Image Grid.Column="0" Source="{Binding Icon}" IsVisible="{Binding HasIcon}" Width="36" Height="36" />
                   <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding FullName}" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding CodeArrows}" FontSize="13" Opacity="0.8" />
                     <TextBlock Text="{Binding SourceText}" FontSize="11" Opacity="0.55" />
+                    <TextBlock Text="wiki.gg lists another code" FontSize="11" Foreground="#FFC107" IsVisible="{Binding HasProposal}" />
                   </StackPanel>
                 </Grid>
               </DataTemplate>
@@ -346,14 +348,27 @@
               <StackPanel Orientation="Horizontal" Spacing="12">
                 <Image Source="{Binding Selected.Icon}" Width="72" Height="72" />
                 <StackPanel VerticalAlignment="Center">
-                  <TextBlock Text="{Binding Selected.Name}" FontSize="18" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Selected.FullName}" FontSize="18" FontWeight="SemiBold" />
                   <TextBlock Text="{Binding Selected.Id}" Opacity="0.6" />
                   <TextBlock Text="{Binding Selected.Source}" Opacity="0.6" />
                 </StackPanel>
               </StackPanel>
 
+              <Border IsVisible="{Binding Selected.HasProposal, FallbackValue=False}" BorderBrush="#FFC107" BorderThickness="1" CornerRadius="6" Padding="12">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="Code proposal from helldivers.wiki.gg" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Selected.ProposalText}" TextWrapping="Wrap" />
+                  <TextBlock Opacity="0.7" TextWrapping="Wrap" FontSize="12"
+                             Text="The wiki is maintained by players and can be wrong. Take the code over only if it is right – best check it in the game. Keeping the current code hides this proposal until the wiki lists yet another code." />
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button Content="Take over wiki code" Command="{Binding TakeOverWikiCodeCommand}" />
+                    <Button Content="Keep current code" Command="{Binding DismissWikiCodeCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
               <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="10">
-                <TextBlock Grid.Row="0" Text="Name" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="0" Text="Name on the Hellboard" VerticalAlignment="Center" />
                 <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding EditName}" MaxLength="64" />
                 <TextBlock Grid.Row="1" Text="Category (LED color)" VerticalAlignment="Center" />
                 <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding EditCategory}" MinWidth="240" />
@@ -488,12 +503,15 @@
           </StackPanel>
 
           <StackPanel Spacing="10">
-            <TextBlock Text="Stratagem icons" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="Stratagem data and icons" FontSize="18" FontWeight="SemiBold" />
             <TextBlock Opacity="0.7" TextWrapping="Wrap"
-                       Text="The icons used for recognition come from the icon repository nvigneux/Helldivers-2-Stratagems-icons-svg. New and changed icons are downloaded automatically (checked at most once a day)." />
+                       Text="Stratagem names and input codes come from the Helldivers wiki (helldivers.wiki.gg): new stratagems and missing codes are added automatically, a different code of a known stratagem is only proposed in the Stratagems tab. The icons used for recognition come from the wiki, too. Both are checked at most once a day." />
             <StackPanel Orientation="Horizontal" Spacing="10">
-              <Button Content="Check for new icons now" Command="{Binding CheckIconsCommand}" />
-              <TextBlock Text="{Binding IconStatus}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="560" />
+              <Button Content="Check now" Command="{Binding CheckIconsCommand}" />
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="{Binding WikiStatus}" TextWrapping="Wrap" MaxWidth="560" />
+                <TextBlock Text="{Binding IconStatus}" TextWrapping="Wrap" MaxWidth="560" />
+              </StackPanel>
             </StackPanel>
             <TextBlock Text="{Binding IconsWithoutCode}" IsVisible="{Binding IconsWithoutCode, Converter={x:Static ObjectConverters.IsNotNull}}"
                        Foreground="#FFC107" TextWrapping="Wrap" />
@@ -502,6 +520,7 @@
           <StackPanel Spacing="10">
             <TextBlock Text="General" FontSize="18" FontWeight="SemiBold" />
             <CheckBox IsChecked="{Binding StartWithWindows}" IsEnabled="{Binding AutostartAvailable}" Content="Start Hellboard Companion with Windows" />
+            <CheckBox IsChecked="{Binding CheckForUpdates}" Content="Look for a new version at start (asks GitHub; takes effect at the next start)" />
             <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="8">
               <TextBlock Grid.Row="0" Text="On start, show" VerticalAlignment="Center" />
               <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding StartChoices}" SelectedItem="{Binding StartMinimized}" MinWidth="320" />

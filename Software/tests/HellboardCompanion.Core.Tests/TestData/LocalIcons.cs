@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using HellboardCompanion.Core.Catalog;
+using HellboardCompanion.Core.Hellboard;
 
 namespace HellboardCompanion.Core.Tests.TestData;
 
 /// <summary>
-/// Local copy of the stratagem icon repository in <c>tests/testData/local/icons/</c> (not committed,
-/// see implementation plan §3.3). Downloaded on first use; tests are skipped when offline.
+/// Local copy of the stratagem icons of helldivers.wiki.gg in <c>tests/testData/local/icons-wiki/</c> (not
+/// committed, see implementation plan §3.3). Downloaded on first use and checked at most once a day; tests
+/// are skipped when offline and no copy exists.
 /// </summary>
 public static class LocalIcons
 {
     private static readonly Lazy<IReadOnlyList<StratagemIcon>?> Icons = new(Load);
 
-    public static string Directory { get; } = Path.Combine(LocalScenes.TestDataDirectory, "local", "icons");
+    public static string Directory { get; } = Path.Combine(LocalScenes.TestDataDirectory, "local", "icons-wiki");
 
     public static IReadOnlyList<StratagemIcon> All
     {
@@ -28,8 +30,10 @@ public static class LocalIcons
         try
         {
             using var http = new HttpClient();
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("HellboardCompanion-Tests");
-            new StratagemIconDownloader(http).UpdateAsync(Directory).GetAwaiter().GetResult();   // at most once a day
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("HellboardCompanion-Tests (+https://github.com/frfrh/Hellboard)");
+            var wiki = new WikiClient(http).GetStratagemsAsync().GetAwaiter().GetResult();
+            var requests = WikiIconRequest.From(wiki, StratagemCatalog.LoadSeed(wiki));
+            new WikiIconDownloader(http).UpdateAsync(Directory, requests).GetAwaiter().GetResult();   // at most once a day
         }
         catch (Exception) when (System.IO.Directory.Exists(Directory))
         {
@@ -40,7 +44,7 @@ public static class LocalIcons
             return null;
         }
 
-        var icons = StratagemIcon.LoadDirectory(Directory);
+        var icons = WikiIconDownloader.LoadIcons(Directory);
         return icons.Count > 0 ? icons : null;
     }
 }

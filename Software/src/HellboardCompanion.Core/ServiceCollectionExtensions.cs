@@ -34,9 +34,21 @@ public static class ServiceCollectionExtensions
         });
         services.AddSingleton<LoadoutHistory>();
         services.AddSingleton(settings.Settings.Recognition);
-        services.AddSingleton(sp => StratagemCatalog.Load(
-            Path.Combine(paths.ConfigDirectory, "stratagems.json"),
-            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<StratagemCatalog>>()));
+        services.AddSingleton(sp =>
+        {
+            var store = new WikiStratagemStore(paths, sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<WikiStratagemStore>>());
+            store.Load();
+            return store;
+        });
+        services.AddSingleton(sp =>
+        {
+            // Built-in list < wiki layer (local copy of the wiki's stratagem table) < user list (wiki-source-plan §3.2).
+            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<StratagemCatalog>>();
+            var wiki = sp.GetRequiredService<WikiStratagemStore>();
+            var catalog = StratagemCatalog.Load(Path.Combine(paths.ConfigDirectory, "stratagems.json"), logger, wiki.Stratagems);
+            wiki.Changed += (_, _) => catalog.Reload(logger, wiki.Stratagems);
+            return catalog;
+        });
         services.AddSingleton(settings.Settings.Hellboard);
         services.AddSingleton(settings.Settings.MultiFunction);
         services.AddSingleton(settings.Settings.Board);

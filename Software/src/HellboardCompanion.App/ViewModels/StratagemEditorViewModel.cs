@@ -15,9 +15,21 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace HellboardCompanion.App.ViewModels;
 
 /// <summary>One stratagem in the editor list.</summary>
-public sealed record StratagemEditorItem(string Id, string Name, string Category, string? Code, string Source, Bitmap? Icon, string? SvgPath, int ReferenceCount = 0)
+/// <param name="Name">Short name, sent to the Hellboard and used for sorting.</param>
+/// <param name="FullName">Full name (wiki designation) shown in the Companion.</param>
+/// <param name="WikiCode">Different code listed by helldivers.wiki.gg (open proposal), <c>null</c> if none.</param>
+/// <param name="Note">Note of the built-in entry, e.g. "Verified in game …".</param>
+public sealed record StratagemEditorItem(string Id, string Name, string FullName, string Category, string? Code, string Source, Bitmap? Icon, string? SvgPath,
+    int ReferenceCount = 0, string? WikiCode = null, string? Note = null)
 {
     public bool HasReference => ReferenceCount > 0;
+
+    public bool HasProposal => WikiCode is not null;
+
+    public string ProposalText => WikiCode is null
+        ? string.Empty
+        : $"helldivers.wiki.gg lists {StratagemEditorViewModel.ToArrows(WikiCode)} – in use: {(HasCode ? CodeArrows : "no code")}."
+          + (Note is null ? string.Empty : $" Note: {Note}");
 
     /// <summary>Origin of the entry for the list, e.g. "Built-in, with reference".</summary>
     public string SourceText => HasReference ? $"{Source}, with reference" : Source;
@@ -44,6 +56,7 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
     private readonly StratagemIconStore? _icons;
     private readonly StratagemImages _images;
     private readonly StratagemReferenceStore? _references;
+    private readonly WikiStratagemStore? _wiki;
     private readonly ILogger _logger;
     private readonly StratagemCatalog _builtIn = StratagemCatalog.LoadSeed();
     private List<StratagemEditorItem> _all = [];
@@ -58,10 +71,15 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
     private bool _onlyWithReference;
 
     [ObservableProperty]
+    private bool _onlyWithProposal;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     [NotifyCanExecuteChangedFor(nameof(ResetCommand))]
     [NotifyCanExecuteChangedFor(nameof(RemoveReferencesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(TakeOverWikiCodeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DismissWikiCodeCommand))]
     private StratagemEditorItem? _selected;
 
     [ObservableProperty]
@@ -82,12 +100,13 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
     private string? _result;
 
     public StratagemEditorViewModel(StratagemCatalog catalog, StratagemIconStore? icons, StratagemImages images, ILogger? logger = null,
-        StratagemReferenceStore? references = null)
+        StratagemReferenceStore? references = null, WikiStratagemStore? wiki = null)
     {
         _catalog = catalog;
         _icons = icons;
         _images = images;
         _references = references;
+        _wiki = wiki;
         _logger = logger ?? NullLogger.Instance;
         _catalog.Changed += OnCatalogChanged;
         if (_icons is not null)
@@ -128,7 +147,8 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
 
     public string? UserFile => _catalog.UserFilePath;
 
-    public string Summary => $"{_all.Count} stratagems, {_all.Count(i => !i.HasCode)} without code, {_all.Count(i => i.HasReference)} with reference, {_catalog.UserIds.Count} in your list";
+    public string Summary => $"{_all.Count} stratagems, {_all.Count(i => !i.HasCode)} without code, {_all.Count(i => i.HasReference)} with reference, {_catalog.UserIds.Count} in your list"
+        + (_all.Count(i => i.HasProposal) is > 0 and var proposals ? $", {proposals} code proposal(s) from wiki.gg" : string.Empty);
 
     // ---- code entry -----------------------------------------------------------------------------
 
@@ -172,19 +192,7 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
 
         try
         {
-            var list = UserStratagemList.Load(path);
-            var builtIn = _builtIn.Find(item.Id);
-            if (builtIn is not null && builtIn.Name == entry.Name && builtIn.Category == entry.Category && builtIn.Sequence == entry.Code)
-            {
-                list.Remove(item.Id);   // same as the built-in entry: no override needed
-            }
-            else
-            {
-                list.Set(entry);
-            }
-
-            list.Save();
-            Reload(path);
+            Store(path, entry);
             Result = entry.Code is null
                 ? $"{entry.Name} saved without code – it cannot be sent to the Hellboard yet."
                 : $"{entry.Name} saved – it is sent to the Hellboard from now on.";
@@ -194,6 +202,67 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
             Result = $"Not saved: {ex.Message}";
         }
     }
+
+    /// <summary>Writes <paramref name="entry"/> into the user list (or removes the override if it equals the built-in entry) and reloads.</summary>
+    private void Store(string path, UserStratagem entry)
+    {
+        var list = UserStratagemList.Load(path);
+        var builtIn = _builtIn.Find(entry.Id);
+        if (builtIn is not null && builtIn.Name == entry.Name && builtIn.Category == entry.Category && builtIn.Sequence == entry.Code)
+        {
+            list.Remove(entry.Id);   // same as the built-in entry: no override needed
+        }
+        else
+        {
+            list.Set(entry);
+        }
+
+        list.Save();
+        Reload(path);
+    }
+
+    /// <summary>Uses the code helldivers.wiki.gg lists instead of the current one (stored in the user list, wiki-source-plan §3.2).</summary>
+    [RelayCommand(CanExecute = nameof(HasSelectedProposal))]
+    private void TakeOverWikiCode()
+    {
+        if (Selected is not { WikiCode: { } code } item || UserFile is not { } path)
+        {
+            return;
+        }
+
+        try
+        {
+            Store(path, new UserStratagem(item.Id, item.Name, item.Category, code));
+            Result = $"{item.Name}: code {ToArrows(code)} from wiki.gg taken over.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
+        {
+            Result = $"Not taken over: {ex.Message}";
+        }
+    }
+
+    /// <summary>Keeps the current code; the proposal shows again only if the wiki lists yet another code.</summary>
+    [RelayCommand(CanExecute = nameof(HasSelectedProposal))]
+    private void DismissWikiCode()
+    {
+        if (Selected is not { WikiCode: { } code } item || _wiki is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _wiki.Dismiss(new WikiProposal(item.Id, item.Code, code));
+            Result = $"{item.Name}: current code kept.";
+            OnCatalogChanged(this, EventArgs.Empty);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Result = $"Not changed: {ex.Message}";
+        }
+    }
+
+    private bool HasSelectedProposal() => Selected is { HasProposal: true } && UserFile is not null;
 
     private bool CanSave() => Selected is not null && UserFile is not null && !string.IsNullOrWhiteSpace(EditName) && EditCategory is not null
         && EditCode.Length is 0 or >= UserStratagemList.MinCodeLength;
@@ -318,6 +387,8 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
 
     partial void OnOnlyWithReferenceChanged(bool value) => Filter();
 
+    partial void OnOnlyWithProposalChanged(bool value) => Filter();
+
     partial void OnSelectedChanged(StratagemEditorItem? value)
     {
         Result = null;
@@ -329,7 +400,7 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
     private void Reload(string path)
     {
         var selectedId = Selected?.Id;
-        _catalog.ReplaceWith(StratagemCatalog.Load(path, _logger));   // → Changed → Rebuild, Hellboard re-sends
+        _catalog.ReplaceWith(StratagemCatalog.Load(path, _logger, _catalog.Wiki));   // → Changed → Rebuild, Hellboard re-sends
         Selected = Items.FirstOrDefault(i => i.Id == selectedId);
     }
 
@@ -345,28 +416,33 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
     private void Rebuild()
     {
         var icons = _icons?.Icons ?? [];
+        var proposals = (_wiki?.OpenProposals(_catalog) ?? []).ToDictionary(p => p.Id, p => p.WikiCode, StringComparer.Ordinal);
         var items = _catalog.Entries.Select(e => new StratagemEditorItem(
-            e.Id, e.Name, e.Category, e.Sequence, SourceOf(e.Id), _images.Get(e.Id), icons.FirstOrDefault(i => i.Id == e.Id)?.SvgPath,
-            _references?.Count(e.Id) ?? 0)).ToList();
+            e.Id, e.Name, e.FullName, e.Category, e.Sequence, SourceOf(e.Id), _images.Get(e.Id), icons.FirstOrDefault(i => i.Id == e.Id)?.ImagePath,
+            _references?.Count(e.Id) ?? 0, proposals.GetValueOrDefault(e.Id), _catalog.Note(e.Id))).ToList();
         foreach (var icon in icons.Where(i => _catalog.Find(i.Id) is null))
         {
-            items.Add(new StratagemEditorItem(icon.Id, icon.Name, GuessCategory(icon.SvgPath), null, "New icon – no code yet", _images.Get(icon.Id), icon.SvgPath,
+            items.Add(new StratagemEditorItem(icon.Id, icon.Name, icon.Name, GuessCategory(icon.ImagePath), null, "New icon – no code yet", _images.Get(icon.Id), icon.ImagePath,
                 _references?.Count(icon.Id) ?? 0));
         }
 
         RemoveReferencesCommand.NotifyCanExecuteChanged();
 
-        _all = items.OrderBy(i => i.HasCode).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        _all = items.OrderByDescending(i => i.HasProposal).ThenBy(i => i.HasCode).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList();
         OnPropertyChanged(nameof(Categories));
         OnPropertyChanged(nameof(Summary));
         ResetCommand.NotifyCanExecuteChanged();
+        TakeOverWikiCodeCommand.NotifyCanExecuteChanged();
+        DismissWikiCodeCommand.NotifyCanExecuteChanged();
         Filter();
     }
 
-    private string SourceOf(string id) => (_catalog.UserIds.Contains(id), _builtIn.Find(id) is not null) switch
+    private string SourceOf(string id) => (_catalog.UserIds.Contains(id), _builtIn.Find(id) is not null, _catalog.WikiIds.Contains(id)) switch
     {
-        (true, true) => "Built-in, changed by you",
-        (true, false) => "Your own stratagem",
+        (true, true, _) => "Built-in, changed by you",
+        (true, false, _) => "Your own stratagem",
+        (false, true, true) => "Built-in, code from wiki.gg",
+        (false, false, true) => "From wiki.gg",
         _ => "Built-in",
     };
 
@@ -374,8 +450,9 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
     {
         var search = SearchText.Trim();
         Items.Clear();
-        foreach (var item in _all.Where(i => (!OnlyWithoutCode || !i.HasCode) && (!OnlyWithReference || i.HasReference)
-                     && (search.Length == 0 || i.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || i.Id.Contains(search, StringComparison.OrdinalIgnoreCase))))
+        foreach (var item in _all.Where(i => (!OnlyWithoutCode || !i.HasCode) && (!OnlyWithReference || i.HasReference) && (!OnlyWithProposal || i.HasProposal)
+                     && (search.Length == 0 || i.FullName.Contains(search, StringComparison.OrdinalIgnoreCase) || i.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                         || i.Id.Contains(search, StringComparison.OrdinalIgnoreCase))))
         {
             Items.Add(item);
         }
