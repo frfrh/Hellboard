@@ -180,21 +180,24 @@ public sealed class ManualRecognitionTests : IDisposable
         var paths = new PlatformPaths(Path.Combine(_dataRoot, "roaming"), Path.Combine(_dataRoot, "local"));
 
         // Copy the locally cached icons into the data directory of this test (no network access).
-        var iconStore = new StratagemIconStore(paths, NullLogger<StratagemIconStore>.Instance);
-        foreach (var icon in LocalIcons.All.Where(i => i.Id != withoutIcon))
+        var seed = catalog ?? StratagemCatalog.LoadSeed();
+        var wiki = new WikiStratagemStore(paths, NullLogger<WikiStratagemStore>.Instance);
+        var iconStore = new StratagemIconStore(paths, NullLogger<StratagemIconStore>.Instance, wiki, seed);
+        var icons = LocalIcons.All.Where(i => i.Id != withoutIcon).ToList();
+        Directory.CreateDirectory(iconStore.Directory);
+        foreach (var icon in icons)
         {
-            var target = Path.Combine(iconStore.Directory, icon.Group, Path.GetFileName(icon.SvgPath));
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            File.Copy(icon.SvgPath, target, overwrite: true);
+            File.Copy(icon.ImagePath, Path.Combine(iconStore.Directory, Path.GetFileName(icon.ImagePath)), overwrite: true);
         }
 
+        WikiIconDownloader.WriteIconList(iconStore.Directory, icons);
         iconStore.LoadLocal();
 
         var width = frame?.Width ?? 1920;
         var height = frame?.Height ?? 1080;
         var game = gameRunning ? FakeGameLocator.Running(width, height) : new FakeGameLocator(GameSnapshot.NotRunning);
         var grabber = new GameFrameGrabber(game, new FakeFrameSource(frame));
-        var pipeline = new LoadoutPipeline(grabber, iconStore, new LoadoutHistory(paths), options, paths, NullLogger<LoadoutPipeline>.Instance, catalog ?? StratagemCatalog.LoadSeed());
+        var pipeline = new LoadoutPipeline(grabber, iconStore, new LoadoutHistory(paths), options, paths, NullLogger<LoadoutPipeline>.Instance, seed);
         pipeline.Start();
         return pipeline;
     }

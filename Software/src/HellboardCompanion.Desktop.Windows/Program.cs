@@ -47,16 +47,11 @@ internal static class Program
         var log = services.GetRequiredService<ILoggerFactory>().CreateLogger("HellboardCompanion");
         log.LogInformation("{Product} {Version} starting", AppInfo.ProductName, AppInfo.Version);
         services.GetRequiredService<IGameLocator>().Start();
+        // Wiki stratagem table and icons (wiki-source-plan §2, §4); the icon store updates the table first.
         var iconStore = services.GetRequiredService<StratagemIconStore>();
-        var wikiStore = services.GetRequiredService<WikiStratagemStore>();
         _ = iconStore.UpdateAsync();
-        _ = wikiStore.UpdateAsync();
         // Long-running sessions: look again every 6 h; the stores themselves check at most once a day.
-        using var iconTimer = new Timer(_ =>
-        {
-            _ = iconStore.UpdateAsync();
-            _ = wikiStore.UpdateAsync();
-        }, null, TimeSpan.FromHours(6), TimeSpan.FromHours(6));
+        using var iconTimer = new Timer(_ => _ = iconStore.UpdateAsync(), null, TimeSpan.FromHours(6), TimeSpan.FromHours(6));
         var pipeline = services.GetRequiredService<LoadoutPipeline>();
         var hellboard = services.GetRequiredService<HellboardLink>();
         pipeline.LoadoutLocked += (_, loadout) => hellboard.Submit(loadout);

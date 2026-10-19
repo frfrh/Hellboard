@@ -243,7 +243,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         IsCheckingIcons = true;
         try
         {
-            await Task.WhenAll(_iconStore?.UpdateAsync(force: true) ?? Task.CompletedTask, _wikiStore?.UpdateAsync(force: true) ?? Task.CompletedTask);
+            // The icon store reads the wiki's stratagem table first.
+            await (_iconStore?.UpdateAsync(force: true) ?? _wikiStore!.UpdateAsync(force: true));
         }
         finally
         {

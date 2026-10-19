@@ -505,7 +505,7 @@
           <StackPanel Spacing="10">
             <TextBlock Text="Stratagem data and icons" FontSize="18" FontWeight="SemiBold" />
             <TextBlock Opacity="0.7" TextWrapping="Wrap"
-                       Text="Stratagem names and input codes come from the Helldivers wiki (helldivers.wiki.gg): new stratagems and missing codes are added automatically, a different code of a known stratagem is only proposed in the Stratagems tab. The icons used for recognition come from the icon repository nvigneux/Helldivers-2-Stratagems-icons-svg. Both are checked at most once a day." />
+                       Text="Stratagem names and input codes come from the Helldivers wiki (helldivers.wiki.gg): new stratagems and missing codes are added automatically, a different code of a known stratagem is only proposed in the Stratagems tab. The icons used for recognition come from the wiki, too. Both are checked at most once a day." />
             <StackPanel Orientation="Horizontal" Spacing="10">
               <Button Content="Check now" Command="{Binding CheckIconsCommand}" />
               <StackPanel VerticalAlignment="Center">

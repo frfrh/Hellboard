@@ -122,11 +122,11 @@ public sealed class StratagemSlotClassifierTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// The SVG of Bastion MK XVI shows the Maelstrom (icon repository). A reference image of the real
-    /// Bastion replaces it, so Maelstrom is no longer taken for Bastion.
+    /// A reference image replaces the icon of its stratagem (the former repository SVG of Bastion MK XVI showed
+    /// the Maelstrom); Bastion is recognized from the image, the Maelstrom still from its icon.
     /// </summary>
     [Fact]
-    public void A_reference_image_replaces_a_wrong_svg()
+    public void A_reference_image_replaces_the_icon()
     {
         var bastion = Path.Combine(LocalScenes.TestDataDirectory, "local", "slot-bastion_mk_xvi.png");
         var reference = Path.Combine(LocalScenes.TestDataDirectory, "local", "ref-bastion_mk_xvi.png");
@@ -135,9 +135,9 @@ public sealed class StratagemSlotClassifierTests(ITestOutputHelper output)
         using var classifier = new StratagemSlotClassifier(LocalIcons.All.Where(icon => !missionOnly.Contains(icon.Id)), SlotStyle.PlayerSlot,
             references: [new StratagemReference("bastion_mk_xvi", ReferenceSlot.Player, reference)]);
 
-        // Maelstrom as drawn by its SVG on a player slot (slot 94 px, icon 87.5 %, saved with a margin of 1/8).
+        // Maelstrom as drawn by its icon on a player slot (slot 94 px, icon frame = slot, saved with a margin of 1/8).
         var maelstrom = Path.Combine(Directory.CreateTempSubdirectory("hellboard-maelstrom").FullName, "maelstrom.png");
-        using (var image = SvgRenderer.Render(LocalIcons.All.First(i => i.Id == "td_110_maelstrom").SvgPath, 116, 82, SlotStyle.PlayerSlot.Background))
+        using (var image = SvgRenderer.Render(LocalIcons.All.First(i => i.Id == "td_110_maelstrom").ImagePath, 116, 94, SlotStyle.PlayerSlot.Background))
         {
             OpenCvSharp.Cv2.ImWrite(maelstrom, image);
         }

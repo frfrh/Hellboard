@@ -418,11 +418,11 @@ public sealed partial class StratagemEditorViewModel : ObservableObject, IDispos
         var icons = _icons?.Icons ?? [];
         var proposals = (_wiki?.OpenProposals(_catalog) ?? []).ToDictionary(p => p.Id, p => p.WikiCode, StringComparer.Ordinal);
         var items = _catalog.Entries.Select(e => new StratagemEditorItem(
-            e.Id, e.Name, e.FullName, e.Category, e.Sequence, SourceOf(e.Id), _images.Get(e.Id), icons.FirstOrDefault(i => i.Id == e.Id)?.SvgPath,
+            e.Id, e.Name, e.FullName, e.Category, e.Sequence, SourceOf(e.Id), _images.Get(e.Id), icons.FirstOrDefault(i => i.Id == e.Id)?.ImagePath,
             _references?.Count(e.Id) ?? 0, proposals.GetValueOrDefault(e.Id), _catalog.Note(e.Id))).ToList();
         foreach (var icon in icons.Where(i => _catalog.Find(i.Id) is null))
         {
-            items.Add(new StratagemEditorItem(icon.Id, icon.Name, icon.Name, GuessCategory(icon.SvgPath), null, "New icon – no code yet", _images.Get(icon.Id), icon.SvgPath,
+            items.Add(new StratagemEditorItem(icon.Id, icon.Name, icon.Name, GuessCategory(icon.ImagePath), null, "New icon – no code yet", _images.Get(icon.Id), icon.ImagePath,
                 _references?.Count(icon.Id) ?? 0));
         }
 

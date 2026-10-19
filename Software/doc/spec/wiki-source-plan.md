@@ -1,6 +1,6 @@
 # Plan: helldivers.wiki.gg as stratagem source
 
-Status: **agreed** (2026-10-19); steps 1 and 2 implemented. Replaces the icon repository `nvigneux/Helldivers-2-Stratagems-icons-svg` and makes helldivers.wiki.gg the single online source for stratagem codes, names and icons. Changes implementation plan §3.3, §6.11 and §6.12 once implemented.
+Status: **implemented** (2026-10-19, steps 1–4). Replaces the icon repository `nvigneux/Helldivers-2-Stratagems-icons-svg` and makes helldivers.wiki.gg the single online source for stratagem codes, names and icons. Changes implementation plan §3.3, §6.11 and §6.12 once implemented.
 
 ## 1. Decision and background
 
@@ -130,8 +130,8 @@ Each step is one or more commits on `feature/hellboard-companion`, with tests; r
 
 1. **Wiki client, sync tool and names.** `WikiClient` with tests; `stratagem-sync` uses it; `designation` rule (`SoS Beacon`), naming rule (§3.3: 21 names changed, the Companion shows the full name), docs (`doc/stratagems.md`, README knowledge base and acknowledgement). *Done 2026-10-19.*
 2. **Wiki layer in the catalog.** `WikiStratagemStore` (local copy `wiki\stratagems.json` with the dismissed proposals, checked at start, every 6 h at most once a day and on *Check now*), `WikiMatching` shared with `stratagem-sync`, merge in `StratagemCatalog` (`WikiIds`, `WikiProposals`, `Note`), proposals in the Stratagems tab (*Take over wiki code* / *Keep current code*, filter, summary), wiki status in the settings, BETA-README and third-party notices. *Done 2026-10-19.*
-3. **Icons from the wiki.** `WikiIconDownloader`, id mapping, shared icons, `IconRatio`, migration of the icon folder, tests on the local scenes (expectation: ≥ 337/339 as in §1.1). Manual check in the game with a few loadouts.
-4. **Clean-up and docs.** Remove `StratagemIconDownloader` and the nvigneux references (README, BETA-README, THIRD-PARTY-NOTICES, implementation plan §3.3/§6.11/§6.12); attribution: "Stratagem data and icons: Helldivers Wiki (helldivers.wiki.gg), CC BY-NC-SA 4.0; icons traced by wiki contributors (e.g. Dogo314)". The root `README.md` (line "icons for the buttons") is only changed with the user's OK.
+3. *Done 2026-10-19:* all scene and slot tests pass with the wiki icons (incl. Bastion MK XVI without reference image); `HellboardLinkTests.Changed_multi_function_list_is_sent_again` was made race-free on the way. **Icons from the wiki.** `WikiIconDownloader`, id mapping, shared icons, `IconRatio`, migration of the icon folder, tests on the local scenes (expectation: ≥ 337/339 as in §1.1). Manual check in the game with a few loadouts.
+4. *Done 2026-10-19 together with step 3 (the root README is unchanged):* **Clean-up and docs.** Remove `StratagemIconDownloader` and the nvigneux references (README, BETA-README, THIRD-PARTY-NOTICES, implementation plan §3.3/§6.11/§6.12); attribution: "Stratagem data and icons: Helldivers Wiki (helldivers.wiki.gg), CC BY-NC-SA 4.0; icons traced by wiki contributors (e.g. Dogo314)". The root `README.md` (line "icons for the buttons") is only changed with the user's OK.
 
 ## 7. Risks
 

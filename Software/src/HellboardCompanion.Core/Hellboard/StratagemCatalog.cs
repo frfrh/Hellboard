@@ -104,11 +104,11 @@ public sealed partial class StratagemCatalog
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>The catalog shipped with the application (embedded <c>doc/stratagems.json</c>).</summary>
-    public static StratagemCatalog LoadSeed()
+    /// <summary>The catalog shipped with the application (embedded <c>doc/stratagems.json</c>), optionally with the wiki layer.</summary>
+    public static StratagemCatalog LoadSeed(IReadOnlyList<WikiStratagem>? wiki = null)
     {
         using var stream = OpenBuiltIn();
-        return Parse(stream);
+        return Parse(stream, null, wiki);
     }
 
     /// <summary>
