@@ -2,8 +2,8 @@
 
 | | |
 |-|-|
-| Status | **Plan, not implemented** (branch `feature/manual-selection`) |
-| Date | 2026-10-18 |
+| Status | **Plan, decided, not implemented** (branch `feature/manual-selection`) |
+| Date | 2026-10-18, decisions 2026-10-20 |
 | Scope | Overview of Hellboard Companion: choosing the four stratagems (and the detected part of the multi-function list) by clicking the tiles, sent to the Hellboard like a recognized loadout |
 
 Goal: the Hellboard stays usable when the recognition does not work – e.g. on a Windows 10 PC where the game window is not found, with an unusual resolution or HUD scale, or for a brand-new stratagem whose icon is not known yet. The player clicks a tile in the overview, picks the stratagem, and the Hellboard gets it. The same also corrects a single wrongly recognized slot. Nothing in the recognition itself changes.
@@ -29,7 +29,7 @@ Goal: the Hellboard stays usable when the recognition does not work – e.g. on 
 
 A **flyout** attached to the clicked tile (Avalonia `Flyout`, no extra window; closes on click outside or Esc). Content from top to bottom:
 
-1. **Search box**, focused when the flyout opens. Matches the name and the id, case-insensitive, substring. German names (the game is often played in German) are not in the catalog today – they exist only as the table `stratagem-names-de.md`; see open question 9. Enter takes the first match, Esc closes.
+1. **Search box**, focused when the flyout opens. Matches the full name (wiki designation, `FullName`), the short name and the id, case-insensitive, substring – like the search in the Stratagems tab. German names are not searched in the first version (decision 9). Enter takes the first match, Esc closes.
 2. **Category chips**: All · Orbital · Eagle · Support weapon · Backpack · Vehicle · Defensive (from `StratagemCatalog.Categories`; *Mission* only in the multi-function picker, section 5). One chip active at a time; the chip has the LED colour of the category as a small dot.
 3. **Recently used** row (up to 8, from the last locked loadouts in the history) – the usual loadout is then one click away. Hidden while searching.
 4. **Grid of icon tiles** (48 px icon + name, wrapping, scrollable, ~4–5 columns at the flyout width of about 480 px), grouped by category with a small heading, alphabetical inside. Stratagems without icon (user stratagems) show a square in the category colour with the first letters.
@@ -71,7 +71,7 @@ Recommended rule: **a hand choice stays until the game shows something different
 
 The overview uses the same rule for what it shows: while the loadout screen is visible and the live snapshot still equals `_correctedFrom`, it shows the hand choice (otherwise a correction made on the loadout screen would seem to have no effect, because the overview shows the live screen while selecting).
 
-Alternatives (open question 2): **(A)** simply "the latest wins" – every automatic lock-in replaces the hand choice (easiest, but a correction on the loadout screen is lost on Ready); **(B)** per-slot corrections that keep applying while the slot shows the same recognized stratagem (most convenient, but "magic" and harder to explain); **(C)** a hand choice pauses the automatic lock-in until "Back to recognized" is clicked (predictable, but easy to forget, then the next mission sends the old loadout).
+Rejected alternatives (decision 2): **(A)** simply "the latest wins" – every automatic lock-in replaces the hand choice (easiest, but a correction on the loadout screen is lost on Ready); **(B)** per-slot corrections that keep applying while the slot shows the same recognized stratagem (most convenient, but "magic" and harder to explain); **(C)** a hand choice pauses the automatic lock-in until "Back to recognized" is clicked (predictable, but easy to forget, then the next mission sends the old loadout).
 
 ## 4. Transfer to the Hellboard
 
@@ -84,17 +84,16 @@ Alternatives (open question 2): **(A)** simply "the latest wins" – every autom
 - **Fixed list** group: not edited in the overview (it is a setting). Clicking the caption or a small gear opens *Settings → Multi-function button*.
 - **Detected** group: editable when the mode includes automatic detection. Each tile gets a small "×" on hover (removes it from `MissionStratagems`), and a "+" tile at the end opens the picker with the *Mission* category preselected (all categories available, because the multi-function list may hold anything). Maximum 16 entries (`LoadoutTransferBuilder.MaxMissionStratagems`), the "+" disappears when full. Order: in the order they were added.
 - In mode *Fixed list only* the Detected group does not exist; nothing to edit.
-- The result is again a `LockedLoadout` with `LockSource.ByHand` (same path as section 3). Optional for a first version (open question 4).
+- The result is again a `LockedLoadout` with `LockSource.ByHand` (same path as section 3). **Not part of the first version** (decision 4); the first version only makes the four tiles editable.
 
 ## 6. History
 
 - Hand choices are history entries with the source "Set by hand" (filter "important" shows them, like Ready).
 - Setting four tiles in a row must not create four entries. Recommended: the pipeline **delays writing** a hand lock-in by 30 s; a further hand choice within that time replaces the pending entry; the pending entry is written at once before any other lock-in and on shutdown. Transfer is never delayed.
-- Alternative: write every choice and let the history view merge consecutive hand entries (open question 5).
 
 ## 7. Status chain
 
-- Recognition field while the shown loadout is set by hand: short text "Set by hand", detail "click a tile to change" (or "recognition paused" for alternative C), level *good*. Fits the 28-character rule of `StatusLine`.
+- Recognition field while the shown loadout is set by hand: short text "Set by hand", detail "click a tile to change", level *good*. Fits the 28-character rule of `StatusLine`.
 - Loadout title: "Set by hand at 14:03:12" / "Locked in at 14:03:12 (Ready), slot 2 set by hand".
 
 ## 8. Tests
@@ -120,14 +119,14 @@ Alternatives (open question 2): **(A)** simply "the latest wins" – every autom
 
 In total roughly the size of the UI polish round. The multi-function editing can be left for a second step without blocking the rest.
 
-## 10. Open questions
+## 10. Decisions (2026-10-20)
 
-1. **Name of the source** in the UI: "set by hand", "chosen manually", "selected"? (Internally `ByHand`, because `Manual` is taken by the manual trigger.)
-2. **Interaction with the recognition** (section 3.2): the recommended rule "stays until the game shows something different", or A (latest wins), B (per-slot corrections), C (pause until "Back to recognized")?
-3. **Picker form**: flyout at the tile (recommended) or a separate dialog window that sets all four slots at once with an "Apply" button (then one history entry and one transfer, but more clicks for a single correction)?
-4. **Multi-function list**: edit the "Detected" group by hand in the first version, or only the four tiles for now?
-5. **History**: delayed write of one entry (recommended), or one entry per click merged in the view?
-6. **Duplicates**: swap the slots (recommended), or simply forbid choosing a stratagem that is already used?
-7. **Hint line** for the Windows 10 case: always visible while no game is found, or only after the first session without any recognized loadout? And should the README get a short section "If the recognition does not work"?
-8. Should a hand correction of a misrecognized slot later be offered as **reference image** for the recognition ("Teach the recognition this stratagem")? That would be a separate follow-up on top of `StratagemReferenceStore`, not part of this plan.
-9. **German names in the search**: worth adding the German names of `stratagem-names-de.md` to the catalog (e.g. an optional `nameDe` in `stratagems.json`), so "Maschinengewehr" finds the Machine Gun? Small extra effort, but a data change for every stratagem.
+1. **Name of the source**: "set by hand" in the overview, "Set by hand" in the history; internally `ByHand`.
+2. **Interaction with the recognition**: the recommended rule of section 3.2 – a hand choice stays until the game shows something different.
+3. **Picker form**: flyout at the tile; every choice is applied at once.
+4. **Multi-function list**: not in the first version; only the four tiles. Section 5 is a later step.
+5. **History**: delayed write of one entry (section 6).
+6. **Duplicates**: swap the two slots.
+7. **Hint line**: visible while the game is not found or nothing was recognized in this session; the README gets a short section "If the recognition does not work".
+8. **Teaching the recognition** from a hand correction: a possible follow-up, not part of this plan.
+9. **German names in the search**: later, if at all (then as an optional `nameDe` in `stratagems.json`).
