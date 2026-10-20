@@ -86,6 +86,9 @@ public sealed class LoadoutTracker(int stableFrames = 3, int statusFrames = 2, i
 
     public LockedLoadout? LastLocked { get; private set; }
 
+    /// <summary>What the recognition showed before the active hand choice; <c>null</c> = no hand choice or nothing recognized.</summary>
+    public LockedLoadout? CorrectedContent => _correctedFrom;
+
     /// <summary>Last loadout locked in by the recognition (Ready, screen closed or manual trigger).</summary>
     public LockedLoadout? LastRecognized { get; private set; }
 

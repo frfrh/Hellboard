@@ -82,6 +82,7 @@ public static class OverviewStatus
     public static StatusLine Recognition(TrackerState? state, LockSource? lastLock, bool hasObservation) => state switch
     {
         TrackerState.Selecting => new("Loadout screen", "selecting", StatusLevel.Attention),
+        _ when lastLock == LockSource.ByHand => new("Set by hand", "click a tile to change", StatusLevel.Good),
         TrackerState.Locked => new("Loadout confirmed", Describe(lastLock ?? LockSource.Ready), StatusLevel.Good),
         _ when !hasObservation => new("Waiting", "for the game", StatusLevel.Inactive),
         _ => new("Waiting", "for the loadout screen", StatusLevel.Inactive),
@@ -117,6 +118,29 @@ public static class OverviewStatus
             HellboardStatus.DryRun => new("Hellboard dry run", "nothing is sent", StatusLevel.Attention),
             _ => new("No Hellboard connected", null, StatusLevel.Inactive),
         };
+    }
+
+    /// <summary>Title above the tiles for a locked loadout, e.g. "Locked in at 14:03:12 (Ready), slot 2 set by hand".</summary>
+    /// <param name="recognized">The loadout the recognition locked in last, if any.</param>
+    public static string LockedTitle(LockedLoadout locked, LockedLoadout? recognized)
+    {
+        var time = locked.Timestamp.LocalDateTime.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+        if (locked.Source != LockSource.ByHand)
+        {
+            return $"Locked in at {time} ({Describe(locked.Source)})";
+        }
+
+        var slots = Enumerable.Range(1, locked.Stratagems.Count).Where(n => locked.IsSetByHand(n - 1)).ToList();
+        if (recognized is null || slots.Count == 0 || slots.Count == locked.Stratagems.Count)
+        {
+            return $"Set by hand at {time}";
+        }
+
+        var recognizedTime = recognized.Timestamp.LocalDateTime.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+        var list = slots.Count == 1
+            ? $"slot {slots[0]}"
+            : $"slots {string.Join(", ", slots.SkipLast(1))} and {slots[^1]}";
+        return $"Locked in at {recognizedTime} ({Describe(recognized.Source)}), {list} set by hand";
     }
 
     public static string Describe(LockSource source) => source switch

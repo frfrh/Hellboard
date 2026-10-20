@@ -2,7 +2,7 @@
 
 | | |
 |-|-|
-| Status | **Plan, decided, not implemented** (branch `feature/manual-selection`) |
+| Status | **Implemented without section 5** (branch `feature/manual-selection`); the multi-function list by hand is a later step |
 | Date | 2026-10-18, decisions 2026-10-20 |
 | Scope | Overview of Hellboard Companion: choosing the four stratagems (and the detected part of the multi-function list) by clicking the tiles, sent to the Hellboard like a recognized loadout |
 

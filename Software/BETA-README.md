@@ -46,6 +46,16 @@ exit the app instead of keeping it in the tray.
   differently, e.g. with a small badge, or the icon is wrong). The *Stratagems* tab shows and removes these
   reference images.
 
+## If the recognition does not work
+
+Click a stratagem tile in the *Overview* and pick the stratagem (search, categories, recently used). It is
+sent to the Hellboard at once, just like a recognized loadout; the tile shows *set by hand*. This also
+corrects a single wrongly recognized slot. A stratagem from another slot swaps the two slots.
+
+A choice by hand stays until the game shows a different loadout: if the same wrong recognition comes
+again, your correction is kept. *Back to recognized* drops the choices by hand and sends the loadout the
+recognition locked in last.
+
 ## Reporting problems
 
 Please include:

@@ -35,6 +35,30 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    /// <summary>A large tile of the overview: open the picker at it (manual-selection plan §1.2).</summary>
+    private void OnLoadoutTileClicked(object? sender, RoutedEventArgs e)
+    {
+        if (e.Source is not Button { DataContext: LoadoutTileViewModel tile } button || DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var picker = viewModel.Overview.CreatePicker(tile.Slot);
+        var view = new StratagemPickerView { DataContext = picker };
+        var flyout = new Flyout { Content = view, Placement = PlacementMode.BottomEdgeAlignedLeft, FlyoutPresenterClasses = { "picker" } };
+        picker.Chosen += (_, _) => flyout.Hide();
+        view.KeyDown += (_, args) =>
+        {
+            if (args.Key == Avalonia.Input.Key.Escape)
+            {
+                flyout.Hide();
+                args.Handled = true;
+            }
+        };
+        flyout.ShowAt(button);
+        e.Handled = true;
+    }
+
     private async void OnCopyVersionClicked(object? sender, RoutedEventArgs e)
     {
         if (DataContext is MainWindowViewModel viewModel && Clipboard is { } clipboard)

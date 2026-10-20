@@ -17,3 +17,25 @@ public sealed record StratagemTileViewModel(string? Id, string Name, Bitmap? Ico
 
     public override string ToString() => Name;
 }
+
+/// <summary>
+/// One of the four large tiles of the overview; a click chooses the stratagem by hand
+/// (manual-selection plan §1.1).
+/// </summary>
+/// <param name="IsByHand">The stratagem was set by hand.</param>
+/// <param name="InvitesChoice">Empty while nothing was recognized: shows "+" and "choose …".</param>
+public sealed record LoadoutTileViewModel(int Slot, StratagemTileViewModel Tile, bool IsByHand = false, bool InvitesChoice = false)
+{
+    public string Name => InvitesChoice && Tile.Id is null ? "choose …" : Tile.Name;
+
+    public Bitmap? Icon => Tile.Icon;
+
+    public bool HasIcon => Tile.HasIcon;
+
+    public string EmptyMark => InvitesChoice ? "+" : "–";
+
+    /// <summary>"no input sequence yet" takes precedence over "set by hand".</summary>
+    public string? Note => Tile.Note ?? (IsByHand ? "set by hand" : null);
+
+    public bool HasNote => Note is not null;
+}
