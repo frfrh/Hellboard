@@ -175,6 +175,7 @@ public sealed partial class HistoryViewModel : ObservableObject, IDisposable
         {
             LockSource.Ready => "Confirmed (Ready)",
             LockSource.ScreenExit => "Screen closed",
+            LockSource.ByHand => "Set by hand",
             _ => "Manual recognition",
         } + (loadout.IsComplete ? string.Empty : " – incomplete"),
         loadout.Stratagems.Select(id => id is null

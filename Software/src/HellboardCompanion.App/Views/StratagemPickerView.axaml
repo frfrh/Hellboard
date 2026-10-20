@@ -1,0 +1,127 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Content of the flyout at a tile of the overview: choose a stratagem by hand (manual-selection plan §1.2) -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:HellboardCompanion.App.ViewModels"
+             x:Class="HellboardCompanion.App.Views.StratagemPickerView"
+             x:DataType="vm:StratagemPickerViewModel"
+             Width="500">
+
+  <UserControl.Styles>
+    <Style Selector="Button.chip">
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="Margin" Value="0,0,6,6" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Background" Value="#20808080" />
+    </Style>
+    <Style Selector="Button.chip.active">
+      <Setter Property="Background" Value="#60808080" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.item">
+      <Setter Property="Width" Value="88" />
+      <Setter Property="Height" Value="100" />
+      <Setter Property="Margin" Value="0,0,6,6" />
+      <Setter Property="Padding" Value="4" />
+      <Setter Property="Background" Value="#2F2F2F" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="VerticalContentAlignment" Value="Top" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.item.current">
+      <Setter Property="BorderBrush" Value="#FFC107" />
+    </Style>
+    <Style Selector="Button.item.dimmed">
+      <Setter Property="Opacity" Value="0.5" />
+    </Style>
+    <Style Selector="TextBlock.heading">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Opacity" Value="0.6" />
+      <Setter Property="Margin" Value="0,6,0,4" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="vm:PickerItemViewModel">
+      <Button Classes="item" Classes.current="{Binding IsCurrent}" Classes.dimmed="{Binding IsDimmed}"
+              Command="{Binding $parent[UserControl].((vm:StratagemPickerViewModel)DataContext).ChooseCommand}" CommandParameter="{Binding}"
+              ToolTip.Tip="{Binding FullName}">
+        <StackPanel Spacing="2">
+          <Panel Width="48" Height="48">
+            <Image Source="{Binding Icon}" Width="48" Height="48" />
+          </Panel>
+          <TextBlock Text="{Binding Name}" FontSize="11" TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" MaxWidth="78" />
+          <TextBlock Text="{Binding Note}" IsVisible="{Binding HasNote}" FontSize="10" Foreground="#FFC107" TextAlignment="Center" MaxWidth="78"
+                     TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+      </Button>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <DockPanel MaxHeight="560">
+    <StackPanel DockPanel.Dock="Top" Spacing="8">
+      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+      <TextBox x:Name="SearchBox" Text="{Binding SearchText}" PlaceholderText="Search by name …">
+        <TextBox.KeyBindings>
+          <KeyBinding Gesture="Enter" Command="{Binding ChooseFirstCommand}" />
+        </TextBox.KeyBindings>
+      </TextBox>
+      <ItemsControl ItemsSource="{Binding Categories}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:PickerCategoryViewModel">
+            <Button Classes="chip" Classes.active="{Binding IsActive}"
+                    Command="{Binding $parent[UserControl].((vm:StratagemPickerViewModel)DataContext).SelectCategoryCommand}" CommandParameter="{Binding}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Ellipse Width="8" Height="8" Fill="{Binding Dot}" IsVisible="{Binding HasDot}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Label}" />
+              </StackPanel>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+      <Button Content="Empty slot" Command="{Binding ClearCommand}" IsVisible="{Binding CanClear}" />
+      <Button Content="{Binding UseRecognizedText}" Command="{Binding UseRecognizedCommand}" IsVisible="{Binding CanUseRecognized}" />
+    </StackPanel>
+
+    <ScrollViewer>
+      <StackPanel>
+        <StackPanel IsVisible="{Binding ShowRecent}">
+          <TextBlock Classes="heading" Text="Recently used" />
+          <ItemsControl ItemsSource="{Binding Recent}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+          </ItemsControl>
+        </StackPanel>
+        <TextBlock Text="No stratagem found." IsVisible="{Binding !HasMatches}" Opacity="0.6" Margin="0,8" />
+        <ItemsControl ItemsSource="{Binding Groups}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:PickerGroupViewModel">
+              <StackPanel>
+                <TextBlock Classes="heading" Text="{Binding Title}" />
+                <ItemsControl ItemsSource="{Binding Items}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                </ItemsControl>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

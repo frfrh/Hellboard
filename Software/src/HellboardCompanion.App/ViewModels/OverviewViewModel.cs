@@ -34,7 +34,13 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
     private readonly ManualTriggerService? _trigger;
     private readonly LockedLoadout? _previousSession;
     private readonly MultiFunctionOptions _multiFunction;
+    private readonly LoadoutHistory? _history;
     private LoadoutSnapshot? _shownSnapshot;
+
+    // The shown loadout, the base of a choice by hand (manual-selection plan §2).
+    private IReadOnlyList<string?> _shownIds = [null, null, null, null];
+    private IReadOnlyList<bool>? _shownByHand;
+    private IReadOnlyList<string> _shownMission = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(GameBrush))]
@@ -66,6 +72,15 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string? _warning;
 
+    /// <summary>The shown loadout contains hand choices and there is a recognized loadout to go back to.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(BackToRecognizedCommand))]
+    private bool _canGoBackToRecognized;
+
+    /// <summary>Nothing was recognized in this session: hint that the tiles can be chosen by hand.</summary>
+    [ObservableProperty]
+    private bool _showHandHint;
+
     public OverviewViewModel(
         IGameLocator? game,
         LoadoutPipeline? pipeline,
@@ -78,6 +93,7 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
         MultiFunctionOptions? multiFunction = null)
     {
         _multiFunction = multiFunction ?? new MultiFunctionOptions();
+        _history = history;
         _previousSession = history?.ReadRecentLoadouts(1).FirstOrDefault();
         _game = game;
         _pipeline = pipeline;
@@ -89,7 +105,7 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
 
         for (var i = 0; i < 4; i++)
         {
-            Stratagems.Add(StratagemTileViewModel.Empty);
+            Stratagems.Add(new LoadoutTileViewModel(i, StratagemTileViewModel.Empty));
         }
 
         if (_game is not null)
@@ -111,7 +127,7 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
         Refresh();
     }
 
-    public ObservableCollection<StratagemTileViewModel> Stratagems { get; } = [];
+    public ObservableCollection<LoadoutTileViewModel> Stratagems { get; } = [];
 
     /// <summary>Multi-function list in board order, in its groups "Fixed list" and "Detected".</summary>
     public ObservableCollection<MultiFunctionGroupViewModel> MultiFunctionGroups { get; } = [];
@@ -150,6 +166,34 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
         if (_trigger is not null)
         {
             await _trigger.TriggerAsync();
+        }
+    }
+
+    /// <summary>The picker for a tile; choosing in it sends the changed loadout like a recognized one.</summary>
+    public StratagemPickerViewModel CreatePicker(int slot)
+    {
+        var recognized = _shownByHand is { } byHand && slot < byHand.Count && byHand[slot]
+            ? _pipeline?.Tracker.CorrectedContent?.Stratagems.ElementAtOrDefault(slot)
+            : null;
+        var recent = HandChoice.RecentlyUsed(_history?.ReadRecentLoadouts(20) ?? [], _catalog.MissionOnlyIds());
+        var shown = _shownIds.Select(id => id == HandChoice.NotRecognized ? null : id).ToList();
+        var picker = new StratagemPickerViewModel(_catalog, _images, shown, slot, recognized, recent);
+        picker.Chosen += (_, id) => ChooseByHand(slot, id);
+        return picker;
+    }
+
+    private void ChooseByHand(int slot, string? id)
+    {
+        var loadout = HandChoice.Apply(_shownIds, _shownByHand, _shownMission, slot, id, DateTimeOffset.Now);
+        _pipeline?.SetByHandAsync(loadout);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanGoBackToRecognized))]
+    private async Task BackToRecognizedAsync()
+    {
+        if (_pipeline is not null)
+        {
+            await _pipeline.RevertToRecognizedAsync();
         }
     }
 
@@ -193,30 +237,46 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
         var observation = _pipeline?.LastObservation;
 
         RecognitionLine = OverviewStatus.Recognition(tracker?.State, tracker?.LastLocked?.Source, observation is not null);
+        var live = observation is { ScreenVisible: true, Loadout: { } snapshot } && tracker?.State != TrackerState.Locked ? snapshot : null;
+        ShowHandHint = tracker?.LastRecognized is null && live is null;
+        CanGoBackToRecognized = tracker is { LastLocked.Source: LockSource.ByHand, LastRecognized: not null };
 
-        // While the player selects, show what is on the screen; otherwise the last locked loadout.
-        if (observation is { ScreenVisible: true, Loadout: { } live } && tracker?.State != TrackerState.Locked)
+        // While the player selects, show what is on the screen – unless a hand choice corrected exactly that;
+        // otherwise the last locked loadout.
+        if (live is not null && tracker?.IsCorrectedByHand(live) != true)
         {
             _shownSnapshot = live;
             LoadoutTitle = "On the loadout screen (not locked in yet)";
-            SetTiles(live.PlayerSlots.Select(s => s.State == SlotState.Recognized ? s.StratagemId : s.State == SlotState.Unknown ? "?" : null));
+            Show(
+                live.PlayerSlots.Select(s => s.State == SlotState.Recognized ? s.StratagemId : s.State == SlotState.Unknown ? HandChoice.NotRecognized : null).ToList(),
+                null,
+                live.MissionSlots.Where(s => s.State == SlotState.Recognized).Select(s => s.StratagemId!).ToList());
         }
         else if (tracker?.LastLocked is { } locked)
         {
-            _shownSnapshot = null;
-            LoadoutTitle = $"Locked in at {locked.Timestamp.LocalDateTime:HH:mm:ss} ({OverviewStatus.Describe(locked.Source)})";
-            SetTiles(locked.Stratagems);
+            _shownSnapshot = live;
+            LoadoutTitle = OverviewStatus.LockedTitle(locked, tracker.LastRecognized);
+            Show(locked.Stratagems, locked.ByHand, locked.MissionStratagems);
         }
         else if (_previousSession is { } previous)
         {
             _shownSnapshot = null;
             LoadoutTitle = $"Last locked loadout from a previous session ({previous.Timestamp.LocalDateTime:g})";
-            SetTiles(previous.Stratagems);
+            Show(previous.Stratagems, previous.ByHand, previous.MissionStratagems);
         }
         else
         {
             _shownSnapshot = null;
+            Show([null, null, null, null], null, []);
         }
+    }
+
+    private void Show(IReadOnlyList<string?> ids, IReadOnlyList<bool>? byHand, IReadOnlyList<string> mission)
+    {
+        _shownIds = ids;
+        _shownByHand = byHand;
+        _shownMission = mission;
+        SetTiles(ids, byHand);
     }
 
     private void RefreshHellboard()
@@ -253,21 +313,22 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
         MultiFunctionTitle = tiles.Count == 0 ? "Multi-function button – empty" : "Multi-function button";
     }
 
-    private void SetTiles(IEnumerable<string?> ids)
+    private void SetTiles(IEnumerable<string?> ids, IReadOnlyList<bool>? byHand = null)
     {
         var index = 0;
         foreach (var id in ids.Take(4))
         {
-            var tile = id switch
+            var content = id switch
             {
                 null => StratagemTileViewModel.Empty,
-                "?" => new StratagemTileViewModel(null, "not recognized", null),
+                HandChoice.NotRecognized => new StratagemTileViewModel(null, "not recognized", null),
                 _ => new StratagemTileViewModel(
                     id,
                     _catalog.Find(id)?.Name ?? id,
                     _images.Get(id),
                     _catalog.Find(id)?.IsTransferable == false ? "no input sequence yet" : null),
             };
+            var tile = new LoadoutTileViewModel(index, content, byHand is not null && index < byHand.Count && byHand[index], ShowHandHint && id is null);
 
             if (!Equals(Stratagems[index], tile))
             {

@@ -35,10 +35,14 @@ public sealed record HistoryItem(LockedLoadout? Loadout, RecognitionProblem? Pro
 /// <summary>
 /// Appends locked loadouts and recognition problems to <c>loadouts.jsonl</c> in the data directory
 /// (implementation plan §6.5). Every line starts with <c>"entry": "loadout" | "problem"</c>; lines without
-/// <c>entry</c> (older versions) are loadouts.
+/// <c>entry</c> (older versions) are loadouts. Loadouts chosen by hand are written with a delay, so
+/// several tiles set in a row give one entry (manual-selection plan §6).
 /// </summary>
-public sealed class LoadoutHistory(IPlatformPaths paths)
+public sealed class LoadoutHistory(IPlatformPaths paths, TimeProvider? time = null)
 {
+    /// <summary>Time a loadout chosen by hand waits before it is written.</summary>
+    public static readonly TimeSpan PendingDelay = TimeSpan.FromSeconds(30);
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -46,6 +50,10 @@ public sealed class LoadoutHistory(IPlatformPaths paths)
     };
 
     private readonly Lock _lock = new();
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+    private LockedLoadout? _pending;
+    private DateTimeOffset _pendingDue;
+    private LockedLoadout? _lastWritten;
 
     public string FilePath { get; } = Path.Combine(paths.DataDirectory, "loadouts.jsonl");
 
@@ -59,17 +67,19 @@ public sealed class LoadoutHistory(IPlatformPaths paths)
     public IReadOnlyList<HistoryItem> ReadRecent(int maxCount = 200)
     {
         string[] lines;
+        LockedLoadout? pending;
         lock (_lock)
         {
-            if (!File.Exists(FilePath))
-            {
-                return [];
-            }
-
-            lines = File.ReadAllLines(FilePath);
+            pending = _pending;
+            lines = File.Exists(FilePath) ? File.ReadAllLines(FilePath) : [];
         }
 
         var result = new List<HistoryItem>();
+        if (pending is not null && maxCount > 0)
+        {
+            result.Add(new HistoryItem(pending, null));
+        }
+
         for (var i = lines.Length - 1; i >= 0 && result.Count < maxCount; i--)
         {
             try
@@ -101,27 +111,87 @@ public sealed class LoadoutHistory(IPlatformPaths paths)
     public IReadOnlyList<LockedLoadout> ReadRecentLoadouts(int maxCount = 100) =>
         ReadRecent(maxCount * 4).Select(i => i.Loadout).OfType<LockedLoadout>().Take(maxCount).ToList();
 
+    /// <summary>Writes the loadout (after a pending one). The same record twice in a row is written once.</summary>
     public void Append(LockedLoadout loadout)
     {
-        var node = JsonSerializer.SerializeToNode(loadout, JsonOptions)!.AsObject();
-        node.Insert(0, "entry", "loadout");
-        AppendLine(node.ToJsonString());
+        lock (_lock)
+        {
+            WritePending();
+            WriteLoadout(loadout);
+        }
     }
 
     public void Append(RecognitionProblem problem)
     {
         var node = JsonSerializer.SerializeToNode(problem, JsonOptions)!.AsObject();
         node.Insert(0, "entry", "problem");
-        AppendLine(node.ToJsonString());
+        lock (_lock)
+        {
+            WritePending();
+            WriteLine(node.ToJsonString());
+        }
+
         ProblemRecorded?.Invoke(this, problem);
     }
 
-    private void AppendLine(string json)
+    /// <summary>Keeps the loadout for <see cref="PendingDelay"/>; a further one in that time replaces it.</summary>
+    public void AppendLater(LockedLoadout loadout)
     {
         lock (_lock)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            File.AppendAllText(FilePath, json + Environment.NewLine);
+            _pending = loadout;
+            _pendingDue = _time.GetUtcNow() + PendingDelay;
         }
+    }
+
+    /// <summary>Writes the pending loadout once its delay is over, or at once with <paramref name="force"/>.</summary>
+    public void FlushPending(bool force = false)
+    {
+        lock (_lock)
+        {
+            if (force || _time.GetUtcNow() >= _pendingDue)
+            {
+                WritePending();
+            }
+        }
+    }
+
+    /// <summary>Drops the pending loadout without writing it; <c>true</c> if there was one.</summary>
+    public bool DiscardPending()
+    {
+        lock (_lock)
+        {
+            var had = _pending is not null;
+            _pending = null;
+            return had;
+        }
+    }
+
+    private void WritePending()
+    {
+        if (_pending is { } pending)
+        {
+            _pending = null;
+            WriteLoadout(pending);
+        }
+    }
+
+    private void WriteLoadout(LockedLoadout loadout)
+    {
+        if (ReferenceEquals(loadout, _lastWritten))
+        {
+            return;
+        }
+
+        var node = JsonSerializer.SerializeToNode(loadout, JsonOptions)!.AsObject();
+        node.Insert(0, "entry", "loadout");
+        WriteLine(node.ToJsonString());
+        _lastWritten = loadout;
+    }
+
+    private void WriteLine(string json)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+        File.AppendAllText(FilePath, json + Environment.NewLine);
     }
 }

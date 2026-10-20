@@ -20,19 +20,22 @@
   </Design.DataContext>
 
   <Window.Resources>
-    <!-- Large stratagem tile (overview) -->
-    <DataTemplate x:Key="LargeTile" x:DataType="vm:StratagemTileViewModel">
-      <Border Width="150" Height="170" Margin="0,0,12,0" CornerRadius="6" Background="#2F2F2F" Padding="10">
-        <StackPanel Spacing="8" HorizontalAlignment="Center">
-          <Panel Width="88" Height="88">
-            <Image Source="{Binding Icon}" IsVisible="{Binding HasIcon}" Width="88" Height="88" />
-            <TextBlock Text="–" IsVisible="{Binding !HasIcon}" FontSize="36" Foreground="#606060"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-          </Panel>
-          <TextBlock Text="{Binding Name}" Foreground="White" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="130" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding Note}" IsVisible="{Binding HasNote}" Foreground="#FFC107" FontSize="11" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="130" />
-        </StackPanel>
-      </Border>
+    <!-- Large stratagem tile (overview); a click opens the picker (manual-selection plan §1.1) -->
+    <DataTemplate x:Key="LargeTile" x:DataType="vm:LoadoutTileViewModel">
+      <Button Classes="loadoutTile" ToolTip.Tip="Choose the stratagem by hand">
+        <Panel>
+          <StackPanel Spacing="8" HorizontalAlignment="Center">
+            <Panel Width="88" Height="88">
+              <Image Source="{Binding Icon}" IsVisible="{Binding HasIcon}" Width="88" Height="88" />
+              <TextBlock Text="{Binding EmptyMark}" IsVisible="{Binding !HasIcon}" FontSize="36" Foreground="#606060"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Panel>
+            <TextBlock Text="{Binding Name}" Foreground="White" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="130" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Note}" IsVisible="{Binding HasNote}" Foreground="#FFC107" FontSize="11" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="130" />
+          </StackPanel>
+          <TextBlock Classes="pencil" Classes.byHand="{Binding IsByHand}" Text="✎" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-4,-2,0" />
+        </Panel>
+      </Button>
     </DataTemplate>
 
     <!-- Small stratagem tile (multi-function list, history) -->
@@ -53,6 +56,38 @@
       <WrapPanel />
     </ItemsPanelTemplate>
   </Window.Resources>
+
+  <Window.Styles>
+    <!-- The stratagem picker is wider than a flyout by default -->
+    <Style Selector="FlyoutPresenter.picker">
+      <Setter Property="MaxWidth" Value="560" />
+      <Setter Property="MaxHeight" Value="640" />
+    </Style>
+    <Style Selector="Button.loadoutTile">
+      <Setter Property="Width" Value="150" />
+      <Setter Property="Height" Value="170" />
+      <Setter Property="Margin" Value="0,0,12,0" />
+      <Setter Property="Padding" Value="10" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Background" Value="#2F2F2F" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.loadoutTile:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#3A3A3A" />
+    </Style>
+    <Style Selector="Button.loadoutTile TextBlock.pencil">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Foreground" Value="#FFC107" />
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Button.loadoutTile TextBlock.pencil.byHand">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.loadoutTile:pointerover TextBlock.pencil">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+  </Window.Styles>
 
   <Panel>
   <views:HexBackground />
@@ -116,8 +151,16 @@
           <!-- Loadout -->
           <StackPanel Spacing="10">
             <TextBlock Text="Loadout" FontSize="18" FontWeight="SemiBold" />
-            <TextBlock Text="{Binding LoadoutTitle}" Opacity="0.7" />
-            <ItemsControl ItemsSource="{Binding Stratagems}" ItemTemplate="{StaticResource LargeTile}" ItemsPanel="{StaticResource Horizontal}" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <TextBlock Text="{Binding LoadoutTitle}" Opacity="0.7" VerticalAlignment="Center" TextWrapping="Wrap" />
+              <Button Content="Back to recognized" Command="{Binding BackToRecognizedCommand}" IsVisible="{Binding CanGoBackToRecognized}"
+                      Padding="8,2" FontSize="12"
+                      ToolTip.Tip="Drops the stratagems set by hand and sends the loadout the recognition locked in last." />
+            </StackPanel>
+            <ItemsControl ItemsSource="{Binding Stratagems}" ItemTemplate="{StaticResource LargeTile}" ItemsPanel="{StaticResource Horizontal}"
+                          Button.Click="OnLoadoutTileClicked" />
+            <TextBlock Text="Recognition not available? Click a tile to choose the stratagem by hand." IsVisible="{Binding ShowHandHint}"
+                       Opacity="0.5" FontSize="12" TextWrapping="Wrap" />
           </StackPanel>
 
           <StackPanel Spacing="10">

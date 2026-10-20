@@ -28,6 +28,7 @@ public sealed class OverviewStatusTests
         Add("locked", OverviewStatus.Recognition(TrackerState.Locked, LockSource.ScreenExit, true));
         Add("waiting for game", OverviewStatus.Recognition(TrackerState.Idle, null, false));
         Add("waiting for screen", OverviewStatus.Recognition(TrackerState.Idle, null, true));
+        Add("set by hand", OverviewStatus.Recognition(TrackerState.Idle, LockSource.ByHand, false));
 
         HellboardState Board(HellboardStatus status, HellboardInfo? info = null, string? message = null, string port = "COM8") =>
             new(status, port, info, null, null, null, [], message);
@@ -97,6 +98,28 @@ public sealed class OverviewStatusTests
 
         MultiFunctionGroups.Split(Array.Empty<string>(), id => id, options).Should().BeEmpty();
         Describe(MultiFunctionGroups.Split(["sos_beacon"], id => id, options)).Should().Be("Fixed list: sos_beacon");
+    }
+
+    [Fact]
+    public void Hand_choice_is_shown_as_set_by_hand_except_on_the_loadout_screen()
+    {
+        OverviewStatus.Recognition(TrackerState.Idle, LockSource.ByHand, true).Should().Be(new StatusLine("Set by hand", "click a tile to change", StatusLevel.Good));
+        OverviewStatus.Recognition(TrackerState.Locked, LockSource.ByHand, true).Text.Should().Be("Set by hand");
+        OverviewStatus.Recognition(TrackerState.Selecting, LockSource.ByHand, true).Text.Should().Be("Loadout screen");
+    }
+
+    [Fact]
+    public void Locked_title_names_the_slots_set_by_hand()
+    {
+        var at = new DateTimeOffset(2026, 10, 20, 14, 3, 12, TimeZoneInfo.Local.GetUtcOffset(new DateTime(2026, 10, 20, 14, 3, 12)));
+        var recognized = new LockedLoadout(at, ["a", "b", "c", "d"], [], LockSource.Ready, true);
+        LockedLoadout ByHand(params bool[] marks) => recognized with { Timestamp = at.AddMinutes(1), Source = LockSource.ByHand, ByHand = marks };
+
+        OverviewStatus.LockedTitle(recognized, recognized).Should().Be("Locked in at 14:03:12 (Ready)");
+        OverviewStatus.LockedTitle(ByHand(false, true, false, false), recognized).Should().Be("Locked in at 14:03:12 (Ready), slot 2 set by hand");
+        OverviewStatus.LockedTitle(ByHand(true, true, false, true), recognized).Should().Be("Locked in at 14:03:12 (Ready), slots 1, 2 and 4 set by hand");
+        OverviewStatus.LockedTitle(ByHand(true, true, true, true), recognized).Should().Be("Set by hand at 14:04:12");
+        OverviewStatus.LockedTitle(ByHand(false, true, false, false), null).Should().Be("Set by hand at 14:04:12");
     }
 
     private static string Describe(IReadOnlyList<(string Title, IReadOnlyList<string> Entries)> groups) =>

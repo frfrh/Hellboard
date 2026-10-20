@@ -117,6 +117,26 @@ public sealed class LoadoutPipeline : IDisposable
             ? Failed("The stratagem icons are not available yet.")
             : RunManualRecognition(recognizer));
 
+    /// <summary>
+    /// Locks in a loadout chosen by hand in the overview (manual-selection plan §3). Works without the
+    /// game and in every recognition mode; history, problem entries and the transfer run as for a recognized loadout.
+    /// </summary>
+    public Task SetByHandAsync(LockedLoadout loadout) =>
+        Enqueue(_ =>
+        {
+            Tracker.LockByHand(loadout);
+            return true;
+        });
+
+    /// <summary>Drops the hand choice and sends the last recognized loadout again; <c>false</c> if there is none.</summary>
+    public Task<bool> RevertToRecognizedAsync() =>
+        Enqueue(_ =>
+        {
+            // A hand choice not written yet disappears from the history as well.
+            _history.DiscardPending();
+            return Tracker.RevertToRecognized();
+        });
+
     /// <summary>Runs the recognition on an image file (whole image = game area), without locking anything in.</summary>
     public Task<LoadoutObservation> AnalyzeFileAsync(string path) =>
         Enqueue(recognizer => recognizer is null
@@ -134,6 +154,7 @@ public sealed class LoadoutPipeline : IDisposable
         {
         }
 
+        _history.FlushPending(force: true);
         _recognizer?.Dispose();
         _stop.Dispose();
         _wake.Dispose();
@@ -189,6 +210,8 @@ public sealed class LoadoutPipeline : IDisposable
         {
             request(recognizer);
         }
+
+        _history.FlushPending();
 
         if (recognizer is null || _options.Mode == RecognitionMode.ManualOnly)
         {
@@ -318,10 +341,18 @@ public sealed class LoadoutPipeline : IDisposable
     private void OnLocked(object? sender, LockedLoadout loadout)
     {
         _logger.LogInformation("Loadout locked: {Loadout}", loadout.ToString());
-        _history.Append(loadout);
+        if (loadout.Source == LockSource.ByHand)
+        {
+            _history.AppendLater(loadout);
+        }
+        else
+        {
+            _history.Append(loadout);
+        }
+
         try
         {
-            if (!loadout.IsComplete && _recognizer is not null)
+            if (!loadout.IsComplete && loadout.Source != LockSource.ByHand && _recognizer is not null)
             {
                 ReportUnrecognizedSlots(_recognizer, loadout.Timestamp);
             }
