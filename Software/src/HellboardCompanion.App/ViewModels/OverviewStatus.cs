@@ -123,6 +123,7 @@ public static class OverviewStatus
     {
         LockSource.Ready => "Ready",
         LockSource.ScreenExit => "screen closed",
+        LockSource.ByHand => "set by hand",
         _ => "manual",
     };
 }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using System.Text.Json.Serialization;
 using HellboardCompanion.Core.Recognition;
 
 namespace HellboardCompanion.Core.Loadout;
@@ -26,17 +27,22 @@ public enum LockSource
 
     /// <summary>Manual trigger (implementation plan §6.13).</summary>
     Manual,
+
+    /// <summary>Stratagems chosen by hand in the overview (manual-selection plan).</summary>
+    ByHand,
 }
 
 /// <param name="Stratagems">Player stratagem ids in slot order; <c>null</c> = empty or not recognized.</param>
 /// <param name="MissionStratagems">Recognized optional mission stratagems in slot order.</param>
 /// <param name="IsComplete">No player slot was left unrecognized.</param>
+/// <param name="ByHand">Per player slot: set by hand; <c>null</c> = no slot was set by hand.</param>
 public sealed record LockedLoadout(
     DateTimeOffset Timestamp,
     IReadOnlyList<string?> Stratagems,
     IReadOnlyList<string> MissionStratagems,
     LockSource Source,
-    bool IsComplete)
+    bool IsComplete,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<bool>? ByHand = null)
 {
     public static LockedLoadout From(LoadoutSnapshot snapshot, DateTimeOffset timestamp, LockSource source) => new(
         timestamp,
@@ -45,7 +51,9 @@ public sealed record LockedLoadout(
         source,
         snapshot.PlayerSlots.All(s => s.State != SlotState.Unknown));
 
-    /// <summary>Same stratagems (ignores time and source).</summary>
+    public bool IsSetByHand(int slot) => ByHand is { } byHand && slot < byHand.Count && byHand[slot];
+
+    /// <summary>Same stratagems (ignores time, source and hand marks).</summary>
     public bool HasSameContent(LockedLoadout? other) =>
         other is not null && Stratagems.SequenceEqual(other.Stratagems) && MissionStratagems.SequenceEqual(other.MissionStratagems);
 
@@ -56,8 +64,9 @@ public sealed record LockedLoadout(
 /// <summary>
 /// Lock-in logic of implementation plan §6.5. Keeps a stable candidate while the player is
 /// selecting, locks it in when the ready button turns to Ready (or the screen closes before),
-/// and starts over when the player withdraws the ready state. Not thread-safe; feed it from
-/// one thread.
+/// and starts over when the player withdraws the ready state. A loadout chosen by hand stays
+/// until the game shows something different (manual-selection plan §3.2). Not thread-safe; feed
+/// it from one thread.
 /// </summary>
 public sealed class LoadoutTracker(int stableFrames = 3, int statusFrames = 2, int exitFrames = 2)
 {
@@ -67,12 +76,18 @@ public sealed class LoadoutTracker(int stableFrames = 3, int statusFrames = 2, i
     private int _statusRepeats;
     private int _missingFrames;
 
+    /// <summary>The automatic content the active hand choice replaced; <c>null</c> = none or nothing was recognized.</summary>
+    private LockedLoadout? _correctedFrom;
+
     public TrackerState State { get; private set; } = TrackerState.Idle;
 
     /// <summary>Loadout recognized identically in the last <c>stableFrames</c> frames.</summary>
     public LoadoutSnapshot? Candidate { get; private set; }
 
     public LockedLoadout? LastLocked { get; private set; }
+
+    /// <summary>Last loadout locked in by the recognition (Ready, screen closed or manual trigger).</summary>
+    public LockedLoadout? LastRecognized { get; private set; }
 
     public event EventHandler<LockedLoadout>? Locked;
 
@@ -108,6 +123,49 @@ public sealed class LoadoutTracker(int stableFrames = 3, int statusFrames = 2, i
 
     /// <summary>Locks in a loadout directly, e.g. from the manual trigger.</summary>
     public void LockManually(LoadoutSnapshot snapshot, DateTimeOffset timestamp) => Lock(snapshot, timestamp, LockSource.Manual);
+
+    /// <summary>
+    /// Locks in a loadout chosen by hand. An automatic lock-in with the content the hand choice
+    /// replaced is skipped afterwards; any other content replaces the hand choice.
+    /// </summary>
+    public void LockByHand(LockedLoadout loadout)
+    {
+        if (State == TrackerState.Selecting && Candidate is { } candidate)
+        {
+            // Corrected on the loadout screen: Ready would lock in this candidate.
+            var live = LockedLoadout.From(candidate, loadout.Timestamp, LockSource.Ready);
+            if (!live.HasSameContent(_correctedFrom))
+            {
+                _correctedFrom = live;
+            }
+        }
+        else if (LastLocked?.Source != LockSource.ByHand)
+        {
+            _correctedFrom = LastLocked;
+        }
+
+        var locked = loadout with { Source = LockSource.ByHand };
+        LastLocked = locked;
+        Locked?.Invoke(this, locked);
+    }
+
+    /// <summary>Drops the hand choice and locks the last recognized loadout in again; <c>false</c> if there is none.</summary>
+    public bool RevertToRecognized()
+    {
+        if (LastLocked?.Source != LockSource.ByHand || LastRecognized is not { } recognized)
+        {
+            return false;
+        }
+
+        _correctedFrom = null;
+        LastLocked = recognized;
+        Locked?.Invoke(this, recognized);
+        return true;
+    }
+
+    /// <summary>The live loadout is still the one a hand choice corrected, so the hand choice is what counts.</summary>
+    public bool IsCorrectedByHand(LoadoutSnapshot live) =>
+        _correctedFrom is { } corrected && LockedLoadout.From(live, corrected.Timestamp, corrected.Source).HasSameContent(corrected);
 
     private void HandleMissingScreen(DateTimeOffset timestamp)
     {
@@ -160,6 +218,14 @@ public sealed class LoadoutTracker(int stableFrames = 3, int statusFrames = 2, i
     private void Lock(LoadoutSnapshot snapshot, DateTimeOffset timestamp, LockSource source)
     {
         var locked = LockedLoadout.From(snapshot, timestamp, source);
+        LastRecognized = locked;
+        if (source != LockSource.Manual && locked.HasSameContent(_correctedFrom))
+        {
+            // The game still shows what the player corrected by hand.
+            return;
+        }
+
+        _correctedFrom = null;
         LastLocked = locked;
         Locked?.Invoke(this, locked);
     }
