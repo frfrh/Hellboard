@@ -49,6 +49,26 @@ public sealed class CompanionUpdateCheckerTests
     }
 
     [Theory]
+    [InlineData("0.8.0", true)]    // test build 0.8.0-test.1: the final 0.8.0 is offered
+    [InlineData("0.9.0", false)]   // test build of a later version
+    public void A_test_build_is_older_than_the_release_of_the_same_number(string current, bool offered)
+    {
+        var release = new CompanionRelease(new Version(0, 8, 0), "v0.8.0_companion", "https://github.com/frfrh/Hellboard/releases/tag/v0.8.0_companion");
+
+        CompanionUpdateChecker.IsOffered(release, Version.Parse(current), null, currentIsPreRelease: true).Should().Be(offered);
+    }
+
+    [Theory]
+    [InlineData("0.10.0", "0.10.0")]
+    [InlineData("0.10.0-test.1", "0.10.0")]
+    [InlineData("0.10.0+abc", "0.0.0")]   // ShortVersion never contains build metadata
+    [InlineData("dev", "0.0.0")]
+    public void The_build_version_ignores_a_test_suffix(string shortVersion, string expected)
+    {
+        CompanionUpdateChecker.BuildVersion(shortVersion).ToString(3).Should().Be(expected);
+    }
+
+    [Theory]
     [InlineData("0.6.0", "0.6.0")]
     [InlineData(" ", null)]
     [InlineData("0.6", null)]   // needs three parts

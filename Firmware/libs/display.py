@@ -1,10 +1,13 @@
 # SSD1306 OLED (128x64, rotated). Rows 0-15 are yellow, rows 16-63 blue (fixed by the hardware).
 # Names are only shortened here, by the display width (protocol: the PC always sends full names);
 # with scrollText = 'long' names longer than a line scroll back and forth, with 'loop' they run
-# continuously like a ticker, followed by a gap (decision F16).
+# continuously like a ticker, followed by a gap (decision F16). Plays the hellpod animation after a
+# transfer (decision F17); while it runs, it replaces the normal screen.
 
 from machine import Pin, I2C
 import time
+
+import hellpod
 
 WIDTH = 128
 HEIGHT = 64
@@ -13,6 +16,8 @@ COLUMNS = WIDTH // 8        # 8x8 font
 SCROLL_PAUSE_MS = 1500      # pause at the start and at the end of a scrolling name
 SCROLL_STEP_MS = 300        # one character per step
 LOOP_GAP = '    '           # 'loop': spaces between the end of a name and its next start
+I2C_FREQ = 400000           # the SSD1306 is specified up to 400 kHz; set explicitly, not left to the default
+ANIMATION_MS = 500
 
 
 class Display:
@@ -20,9 +25,10 @@ class Display:
         self._oled = None
         self._shown = None
         self._scroll = {}
+        self._player = hellpod.Player(time.ticks_ms, time.ticks_diff)
         try:
             from ssd1306 import SSD1306_I2C
-            i2c = I2C(1, sda=Pin(14), scl=Pin(15))
+            i2c = I2C(1, sda=Pin(14), scl=Pin(15), freq=I2C_FREQ)
             self._oled = SSD1306_I2C(WIDTH, HEIGHT, i2c, addr=0x3C)
             time.sleep_ms(100)
             self._oled.rotate(1)
@@ -71,6 +77,31 @@ class Display:
             self._shown = None
         except Exception as e:
             self.error = str(e)
+
+    def prepare(self, scene):
+        """Renders background and sprite of a hellpod scene ahead (about 0.6 s), so a transfer
+        starts the animation without delay."""
+        if self._oled is not None:
+            hellpod.SCENES[scene].prepare()
+
+    def play(self, scene):
+        """Starts a hellpod scene; replaces a running animation at once."""
+        if self._oled is not None:
+            self._player.start(hellpod.SCENES[scene], ANIMATION_MS)
+
+    def animate(self):
+        """Shows the next animation frame; False when no animation runs (any more)."""
+        if not self._player.running:
+            return False
+        try:
+            if self._player.frame(self._oled, self._oled.show):
+                return True
+        except Exception:
+            self._player.stop()         # no endless repetition of the same error
+            raise
+        finally:
+            self._shown = None          # the normal screen is redrawn afterwards
+        return False
 
     def _visible(self, y, text, scroll, now):
         text = clean(text)

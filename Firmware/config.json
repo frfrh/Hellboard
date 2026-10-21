@@ -1,5 +1,5 @@
 {
-  "$comment": "Hellboard configuration (Firmware/libs/config.py). Stratagems are referenced by their id in doc/stratagems.json. fixed: buttons 1_1 and 1_2; loadout: buttons 2_1 to 2_4; multiFunction: list of button 1_3, cycled with 1_4. modifierKey: HID usage id of the stratagem key (6 = C). menuDelayMs / keyPressMs / keyReleaseMs: key timings; screenSaverSeconds: display off after this time without activity (0 = off); scrollText: 'off', 'long' (names longer than a line scroll back and forth) or 'loop' (they run continuously). saved.json on the board ('Set as default' in the Companion) overrides this file.",
+  "$comment": "Hellboard configuration (Firmware/libs/config.py). Stratagems are referenced by their id in doc/stratagems.json. fixed: buttons 1_1 and 1_2; loadout: buttons 2_1 to 2_4; multiFunction: list of button 1_3, cycled with 1_4. modifierKey: HID usage id of the stratagem key (6 = C). menuDelayMs / keyPressMs / keyReleaseMs: key timings; screenSaverSeconds: display off after this time without activity (0 = off); scrollText: 'off', 'long' (names longer than a line scroll back and forth) or 'loop' (they run continuously); transferFeedback: 'hellpodHorizontal', 'hellpodVertical' (display animation) or 'flash' (LEDs) after a received loadout. saved.json on the board ('Set as default' in the Companion) overrides this file.",
   "fixed": {"1_1": "reinforce", "1_2": "resupply"},
   "loadout": ["grenade_launcher", "supply_pack", "gas_mortar_sentry", "eagle_500kg_bomb"],
   "multiFunction": ["sos_beacon", "eagle_rearm", "seaf_artillery"],
@@ -12,5 +12,6 @@
   "brightness": 80,
   "logLevel": "info",
   "screenSaverSeconds": 0,
-  "scrollText": "long"
+  "scrollText": "long",
+  "transferFeedback": "hellpodHorizontal"
 }

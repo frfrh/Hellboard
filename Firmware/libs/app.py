@@ -43,7 +43,9 @@ LOGO_MS = 2000              # F16: start-up logo
 MAX_MISSION = 16
 LOG_LEVELS = ('debug', 'info', 'warn', 'error')
 
-# Feedback on the board (decision F4)
+# Feedback on the board (decision F4): a received loadout or a save is confirmed by the hellpod
+# animation or a white LED flash (transferFeedback, decision F17); an error always flashes red
+ANIMATIONS = {'hellpodHorizontal': 'horizontal', 'hellpodVertical': 'vertical'}
 MESSAGE_MS = 2000           # a message replaces the separator line for this long
 FLASH_STEP_MS = 120         # LED flash: on, off, on, off
 FLASH_STEPS = 4
@@ -106,6 +108,8 @@ class App:
         self.display = Display()
         if not self.display.ready:
             log.warn('Display not available: %s' % self.display.error)
+        self.prepare_animation()
+        self.prepare_due = False
         self.buttons = {}
         for name in PINS:
             self.buttons[name] = Button(Pin(PINS[name], Pin.IN, Pin.PULL_UP))
@@ -118,8 +122,16 @@ class App:
         self.last_request = None
         self.message = None
         self.message_since = 0
-        self.flash = None           # None, 'colors' (received / saved) or 'error'
+        self.flash = None           # None, 'white' (received / saved) or 'error' (red)
         self.flash_since = 0
+
+    def prepare_animation(self):
+        scene = ANIMATIONS.get(self.config['transferFeedback'])
+        if scene:
+            try:
+                self.display.prepare(scene)
+            except MemoryError:
+                log.error('Not enough memory for the hellpod animation')
 
     def stratagem(self, button):
         if button == MULTI:
@@ -135,6 +147,9 @@ class App:
                 self.handle_buttons()
                 self.draw()
                 self.show_leds()
+                if self.prepare_due:
+                    self.prepare_due = False
+                    self.prepare_animation()
             except Exception as e:
                 log.error('Main loop: %s' % e)
                 self.hid.release_all()
@@ -203,6 +218,16 @@ class App:
             self.flash = flash
             self.flash_since = now
 
+    def confirm_transfer(self, message):
+        """F17: a loadout arrived or something was saved - hellpod animation or white LED flash."""
+        scene = ANIMATIONS.get(self.config['transferFeedback'])
+        if scene and self.display.ready:
+            self.notify(message)
+            self.flash = None               # a running LED flash of an earlier transfer ends
+            self.display.play(scene)        # replaces a running animation at once
+        else:
+            self.notify(message, 'white')
+
     def show_leds(self):
         if time.ticks_diff(self.confirm_until, time.ticks_ms()) > 0:
             self.leds.confirm(len(ORDER))
@@ -210,10 +235,8 @@ class App:
         if self.flash and time.ticks_diff(time.ticks_ms(), self.flash_since) < FLASH_STEP_MS * FLASH_STEPS:
             if time.ticks_diff(time.ticks_ms(), self.flash_since) // FLASH_STEP_MS % 2:
                 self.leds.show([None] * len(ORDER))
-            elif self.flash == 'error':
-                self.leds.show(['red'] * len(ORDER), bright=True)
             else:
-                self.leds.show([self.color(b) for b in ORDER], bright=True)
+                self.leds.show(['red' if self.flash == 'error' else 'white'] * len(ORDER), bright=True)
             return
         self.flash = None
         self.leds.show([self.color(b) for b in ORDER])
@@ -227,6 +250,8 @@ class App:
     def draw(self):
         now = time.ticks_ms()
         if time.ticks_diff(self.logo_until, now) > 0:
+            return
+        if self.display.animate():
             return
         if self.asleep(now):
             self.display.blank()
@@ -274,13 +299,13 @@ class App:
             self._save({'loadout': [self._definition(self.slots[b]) for b in LOADOUT],
                         'multiFunction': [s.to_dict() for s in self.multi]})
             log.info('Loadout saved as default')
-            self.notify('Default saved', 'colors')
+            self.confirm_transfer('Default saved')
             return {}
         if command == 'saveConfig':
             self._save(self.config)
             self.persisted = _copy(self.config)
             log.info('Configuration saved')
-            self.notify('Config saved', 'colors')
+            self.confirm_transfer('Config saved')
             return {'configSaved': True}
         if command == 'getLog':
             return {'entries': log.entries()}
@@ -309,7 +334,7 @@ class App:
         self.index = 0
         self.source = 'pc'
         log.info('Loadout received: %s' % self._describe())
-        self.notify('Loadout received', 'colors')
+        self.confirm_transfer('Loadout received')
         return {}
 
     def _set_config(self, changes):
@@ -334,6 +359,7 @@ class App:
                 ('logLevel', lambda v: v in LOG_LEVELS),
                 ('screenSaverSeconds', lambda v: isinstance(v, int) and 0 <= v <= 3600),
                 ('scrollText', lambda v: v in ('off', 'long', 'loop')),
+                ('transferFeedback', lambda v: v == 'flash' or v in ANIMATIONS),
             )
             if 'keyDelayMs' in changes:     # Companion 0.3: one delay for pressing and releasing
                 changes = dict(changes)
@@ -358,6 +384,8 @@ class App:
                 self.config['fixed'] = definitions
                 changed.append('fixed')
 
+        if 'transferFeedback' in changed:
+            self.prepare_due = True         # after the answer: preparing takes longer than the PC waits
         self.hid.configure(self.config)
         self.leds.set_brightness(self.config['brightness'])
         log.set_level(self.config['logLevel'])

@@ -1,6 +1,6 @@
 {
   "$comment": "Files installed on the Hellboard by the upload tool / firmware updater (Software/doc/spec/implementation-plan.md §6.10). source: relative to this file; target: file name on the board (all files live in the board's root directory). saved.json (written by 'Set as default') is never part of the bundle. version: firmware version, written to version.json on the board and reported by ping - increase it with every firmware change.",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "files": [
     { "source": "libs/3rd/keyboard.py", "target": "keyboard.py" },
     { "source": "libs/3rd/ssd1306.py", "target": "ssd1306.py" },
@@ -10,6 +10,7 @@
     { "source": "libs/hid.py", "target": "hid.py" },
     { "source": "libs/buttons.py", "target": "buttons.py" },
     { "source": "libs/leds.py", "target": "leds.py" },
+    { "source": "libs/hellpod.py", "target": "hellpod.py" },
     { "source": "libs/display.py", "target": "display.py" },
     { "source": "libs/logo.py", "target": "logo.py" },
     { "source": "libs/protocol.py", "target": "protocol.py" },

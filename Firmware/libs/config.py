@@ -11,7 +11,7 @@ SAVED = 'saved.json'
 
 # Keys of the configuration (setConfig / saveConfig) and of the default loadout (saveDefault).
 CONFIG_KEYS = ('fixed', 'modifierKey', 'modifierToggle', 'menuDelayMs', 'keyPressMs', 'keyReleaseMs', 'directionKeys',
-               'brightness', 'logLevel', 'screenSaverSeconds', 'scrollText')
+               'brightness', 'logLevel', 'screenSaverSeconds', 'scrollText', 'transferFeedback')
 LOADOUT_KEYS = ('loadout', 'multiFunction')
 
 DEFAULTS = {
@@ -28,6 +28,7 @@ DEFAULTS = {
     'logLevel': 'info',
     'screenSaverSeconds': 0,    # F15: 0 = off
     'scrollText': 'long',       # F16: 'off', 'long' (back and forth) or 'loop' (ticker)
+    'transferFeedback': 'hellpodHorizontal',    # F17: 'hellpodHorizontal', 'hellpodVertical' or 'flash'
 }
 
 

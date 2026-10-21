@@ -4,11 +4,15 @@
 # notices and readme, zipped to publish/HellboardCompanion-<version>-win-x64.zip, and the installer
 # publish/HellboardCompanion-<version>-setup.exe (Inno Setup 7, installer/HellboardCompanion.iss).
 #
-# Usage: .\publish.ps1 [-SkipTests] [-SkipInstaller]
+# -PreRelease test.1 builds a test version "<version>-test.1": it shows that version and is offered the
+# release of the same number by the update check.
+#
+# Usage: .\publish.ps1 [-SkipTests] [-SkipInstaller] [-PreRelease test.1]
 
 param(
     [switch]$SkipTests,
-    [switch]$SkipInstaller
+    [switch]$SkipInstaller,
+    [string]$PreRelease
 )
 
 $ErrorActionPreference = 'Stop'
@@ -50,9 +54,14 @@ try {
         Remove-Item $publishDir -Recurse -Force
     }
 
-    Invoke-Dotnet publish $hostProject -p:PublishProfile=win-x64
-
     $version = (& dotnet msbuild $hostProject -getProperty:Version).Trim()
+    $versionArgs = @()
+    if ($PreRelease) {
+        $version = "$version-$PreRelease"
+        $versionArgs = @("-p:Version=$version")
+    }
+    Invoke-Dotnet publish $hostProject -p:PublishProfile=win-x64 @versionArgs
+
     $packageDir = Join-Path $PSScriptRoot "publish/HellboardCompanion-$version-win-x64"
     $zipPath = "$packageDir.zip"
     foreach ($path in @($packageDir, $zipPath)) {

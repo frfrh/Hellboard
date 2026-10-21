@@ -35,13 +35,24 @@ public sealed partial class CompanionUpdateChecker(HttpClient http)
     public static Version CurrentVersion { get; } = VersionOf(Environment.GetEnvironmentVariable(VersionOverrideVariable));
 
     /// <summary>Whether <see cref="CurrentVersion"/> comes from the test switch.</summary>
-    public static bool IsVersionOverridden => CurrentVersion.ToString(3) != AppInfo.ShortVersion;
+    public static bool IsVersionOverridden => CurrentVersion != BuildVersion(AppInfo.ShortVersion);
+
+    /// <summary>
+    /// A test build like "0.10.0-test.1" (<c>publish.ps1 -PreRelease test.1</c>): older than the release of the same
+    /// number, so the final release is offered to it.
+    /// </summary>
+    public static bool IsPreRelease => !IsVersionOverridden && AppInfo.ShortVersion.Contains('-', StringComparison.Ordinal);
+
+    /// <summary>The running version as shown to the user ("0.10.0-test.1" for a test build).</summary>
+    public static string CurrentVersionText => IsVersionOverridden ? CurrentVersion.ToString(3) : AppInfo.ShortVersion;
 
     /// <summary>The override if it is a version like "0.6.0", the version of this build otherwise.</summary>
     public static Version VersionOf(string? versionOverride) =>
-        Version.TryParse(versionOverride, out var forced) && forced.Build >= 0 ? forced
-        : Version.TryParse(AppInfo.ShortVersion, out var version) ? version
-        : new Version(0, 0, 0);
+        Version.TryParse(versionOverride, out var forced) && forced.Build >= 0 ? forced : BuildVersion(AppInfo.ShortVersion);
+
+    /// <summary>"0.10.0" from "0.10.0" or "0.10.0-test.1"; 0.0.0 if not readable.</summary>
+    public static Version BuildVersion(string shortVersion) =>
+        Version.TryParse(shortVersion.Split('-')[0], out var version) && version.Build >= 0 ? version : new Version(0, 0, 0);
 
     /// <summary>The newest published Companion release, <c>null</c> if there is none.</summary>
     /// <exception cref="HttpRequestException">GitHub is not reachable or refused the request (e.g. rate limit).</exception>
@@ -58,11 +69,14 @@ public sealed partial class CompanionUpdateChecker(HttpClient http)
 
     /// <summary>A release newer than this build that the user did not skip, <c>null</c> otherwise.</summary>
     public async Task<CompanionRelease?> FindUpdateAsync(string? skippedVersion, CancellationToken cancellationToken = default) =>
-        await GetLatestAsync(cancellationToken) is { } latest && IsOffered(latest, CurrentVersion, skippedVersion) ? latest : null;
+        await GetLatestAsync(cancellationToken) is { } latest && IsOffered(latest, CurrentVersion, skippedVersion, IsPreRelease) ? latest : null;
 
-    /// <summary>Newer than <paramref name="current"/> and not the version the user chose to skip (a later one is offered again).</summary>
-    public static bool IsOffered(CompanionRelease release, Version current, string? skippedVersion) =>
-        release.Version > current && release.VersionText != skippedVersion;
+    /// <summary>
+    /// Newer than <paramref name="current"/> – or the same number when the running build is a test build – and not
+    /// the version the user chose to skip (a later one is offered again).
+    /// </summary>
+    public static bool IsOffered(CompanionRelease release, Version current, string? skippedVersion, bool currentIsPreRelease = false) =>
+        (release.Version > current || (currentIsPreRelease && release.Version == current)) && release.VersionText != skippedVersion;
 
     /// <summary>The newest Companion release of the answer of <see cref="ReleasesApi"/>.</summary>
     /// <exception cref="InvalidDataException">Not the expected structure.</exception>

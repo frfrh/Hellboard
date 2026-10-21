@@ -24,7 +24,7 @@ public sealed class SimulatedHellboard : IHellboardConnection
             ["1_2"] = new JsonObject { ["id"] = "resupply", ["name"] = "Resupply", ["color"] = "yellow", ["sequence"] = "DDUR" },
         },
         ["modifierKey"] = 6, ["modifierToggle"] = false, ["menuDelayMs"] = 50, ["keyPressMs"] = 50, ["keyReleaseMs"] = 50, ["directionKeys"] = "arrows", ["brightness"] = 80,
-        ["logLevel"] = "info", ["screenSaverSeconds"] = 0, ["scrollText"] = "long",
+        ["logLevel"] = "info", ["screenSaverSeconds"] = 0, ["scrollText"] = "long", ["transferFeedback"] = "hellpodHorizontal",
     };
 
     private JsonObject _savedConfig = new();

@@ -106,7 +106,7 @@ public sealed partial class CompanionApp : Application
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
             release = await new CompanionUpdateChecker(http).FindUpdateAsync(general.SkippedVersion);
             logger?.LogInformation("Update check: {Result}", release is null
-                ? $"{CompanionUpdateChecker.CurrentVersion.ToString(3)} is up to date" : $"{release.Tag} available");
+                ? $"{CompanionUpdateChecker.CurrentVersionText} is up to date" : $"{release.Tag} available");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException)
         {

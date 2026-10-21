@@ -258,7 +258,7 @@
             <TextBlock Text="Configuration" FontSize="18" FontWeight="SemiBold" />
             <TextBlock Opacity="0.7" TextWrapping="Wrap"
                        Text="Changes are sent to the Hellboard immediately and stay in its memory until it restarts. Save them on the Hellboard to keep them without the Companion." />
-            <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="10">
+            <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="10">
               <TextBlock Grid.Row="0" Text="Button 1-1" VerticalAlignment="Center" />
               <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Stratagems}" SelectedItem="{Binding FixedButton1}" MinWidth="320" MaxDropDownHeight="400" />
 
@@ -303,6 +303,12 @@
               <StackPanel Grid.Row="9" Grid.Column="1" Spacing="4">
                 <ComboBox ItemsSource="{Binding ScreenSaverChoices}" SelectedItem="{Binding ScreenSaver}" MinWidth="320" />
                 <TextBlock Text="Turns the display off when no button is pressed, against OLED burn-in. Stratagem buttons keep working; the cycle button wakes the display." Opacity="0.6" FontSize="12" TextWrapping="Wrap" MaxWidth="520" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="10" Text="Confirmation" VerticalAlignment="Top" Margin="0,6,0,0" />
+              <StackPanel Grid.Row="10" Grid.Column="1" Spacing="4">
+                <ComboBox ItemsSource="{Binding TransferFeedbackChoices}" SelectedItem="{Binding TransferFeedback}" MinWidth="320" />
+                <TextBlock Text="How the Hellboard confirms a received loadout or a saved default / configuration. Errors always flash red. The animation needs Hellboard firmware 2.2.0 or newer; older firmware ignores this setting and flashes the LEDs." Opacity="0.6" FontSize="12" TextWrapping="Wrap" MaxWidth="520" />
               </StackPanel>
             </Grid>
             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0">
