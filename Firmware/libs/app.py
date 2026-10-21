@@ -43,7 +43,9 @@ LOGO_MS = 2000              # F16: start-up logo
 MAX_MISSION = 16
 LOG_LEVELS = ('debug', 'info', 'warn', 'error')
 
-# Feedback on the board (decision F4)
+# Feedback on the board (decision F4); for a received loadout the hellpod animation can replace the
+# LED flash (transferFeedback, decision F17)
+ANIMATIONS = {'hellpodHorizontal': 'horizontal', 'hellpodVertical': 'vertical'}
 MESSAGE_MS = 2000           # a message replaces the separator line for this long
 FLASH_STEP_MS = 120         # LED flash: on, off, on, off
 FLASH_STEPS = 4
@@ -106,6 +108,8 @@ class App:
         self.display = Display()
         if not self.display.ready:
             log.warn('Display not available: %s' % self.display.error)
+        self.prepare_animation()
+        self.prepare_due = False
         self.buttons = {}
         for name in PINS:
             self.buttons[name] = Button(Pin(PINS[name], Pin.IN, Pin.PULL_UP))
@@ -121,6 +125,14 @@ class App:
         self.flash = None           # None, 'colors' (received / saved) or 'error'
         self.flash_since = 0
 
+    def prepare_animation(self):
+        scene = ANIMATIONS.get(self.config['transferFeedback'])
+        if scene:
+            try:
+                self.display.prepare(scene)
+            except MemoryError:
+                log.error('Not enough memory for the hellpod animation')
+
     def stratagem(self, button):
         if button == MULTI:
             return self.multi[self.index] if self.multi else None
@@ -135,6 +147,9 @@ class App:
                 self.handle_buttons()
                 self.draw()
                 self.show_leds()
+                if self.prepare_due:
+                    self.prepare_due = False
+                    self.prepare_animation()
             except Exception as e:
                 log.error('Main loop: %s' % e)
                 self.hid.release_all()
@@ -228,6 +243,8 @@ class App:
         now = time.ticks_ms()
         if time.ticks_diff(self.logo_until, now) > 0:
             return
+        if self.display.animate():
+            return
         if self.asleep(now):
             self.display.blank()
             return
@@ -309,7 +326,13 @@ class App:
         self.index = 0
         self.source = 'pc'
         log.info('Loadout received: %s' % self._describe())
-        self.notify('Loadout received', 'colors')
+        scene = ANIMATIONS.get(self.config['transferFeedback'])
+        if scene and self.display.ready:
+            self.notify('Loadout received')
+            self.flash = None               # a running LED flash of an earlier transfer ends
+            self.display.play(scene)        # replaces a running animation at once
+        else:
+            self.notify('Loadout received', 'colors')
         return {}
 
     def _set_config(self, changes):
@@ -334,6 +357,7 @@ class App:
                 ('logLevel', lambda v: v in LOG_LEVELS),
                 ('screenSaverSeconds', lambda v: isinstance(v, int) and 0 <= v <= 3600),
                 ('scrollText', lambda v: v in ('off', 'long', 'loop')),
+                ('transferFeedback', lambda v: v == 'flash' or v in ANIMATIONS),
             )
             if 'keyDelayMs' in changes:     # Companion 0.3: one delay for pressing and releasing
                 changes = dict(changes)
@@ -358,6 +382,8 @@ class App:
                 self.config['fixed'] = definitions
                 changed.append('fixed')
 
+        if 'transferFeedback' in changed:
+            self.prepare_due = True         # after the answer: preparing takes longer than the PC waits
         self.hid.configure(self.config)
         self.leds.set_brightness(self.config['brightness'])
         log.set_level(self.config['logLevel'])

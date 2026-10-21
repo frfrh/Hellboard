@@ -27,26 +27,49 @@ class SPI:
     def __init__(self, *a, **k): pass
     def write(self, data): spi_writes.append(bytes(data))
 class I2C:
-    def __init__(self, *a, **k): pass
+    def __init__(self, *a, **k): i2c_freq.append(k.get('freq'))
 machine.Pin, machine.SPI, machine.I2C = Pin, SPI, I2C
 sys.modules['machine'] = machine
 usb_hid = types.ModuleType('usb_hid'); usb_hid.KEYBOARD = 1
 usb_hid.report = lambda kind, report: reports.append(bytes(report))
 sys.modules['usb_hid'] = usb_hid
+framebuf = types.ModuleType('framebuf'); framebuf.MONO_HLSB, framebuf.MONO_VLSB, framebuf.GS2_HMSB = 0, 1, 2
+class FrameBuffer:          # one value per pixel, enough for the hellpod animation
+    def __init__(self, data, w, h, mode=0):
+        self.width, self.height, self.pixels = w, h, bytearray(w * h)
+    def fill(self, c): self.pixels[:] = bytes([c]) * len(self.pixels)
+    def pixel(self, x, y, c):
+        if 0 <= x < self.width and 0 <= y < self.height: self.pixels[y * self.width + x] = c
+    def fill_rect(self, x, y, w, h, c):
+        for yy in range(y, y + h):
+            for xx in range(x, x + w): self.pixel(xx, yy, c)
+    def line(self, x0, y0, x1, y1, c):
+        steps = max(abs(x1 - x0), abs(y1 - y0), 1)
+        for i in range(steps + 1): self.pixel(x0 + (x1 - x0) * i // steps, y0 + (y1 - y0) * i // steps, c)
+    def blit(self, src, x, y, key=-1):
+        for yy in range(src.height):
+            for xx in range(src.width):
+                c = src.pixels[yy * src.width + xx]
+                if c != key: self.pixel(x + xx, y + yy, c)
+framebuf.FrameBuffer = FrameBuffer
+sys.modules['framebuf'] = framebuf
 ssd = types.ModuleType('ssd1306')
-screen = []        # every shown screen: list of (y, text); 'logo' for the start-up logo
-class SSD1306_I2C:
-    def __init__(self, *a, **k): self.buf = []
+screen = []        # every shown screen: list of (y, text); 'logo' for the start-up logo; 'anim' for an animation frame
+i2c_freq = []
+class SSD1306_I2C(FrameBuffer):
+    def __init__(self, w, h, *a, **k):
+        super().__init__(None, w, h)
+        self.buf, self.buffer = [], bytearray(w * h // 8)
     def rotate(self, r): pass
-    def fill(self, c): self.buf = []
+    def fill(self, c): self.buf = []; super().fill(c)
     def text(self, t, x, y): self.buf.append((y, t))
-    def blit(self, fb, x, y): self.buf.append('logo')
-    def show(self): screen.append(list(self.buf))
+    def blit(self, fb, x, y, key=-1):
+        if key == -1: self.buf.append('logo')
+        else:
+            self.buf.append('anim'); super().blit(fb, x, y, key)
+    def show(self): screen.append(list(self.buf)); self.buf = []
 ssd.SSD1306_I2C = SSD1306_I2C
 sys.modules['ssd1306'] = ssd
-framebuf = types.ModuleType('framebuf'); framebuf.MONO_HLSB = 0
-framebuf.FrameBuffer = lambda data, w, h, mode: (len(data), w, h)
-sys.modules['framebuf'] = framebuf
 
 class FakeStdin:
     def __init__(self): self.data = ''
@@ -92,6 +115,8 @@ def request(obj):
     assert len(answers) == 1, out.getvalue()
     return answers[0]
 
+assert i2c_freq[-1] == 400000, 'the display is only specified up to 400 kHz'
+
 r = request({'v': 1, 'id': 1, 'cmd': 'ping'})
 assert r['ok'] and r['fw'] == app.FIRMWARE_VERSION and r['protocol'] == 1, r
 
@@ -101,6 +126,8 @@ assert r['config']['fixed']['1_1']['id'] == 'reinforce' and r['config']['fixed']
 assert r['stratagems'][0]['name'] == 'Grenade Launcher'
 
 mg = {'name': 'Machine Gun', 'color': 'blue', 'sequence': 'DLDUR'}
+assert a.config['transferFeedback'] == 'hellpodHorizontal', 'F17: the animation is the default'
+assert request({'v': 1, 'id': 60, 'cmd': 'setConfig', 'config': {'transferFeedback': 'flash'}})['ok']
 r = request({'v': 1, 'id': 3, 'cmd': 'setLoadout', 'stratagems': [mg, None, None, None], 'missionStratagems': [{'name': 'Hellbomb', 'color': 'yellow', 'sequence': 'DULDURDU'}]})
 assert r['ok'], r
 
@@ -123,6 +150,33 @@ assert a.separator() == app.SEPARATOR, 'no request for 15 s: PC indicator off'
 assert display.fit('StA-X3 W.A.S.P. Launcher') == 'StA-X3 W.A.S.P. '
 assert display.fit('Castellan’s') == 'Castellan?s'
 assert a.slots['2_1'].name == 'Machine Gun' and a.slots['2_2'] is None and a.multi[0].name == 'Hellbomb'
+
+# F17: the hellpod animation instead of the LED flash; a new transfer restarts it at once
+rc = request({'v': 1, 'id': 61, 'cmd': 'setConfig', 'config': {'transferFeedback': 'hellpodVertical'}})
+assert rc['ok'] and rc['config']['transferFeedback'] == 'hellpodVertical' and a.prepare_due, rc
+a.prepare_animation(); a.prepare_due = False
+assert request({'v': 1, 'id': 62, 'cmd': 'setLoadout', 'stratagems': [mg, None, None, None], 'missionStratagems': []})['ok']
+assert a.flash is None and a.separator() == 'Loadout received', 'no LED flash, the message stays'
+spi_writes.clear()
+a.show_leds()
+assert spi_writes == [] or spi_writes[-1] != bytes(b'\x92\x49\x24' * 3 * 8), 'LEDs keep their colors'
+a.draw()
+assert 'anim' in screen[-1], 'animation frame (pod sprite) instead of the names'
+started = a.display._player.started
+_t[0] += 300
+assert request({'v': 1, 'id': 63, 'cmd': 'setLoadout', 'stratagems': [mg, None, None, None], 'missionStratagems': []})['ok']
+assert a.display._player.started == _t[0] != started, 'the second transfer restarts the animation at once'
+_t[0] += display.ANIMATION_MS - 1
+a.draw()
+assert 'anim' in screen[-1], 'still running: restarted, not continued'
+_t[0] += 1
+a.draw()
+assert screen[-1][2] == (24, 'Machine Gun'), 'normal screen after the animation'
+rc = request({'v': 1, 'id': 64, 'cmd': 'setConfig', 'config': {'transferFeedback': 'fireworks'}})
+assert rc['error'] == 'invalid_config', rc
+rc = request({'v': 1, 'id': 65, 'cmd': 'setConfig', 'config': {'transferFeedback': 'hellpodHorizontal', 'unknownKey': 1}})
+assert rc['ok'], 'unknown keys are ignored (that is how older firmware handles transferFeedback)'
+assert a.config['transferFeedback'] == 'hellpodHorizontal' and 'unknownKey' not in a.config
 
 # repeated id -> same answer, not executed again
 r2 = request({'v': 1, 'id': 3, 'cmd': 'setLoadout', 'stratagems': [None, None, None, None], 'missionStratagems': []})
