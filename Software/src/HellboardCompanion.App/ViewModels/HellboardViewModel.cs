@@ -255,7 +255,7 @@ public sealed partial class HellboardViewModel : ObservableObject, IDisposable
     [
         new(Core.Hellboard.TransferFeedback.HellpodHorizontal, "Hellpod animation – horizontal"),
         new(Core.Hellboard.TransferFeedback.HellpodVertical, "Hellpod animation – vertical"),
-        new(Core.Hellboard.TransferFeedback.Flash, "Flash the LEDs"),
+        new(Core.Hellboard.TransferFeedback.Flash, "Flash the LEDs white"),
     ];
 
     public Choice<TransferFeedback> TransferFeedback

@@ -26,7 +26,7 @@ DURATIONS = (500, 700, 1000, 400)
 EXIT_MS = 2000
 MESSAGE_MS = 2000
 DEBOUNCE_MS = 30
-FLASH_STEP_MS = 120         # app.py: LED flash on, off, on, off
+FLASH_STEP_MS = 120         # app.py: white LED flash on, off, on, off
 FLASH_STEPS = 4
 LOOP_MS = 10
 I2C_FREQ = 400000         # the SSD1306 is specified up to 400 kHz; 1 MHz brought no visible gain
@@ -127,7 +127,7 @@ try:
         if flash_since is not None:
             t = time.ticks_diff(now, flash_since)
             if t < FLASH_STEP_MS * FLASH_STEPS:
-                leds.show([None] * 8 if t // FLASH_STEP_MS % 2 else colors, bright=True)
+                leds.show([None] * 8 if t // FLASH_STEP_MS % 2 else ['white'] * 8, bright=True)
             else:
                 flash_since = None
                 leds.show(colors)

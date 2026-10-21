@@ -117,7 +117,7 @@ Changes the board configuration (F7, F13). Applied immediately, kept in RAM only
 | `logLevel` | Lowest level sent as `log` event (F12) | `debug`, `info`, `warn`, `error` | `info` |
 | `screenSaverSeconds` | Display off after this time without a button press or transfer; 0 = off (F15) | 0–3600 | 0 |
 | `scrollText` | `off`: names cut after 16 characters; `long`: names longer than a line scroll back and forth; `loop`: they run continuously like a ticker, a gap between end and start (F16) | `off`, `long`, `loop` | `long` |
-| `transferFeedback` | Feedback for a received loadout (F17): a hellpod animation on the display, flying in from the right (`hellpodHorizontal`) or falling from the top (`hellpodVertical`), or the LED flash (`flash`). A new transfer restarts the animation at once. Firmware ≥ 2.2; older firmware ignores the key, as every firmware ignores unknown keys. | `hellpodHorizontal`, `hellpodVertical`, `flash` | `hellpodHorizontal` |
+| `transferFeedback` | Feedback for a received loadout, `saveDefault` and `saveConfig` (F17): a hellpod animation on the display, flying in from the right (`hellpodHorizontal`) or falling from the top (`hellpodVertical`), or all LEDs flash white (`flash`). A new transfer restarts the animation at once; errors always flash red. Firmware ≥ 2.2; older firmware ignores the key, as every firmware ignores unknown keys. | `hellpodHorizontal`, `hellpodVertical`, `flash` | `hellpodHorizontal` |
 
 `configSaved` (also in `getState`): `true` when the configuration in RAM equals the one saved in flash.
 

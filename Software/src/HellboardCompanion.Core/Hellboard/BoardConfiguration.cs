@@ -23,7 +23,7 @@ public enum ScrollText
     Loop,
 }
 
-/// <summary>Feedback on the board for a received loadout (decision F17).</summary>
+/// <summary>Confirmation on the board for a received loadout and for a save (decision F17); errors always flash red.</summary>
 public enum TransferFeedback
 {
     /// <summary>Hellpod animation on the display, flying in from the right (only the blue part of the display).</summary>
@@ -32,7 +32,7 @@ public enum TransferFeedback
     /// <summary>Hellpod animation on the display, falling from the top.</summary>
     HellpodVertical,
 
-    /// <summary>The LEDs flash twice in their colors (decision F4).</summary>
+    /// <summary>All LEDs flash white twice (decision F4).</summary>
     Flash,
 }
 

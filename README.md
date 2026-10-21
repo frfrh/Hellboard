@@ -54,6 +54,7 @@ The board is configured in [`Firmware/config.json`](Firmware/config.json); the s
 - `modifierKey`: HID usage id of the stratagem key ([scancodes](https://deskthority.net/wiki/Scancode), e.g. 6 = `C`, 224 = left Ctrl). `modifierToggle: true` presses it once to open the menu, `false` keeps it pressed while the code is entered.
 - `directionKeys`: `arrows` or `wasd`; `menuDelayMs`, `keyPressMs`, `keyReleaseMs`: wait for the stratagem menu, how long each arrow is held, pause between arrows (ms); `brightness`: LED brightness (0-255).
 - `screenSaverSeconds`: display off after this time without a button press (0 = off); `scrollText`: `off`, `long` (long names scroll back and forth) or `loop` (they run continuously).
+- `transferFeedback`: how a received loadout or a save is confirmed – `hellpodHorizontal` (default: a Hellpod animation flying in from the right), `hellpodVertical` (falling from the top) or `flash` (all LEDs flash white). Errors always flash red.
 
 Upload the changed `config.json` to the board (see Setup). With the Hellboard Companion, all of this is set on its *Hellboard* tab instead, and the loadout is taken from the game automatically.
 

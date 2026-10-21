@@ -88,9 +88,7 @@ def main():
             scene.draw(fb, t / duration)
             frames.append(fb.image())
             t += frame_ms
-        fb.fill(0)
-        frames.append(fb.image())       # back to the loadout (here: empty)
-        durations = [int(frame_ms)] * (len(frames) - 1) + [700]
+        durations = [int(frame_ms)] * (len(frames) - 1) + [900]     # the pod stuck in the ground, then again
         frames[0].save(os.path.join(out, 'hellpod-%s.gif' % name), save_all=True,
                        append_images=frames[1:], duration=durations, loop=0)
         columns = 4
@@ -99,7 +97,7 @@ def main():
         for i, frame in enumerate(frames):
             sheet.paste(frame, ((i % columns) * (WIDTH * SCALE + 8), (i // columns) * (HEIGHT * SCALE + 8)))
         sheet.save(os.path.join(out, 'hellpod-%s-frames.png' % name))
-        print(name, len(frames) - 1, 'frames')
+        print(name, len(frames), 'frames')
 
 
 if __name__ == '__main__':

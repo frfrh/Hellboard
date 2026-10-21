@@ -305,10 +305,10 @@
                 <TextBlock Text="Turns the display off when no button is pressed, against OLED burn-in. Stratagem buttons keep working; the cycle button wakes the display." Opacity="0.6" FontSize="12" TextWrapping="Wrap" MaxWidth="520" />
               </StackPanel>
 
-              <TextBlock Grid.Row="10" Text="Loadout received" VerticalAlignment="Top" Margin="0,6,0,0" />
+              <TextBlock Grid.Row="10" Text="Confirmation" VerticalAlignment="Top" Margin="0,6,0,0" />
               <StackPanel Grid.Row="10" Grid.Column="1" Spacing="4">
                 <ComboBox ItemsSource="{Binding TransferFeedbackChoices}" SelectedItem="{Binding TransferFeedback}" MinWidth="320" />
-                <TextBlock Text="How the Hellboard confirms a transferred loadout. The animation needs Hellboard firmware 2.2.0 or newer; older firmware ignores this setting and flashes the LEDs." Opacity="0.6" FontSize="12" TextWrapping="Wrap" MaxWidth="520" />
+                <TextBlock Text="How the Hellboard confirms a received loadout or a saved default / configuration. Errors always flash red. The animation needs Hellboard firmware 2.2.0 or newer; older firmware ignores this setting and flashes the LEDs." Opacity="0.6" FontSize="12" TextWrapping="Wrap" MaxWidth="520" />
               </StackPanel>
             </Grid>
             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0">
