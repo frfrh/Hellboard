@@ -131,14 +131,16 @@ assert request({'v': 1, 'id': 60, 'cmd': 'setConfig', 'config': {'transferFeedba
 r = request({'v': 1, 'id': 3, 'cmd': 'setLoadout', 'stratagems': [mg, None, None, None], 'missionStratagems': [{'name': 'Hellbomb', 'color': 'yellow', 'sequence': 'DULDURDU'}]})
 assert r['ok'], r
 
-# feedback (F4): message instead of the separator, LEDs flash in their colors, then PC indicator
+# feedback (F4, F17 'flash'): message instead of the separator, all LEDs flash white, then PC indicator
 import display
 assert a.separator() == 'Loadout received', a.separator()
 spi_writes.clear()
-a.show_leds()                       # flash phase 1: bright colors
+a.show_leds()                       # flash phase 1: bright white
 _t[0] += app.FLASH_STEP_MS
 a.show_leds()                       # phase 2: off
 assert len(spi_writes) == 2 and spi_writes[0] != spi_writes[1]
+white = bytes(spi_writes[0])
+assert len(set(white[i:i + 9] for i in range(0, len(white), 9))) == 1, 'all LEDs the same color'
 assert spi_writes[1] == bytes(b'\x92\x49\x24' * 3 * 8), 'all LEDs off in the flash pause'
 _t[0] += app.MESSAGE_MS
 assert a.separator() == '--------------PC', a.separator()
@@ -188,7 +190,8 @@ assert a.separator() == 'Transfer error' and a.flash == 'error'
 spi_writes.clear()
 a.show_leds()
 red = bytes(spi_writes[0])
-assert red != bytes(b'\x92\x49\x24' * 3 * 8)
+assert red != bytes(b'\x92\x49\x24' * 3 * 8) and red != white, 'errors flash red, also with the animation selected'
+assert not a.display._player.running
 r = request({'v': 1, 'id': 5, 'cmd': 'setLoadout', 'stratagems': [{'name': 'X', 'color': 'blue', 'sequence': 'UXD'}, None, None, None], 'missionStratagems': []})
 assert r['error'] == 'invalid_loadout', r
 
@@ -200,8 +203,10 @@ assert r['error'] == 'invalid_config', r
 
 r = request({'v': 1, 'id': 8, 'cmd': 'saveConfig'})
 assert r['ok'] and r['configSaved'] is True, r
+assert a.separator() == 'Config saved' and a.display._player.running and a.flash is None, 'F17: saves follow transferFeedback'
 r = request({'v': 1, 'id': 9, 'cmd': 'saveDefault'})
 assert r['ok'], r
+assert a.separator() == 'Default saved' and a.display._player.running and a.flash is None
 saved = json.load(open('saved.json'))
 assert saved['modifierKey'] == 224 and saved['loadout'][0]['name'] == 'Machine Gun' and saved['fixed']['1_2']['name'] == 'SOS Beacon', saved
 
