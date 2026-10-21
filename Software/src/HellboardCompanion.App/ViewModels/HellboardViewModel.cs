@@ -251,6 +251,19 @@ public sealed partial class HellboardViewModel : ObservableObject, IDisposable
         set => Change(() => _board.ScrollText = value?.Value ?? Core.Hellboard.ScrollText.Long);
     }
 
+    public IReadOnlyList<Choice<TransferFeedback>> TransferFeedbackChoices { get; } =
+    [
+        new(Core.Hellboard.TransferFeedback.HellpodHorizontal, "Hellpod animation – horizontal"),
+        new(Core.Hellboard.TransferFeedback.HellpodVertical, "Hellpod animation – vertical"),
+        new(Core.Hellboard.TransferFeedback.Flash, "Flash the LEDs"),
+    ];
+
+    public Choice<TransferFeedback> TransferFeedback
+    {
+        get => TransferFeedbackChoices.First(c => c.Value == _board.TransferFeedback);
+        set => Change(() => _board.TransferFeedback = value?.Value ?? Core.Hellboard.TransferFeedback.HellpodHorizontal);
+    }
+
     public double Brightness
     {
         get => _board.Brightness;

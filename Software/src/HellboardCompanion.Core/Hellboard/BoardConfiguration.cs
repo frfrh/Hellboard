@@ -23,6 +23,19 @@ public enum ScrollText
     Loop,
 }
 
+/// <summary>Feedback on the board for a received loadout (decision F17).</summary>
+public enum TransferFeedback
+{
+    /// <summary>Hellpod animation on the display, flying in from the right (only the blue part of the display).</summary>
+    HellpodHorizontal,
+
+    /// <summary>Hellpod animation on the display, falling from the top.</summary>
+    HellpodVertical,
+
+    /// <summary>The LEDs flash twice in their colors (decision F4).</summary>
+    Flash,
+}
+
 public enum BoardLogLevel
 {
     Debug,
@@ -70,6 +83,9 @@ public sealed class BoardOptions
 
     public ScrollText ScrollText { get; set; } = ScrollText.Long;
 
+    /// <summary>Needs firmware 2.2; older firmware ignores it and keeps flashing the LEDs.</summary>
+    public TransferFeedback TransferFeedback { get; set; } = TransferFeedback.HellpodHorizontal;
+
     public DirectionKeys DirectionKeys { get; set; } = DirectionKeys.Arrows;
 
     public int Brightness { get; set; } = 80;
@@ -100,6 +116,12 @@ public static class BoardConfiguration
         ["keyDelayMs"] = Math.Clamp(options.KeyPressMs, MinKeyDelayMs, MaxKeyDelayMs),   // firmware 2.0 knows only this one
         ["screenSaverSeconds"] = Math.Clamp(options.ScreenSaverSeconds, 0, MaxScreenSaverSeconds),
         ["scrollText"] = options.ScrollText switch { ScrollText.Long => "long", ScrollText.Loop => "loop", _ => "off" },
+        ["transferFeedback"] = options.TransferFeedback switch   // firmware before 2.2 ignores it
+        {
+            TransferFeedback.HellpodVertical => "hellpodVertical",
+            TransferFeedback.Flash => "flash",
+            _ => "hellpodHorizontal",
+        },
         ["directionKeys"] = options.DirectionKeys == DirectionKeys.Wasd ? "wasd" : "arrows",
         ["brightness"] = Math.Clamp(options.Brightness, 0, 255),
         ["logLevel"] = options.LogLevel.ToString().ToLowerInvariant(),
@@ -152,6 +174,17 @@ public static class BoardConfiguration
         if (config["scrollText"]?.GetValue<string>() is { } scroll)
         {
             options.ScrollText = scroll switch { "long" => ScrollText.Long, "loop" => ScrollText.Loop, _ => ScrollText.Off };
+        }
+
+        // firmware before 2.2 does not report it: the setting stays as it is
+        if (config["transferFeedback"]?.GetValue<string>() is { } feedback)
+        {
+            options.TransferFeedback = feedback switch
+            {
+                "hellpodVertical" => TransferFeedback.HellpodVertical,
+                "flash" => TransferFeedback.Flash,
+                _ => TransferFeedback.HellpodHorizontal,
+            };
         }
 
         if (config["directionKeys"]?.GetValue<string>() is { } directions)

@@ -55,6 +55,34 @@ public sealed class BoardConfigurationTests
         options.ScrollText.Should().Be(mode);
     }
 
+    [Theory]
+    [InlineData(TransferFeedback.HellpodHorizontal, "hellpodHorizontal")]
+    [InlineData(TransferFeedback.HellpodVertical, "hellpodVertical")]
+    [InlineData(TransferFeedback.Flash, "flash")]
+    public void Every_transfer_feedback_is_sent_and_adopted(TransferFeedback feedback, string value)
+    {
+        BoardConfiguration.ToProtocol(new BoardOptions { TransferFeedback = feedback }, Catalog)["transferFeedback"]!.GetValue<string>().Should().Be(value);
+        var options = new BoardOptions();
+        BoardConfiguration.Adopt(JsonNode.Parse($$"""{"transferFeedback": "{{value}}"}""")!.AsObject(), options, Catalog);
+        options.TransferFeedback.Should().Be(feedback);
+    }
+
+    [Fact]
+    public void The_hellpod_animation_is_the_default_feedback()
+    {
+        new BoardOptions().TransferFeedback.Should().Be(TransferFeedback.HellpodHorizontal);
+    }
+
+    [Fact]
+    public void A_board_before_firmware_2_2_keeps_the_chosen_feedback()
+    {
+        var options = new BoardOptions { TransferFeedback = TransferFeedback.HellpodVertical };
+
+        BoardConfiguration.Adopt(JsonNode.Parse("""{"scrollText": "long"}""")!.AsObject(), options, Catalog);
+
+        options.TransferFeedback.Should().Be(TransferFeedback.HellpodVertical, "firmware 2.1 does not report transferFeedback");
+    }
+
     [Fact]
     public void The_single_delay_of_a_firmware_2_0_board_sets_press_and_release()
     {
