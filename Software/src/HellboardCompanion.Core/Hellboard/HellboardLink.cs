@@ -109,6 +109,7 @@ public sealed class HellboardLink : IDisposable
     private bool _resendRequired;
     private JsonObject? _lastConfig;
     private HellboardLoadout? _boardLoadout;
+    private IReadOnlyList<string>? _previousDetected;
     private bool _configResendRequired;
     private Task? _loop;
 
@@ -168,6 +169,17 @@ public sealed class HellboardLink : IDisposable
     public void Submit(LockedLoadout loadout) => Enqueue(() =>
     {
         _lastLocked = loadout;
+        BuildPending();
+        return SendPendingAsync();
+    });
+
+    /// <summary>
+    /// The last locked loadout of a previous session: its detected mission stratagems stay in the multi-function
+    /// list after a restart of the Companion, until a loadout is locked in. The player slots of the board are not changed.
+    /// </summary>
+    public void RestorePreviousSession(LockedLoadout? previous) => Enqueue(() =>
+    {
+        _previousDetected = previous?.MissionStratagems;
         BuildPending();
         return SendPendingAsync();
     });
@@ -639,7 +651,7 @@ public sealed class HellboardLink : IDisposable
         }
         else if (_boardLoadout is not null)
         {
-            transfer = LoadoutTransferBuilder.BuildMultiFunctionOnly(_boardLoadout, _catalog, _multiFunction);
+            transfer = LoadoutTransferBuilder.BuildMultiFunctionOnly(_boardLoadout, _catalog, _multiFunction, _previousDetected);
         }
         else
         {

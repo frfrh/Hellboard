@@ -70,18 +70,26 @@ public static class LoadoutTransferBuilder
     /// <summary>
     /// Before any loadout was locked: keeps what the board currently has (<paramref name="board"/>) and only
     /// applies the multi-function list of the settings, so a changed fixed list reaches the board at once.
-    /// In <see cref="MultiFunctionMode.AutoDetect"/> nothing is known yet, so the board's list stays.
+    /// <paramref name="detected"/> are the mission stratagems detected in the last loadout of a previous session,
+    /// so they stay on the board after a restart of the Companion. Without them (<c>null</c>) nothing detected is
+    /// known: in <see cref="MultiFunctionMode.AutoDetect"/> the board's list then stays.
     /// </summary>
-    public static LoadoutTransfer BuildMultiFunctionOnly(HellboardLoadout board, StratagemCatalog catalog, MultiFunctionOptions options)
+    public static LoadoutTransfer BuildMultiFunctionOnly(HellboardLoadout board, StratagemCatalog catalog, MultiFunctionOptions options, IReadOnlyList<string>? detected = null)
     {
-        if (options.Mode == MultiFunctionMode.AutoDetect)
+        IEnumerable<string>? ids = options.Mode switch
+        {
+            MultiFunctionMode.FixedList => options.FixedList,
+            MultiFunctionMode.AutoDetect => detected,
+            _ => options.FixedList.Concat(detected ?? []),
+        };
+        if (ids is null)
         {
             return new LoadoutTransfer(board, []);
         }
 
         var notTransferable = new List<string>();
         var mission = new List<StratagemDefinition>();
-        foreach (var id in options.FixedList.Distinct(StringComparer.Ordinal).Take(MaxMissionStratagems))
+        foreach (var id in ids.Distinct(StringComparer.Ordinal).Take(MaxMissionStratagems))
         {
             if (catalog.Find(id) is { IsTransferable: true } entry)
             {

@@ -7,6 +7,7 @@ using HellboardCompanion.Core;
 using HellboardCompanion.Core.Catalog;
 using HellboardCompanion.Core.Configuration;
 using HellboardCompanion.Core.Hellboard;
+using HellboardCompanion.Core.Loadout;
 using HellboardCompanion.Core.Pipeline;
 using HellboardCompanion.Core.Platform;
 using HellboardCompanion.Platform.Windows;
@@ -58,6 +59,8 @@ internal static class Program
         services.GetRequiredService<StratagemCatalog>().Changed += (_, _) => hellboard.Rebuild();   // stratagem editor (§6.12), wiki layer
         var settings = services.GetRequiredService<SettingsStore>();
         hellboard.BoardConfigAdopted += (_, _) => settings.Save();   // first connect: keep the board's configuration (F13)
+        // After a restart the detected entries of the multi-function list stay on the board.
+        hellboard.RestorePreviousSession(services.GetRequiredService<LoadoutHistory>().ReadRecentLoadouts(1).FirstOrDefault());
         hellboard.Start();
         pipeline.Start();
         var trigger = services.GetRequiredService<ManualTriggerService>();

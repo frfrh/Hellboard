@@ -298,6 +298,18 @@ public sealed class LoadoutTrackerTests
     }
 
     [Fact]
+    public void Hand_choice_without_hand_marks_corrects_nothing()
+    {
+        Feed(LoadoutA, ReadyStatus.Prepare, 5);
+        Feed(LoadoutA, ReadyStatus.Ready, 2);
+        _tracker.LockByHand(ByHand(LoadoutA, 1, "flamethrower"));
+        _tracker.LockByHand(LockedLoadout.From(LoadoutA, _time, LockSource.ByHand));   // every slot reset by right-click
+
+        _tracker.CorrectedContent.Should().BeNull();
+        _tracker.IsCorrectedByHand(LoadoutA).Should().BeFalse();
+    }
+
+    [Fact]
     public void Back_to_recognized_without_any_recognition_does_nothing()
     {
         _tracker.LockByHand(ByHand(LoadoutA, 0, "eagle_airstrike"));

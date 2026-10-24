@@ -40,6 +40,26 @@ public enum HistoryFilter
 public sealed class UiOptions
 {
     public HistoryFilter HistoryFilter { get; set; } = HistoryFilter.Important;
+
+    /// <summary>Position and size of the main window when it was closed last; <c>null</c> = centered, default size.</summary>
+    public WindowPlacement? MainWindow { get; set; }
+}
+
+/// <summary>Where a window was: position in screen pixels, size in device-independent units (as Avalonia uses them).</summary>
+public sealed record WindowPlacement(int X, int Y, double Width, double Height, bool IsMaximized)
+{
+    /// <summary>Part of the title bar (from the top-left corner, in pixels) that must be on a screen to use the position again.</summary>
+    public static readonly PixelRect TitleBarGrip = new(8, 0, 120, 30);
+
+    /// <summary>
+    /// The window can be grabbed at its title bar on one of the screens (working areas in pixels) – false e.g.
+    /// after the monitor it was on was disconnected; it is then opened centered instead.
+    /// </summary>
+    public bool IsReachable(IEnumerable<PixelRect> workingAreas)
+    {
+        var grip = new PixelRect(X + TitleBarGrip.X, Y + TitleBarGrip.Y, TitleBarGrip.Width, TitleBarGrip.Height);
+        return Width > 0 && Height > 0 && workingAreas.Any(area => area.Intersect(grip).Area * 2 >= grip.Area);
+    }
 }
 
 /// <summary>What the close button (X) of the window does.</summary>

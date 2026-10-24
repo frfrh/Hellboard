@@ -91,6 +91,22 @@ public sealed class HellboardLinkTests
         link.Simulator.MissionStratagems!.AsArray().Should().ContainSingle();
     }
 
+    [Theory]
+    [InlineData(MultiFunctionMode.FixedListAndAutoDetect, new[] { "SEAF Artillery", "Hellbomb", "Upload Data" })]
+    [InlineData(MultiFunctionMode.AutoDetect, new[] { "Hellbomb", "Upload Data" })]
+    [InlineData(MultiFunctionMode.FixedList, new[] { "SEAF Artillery" })]
+    public async Task Detected_stratagems_of_the_previous_session_stay_in_the_multi_function_list(MultiFunctionMode mode, string[] expected)
+    {
+        var multiFunction = new MultiFunctionOptions { Mode = mode, FixedList = ["seaf_artillery"] };
+        using var link = new HellboardLink(new HellboardOptions { Mode = HellboardConnectionMode.Simulator }, multiFunction, Catalog, NullLogger<HellboardLink>.Instance);
+        link.RestorePreviousSession(LoadoutA with { MissionStratagems = ["hellbomb", "upload_data"] });
+        link.Start();
+
+        await WaitFor(() => link.Simulator?.SetLoadoutCount == 1);
+        link.Simulator!.MissionStratagems!.AsArray().Select(s => s!["name"]!.GetValue<string>()).Should().Equal(expected);
+        link.Simulator.Stratagems!.AsArray().Should().AllSatisfy(s => s.Should().BeNull(), "the slots of the board are kept");
+    }
+
     [Fact]
     public async Task First_connect_takes_over_the_configuration_of_the_board()
     {

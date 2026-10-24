@@ -76,6 +76,22 @@ public sealed class LoadoutHistoryTests : IDisposable
     }
 
     [Fact]
+    public void Recognized_content_of_a_hand_choice_round_trips()
+    {
+        _history.Append(new LockedLoadout(
+            DateTimeOffset.Now, ["eagle_airstrike", null, null, null], [], LockSource.ByHand, true, [true, false, false, false], ["hellbomb", null, "?", null]));
+        _history.Append(new LockedLoadout(DateTimeOffset.Now, ["hellbomb", null, null, null], [], LockSource.Ready, true));
+
+        var lines = File.ReadAllLines(_history.FilePath);
+        lines[0].Should().Contain("\"recognized\":[\"hellbomb\",null,\"?\",null]");
+        lines[1].Should().NotContain("recognized");
+
+        var loadouts = _history.ReadRecentLoadouts();
+        loadouts[1].Recognized.Should().Equal("hellbomb", null, "?", null);
+        loadouts[0].Recognized.Should().BeNull();
+    }
+
+    [Fact]
     public void Pending_hand_choice_is_shown_at_once_but_written_after_the_delay()
     {
         _history.AppendLater(HandChoice("eagle_airstrike"));

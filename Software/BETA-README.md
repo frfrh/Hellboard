@@ -54,7 +54,9 @@ corrects a single wrongly recognized slot. A stratagem from another slot swaps t
 
 A choice by hand stays until the game shows a different loadout: if the same wrong recognition comes
 again, your correction is kept. *Back to recognized* drops the choices by hand and sends the loadout the
-recognition locked in last.
+recognition locked in last. A **right-click** on a tile set by hand puts just that slot back to the
+stratagem the recognition had there – this also works after a restart, as the Companion stores the
+recognized stratagems with the choice by hand.
 
 ## Reporting problems
 
