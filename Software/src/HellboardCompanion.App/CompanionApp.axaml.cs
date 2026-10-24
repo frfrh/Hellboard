@@ -185,6 +185,7 @@ public sealed partial class CompanionApp : Application
         }
 
         _exiting = true;
+        _mainWindow?.StorePlacement();   // Shutdown() does not close the window properly
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.Shutdown();
@@ -212,6 +213,11 @@ public sealed partial class CompanionApp : Application
         {
             var viewModel = CreateMainWindowViewModel();
             var window = new MainWindow { DataContext = viewModel };
+            if (_services?.GetService<SettingsStore>() is { } settings)
+            {
+                window.RememberPlacement(settings, _services.GetService<ILogger<MainWindow>>());
+            }
+
             window.Closed += (_, _) =>
             {
                 viewModel.Dispose();

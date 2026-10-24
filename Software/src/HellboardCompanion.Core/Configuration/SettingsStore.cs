@@ -76,6 +76,9 @@ public sealed class SettingsStore
         Saved?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>Writes the current settings without notifying the services, for what only the window uses (e.g. its position).</summary>
+    public void SaveQuietly() => Write();
+
     public string Serialize() => JsonSerializer.Serialize(Settings, JsonOptions);
 
     private void Write()

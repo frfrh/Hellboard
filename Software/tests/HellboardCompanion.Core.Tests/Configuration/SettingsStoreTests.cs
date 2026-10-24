@@ -115,4 +115,33 @@ public sealed class SettingsStoreTests : IDisposable
 
         notified.Should().Be(1);
     }
+
+    [Fact]
+    public void Window_placement_is_saved_quietly_and_survives_a_restart()
+    {
+        var store = SettingsStore.Load(_paths);
+        var notified = 0;
+        store.Saved += (_, _) => notified++;
+        store.Settings.Ui.MainWindow.Should().BeNull();
+
+        store.Settings.Ui.MainWindow = new WindowPlacement(-1700, 120, 1280.5, 860, true);
+        store.SaveQuietly();
+
+        notified.Should().Be(0);
+        SettingsStore.Load(_paths).Settings.Ui.MainWindow.Should().Be(new WindowPlacement(-1700, 120, 1280.5, 860, true));
+    }
+
+    [Theory]
+    [InlineData(100, 100, true)]
+    [InlineData(-1700, 120, true)]        // on the monitor left of the primary one
+    [InlineData(1850, 500, true)]         // mostly outside on the right, title bar still half on the screen
+    [InlineData(-3000, 100, false)]       // that monitor is gone
+    [InlineData(100, -200, false)]        // title bar above every screen
+    [InlineData(-32000, -32000, false)]   // minimized position of Windows
+    public void Window_position_is_used_again_only_when_its_title_bar_is_on_a_screen(int x, int y, bool reachable)
+    {
+        PixelRect[] screens = [new(0, 0, 1920, 1040), new(-1920, 0, 1920, 1040)];
+
+        new WindowPlacement(x, y, 1200, 900, false).IsReachable(screens).Should().Be(reachable);
+    }
 }
