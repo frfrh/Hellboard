@@ -36,13 +36,19 @@ public enum LockSource
 /// <param name="MissionStratagems">Recognized optional mission stratagems in slot order.</param>
 /// <param name="IsComplete">No player slot was left unrecognized.</param>
 /// <param name="ByHand">Per player slot: set by hand; <c>null</c> = no slot was set by hand.</param>
+/// <param name="Recognized">
+/// Per player slot: what the recognition had there before the hand choice (stratagem id, <c>null</c> = empty,
+/// <see cref="HandChoice.NotRecognized"/> = nothing to go back to); stored with the hand choice, so a right-click
+/// can reset a slot also after a restart. <c>null</c> = no slot was set by hand, or written by version 0.10 or older.
+/// </param>
 public sealed record LockedLoadout(
     DateTimeOffset Timestamp,
     IReadOnlyList<string?> Stratagems,
     IReadOnlyList<string> MissionStratagems,
     LockSource Source,
     bool IsComplete,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<bool>? ByHand = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<bool>? ByHand = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string?>? Recognized = null)
 {
     public static LockedLoadout From(LoadoutSnapshot snapshot, DateTimeOffset timestamp, LockSource source) => new(
         timestamp,
@@ -129,11 +135,16 @@ public sealed class LoadoutTracker(int stableFrames = 3, int statusFrames = 2, i
 
     /// <summary>
     /// Locks in a loadout chosen by hand. An automatic lock-in with the content the hand choice
-    /// replaced is skipped afterwards; any other content replaces the hand choice.
+    /// replaced is skipped afterwards; any other content replaces the hand choice. A loadout without any
+    /// slot set by hand (all reset to the recognized content) corrects nothing, so the next lock-in counts again.
     /// </summary>
     public void LockByHand(LockedLoadout loadout)
     {
-        if (State == TrackerState.Selecting && Candidate is { } candidate)
+        if (loadout.ByHand is null)
+        {
+            _correctedFrom = null;
+        }
+        else if (State == TrackerState.Selecting && Candidate is { } candidate)
         {
             // Corrected on the loadout screen: Ready would lock in this candidate.
             var live = LockedLoadout.From(candidate, loadout.Timestamp, LockSource.Ready);

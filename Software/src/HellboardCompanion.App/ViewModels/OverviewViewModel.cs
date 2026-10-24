@@ -40,6 +40,7 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
     // The shown loadout, the base of a choice by hand (manual-selection plan §2).
     private IReadOnlyList<string?> _shownIds = [null, null, null, null];
     private IReadOnlyList<bool>? _shownByHand;
+    private IReadOnlyList<string?>? _shownRecognized;
     private IReadOnlyList<string> _shownMission = [];
 
     [ObservableProperty]
@@ -172,9 +173,7 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
     /// <summary>The picker for a tile; choosing in it sends the changed loadout like a recognized one.</summary>
     public StratagemPickerViewModel CreatePicker(int slot)
     {
-        var recognized = _shownByHand is { } byHand && slot < byHand.Count && byHand[slot]
-            ? _pipeline?.Tracker.CorrectedContent?.Stratagems.ElementAtOrDefault(slot)
-            : null;
+        HandChoice.TryGetRecognized(_shownByHand, _shownRecognized, slot, out var recognized);
         var recent = HandChoice.RecentlyUsed(_history?.ReadRecentLoadouts(20) ?? [], _catalog.MissionOnlyIds());
         var shown = _shownIds.Select(id => id == HandChoice.NotRecognized ? null : id).ToList();
         var picker = new StratagemPickerViewModel(_catalog, _images, shown, slot, recognized, recent);
@@ -184,8 +183,17 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
 
     private void ChooseByHand(int slot, string? id)
     {
-        var loadout = HandChoice.Apply(_shownIds, _shownByHand, _shownMission, slot, id, DateTimeOffset.Now);
+        var loadout = HandChoice.Apply(_shownIds, _shownByHand, _shownMission, slot, id, DateTimeOffset.Now, _shownRecognized);
         _pipeline?.SetByHandAsync(loadout);
+    }
+
+    /// <summary>Right-click on a tile: sets a slot chosen by hand back to what the recognition had there.</summary>
+    public void ResetToRecognized(int slot)
+    {
+        if (HandChoice.Reset(_shownIds, _shownByHand, _shownRecognized, _shownMission, slot, DateTimeOffset.Now) is { } loadout)
+        {
+            _pipeline?.SetByHandAsync(loadout);
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanGoBackToRecognized))]
@@ -250,33 +258,35 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
             Show(
                 live.PlayerSlots.Select(s => s.State == SlotState.Recognized ? s.StratagemId : s.State == SlotState.Unknown ? HandChoice.NotRecognized : null).ToList(),
                 null,
+                null,
                 live.MissionSlots.Where(s => s.State == SlotState.Recognized).Select(s => s.StratagemId!).ToList());
         }
         else if (tracker?.LastLocked is { } locked)
         {
             _shownSnapshot = live;
             LoadoutTitle = OverviewStatus.LockedTitle(locked, tracker.LastRecognized);
-            Show(locked.Stratagems, locked.ByHand, locked.MissionStratagems);
+            Show(locked.Stratagems, locked.ByHand, locked.Recognized, locked.MissionStratagems);
         }
         else if (_previousSession is { } previous)
         {
             _shownSnapshot = null;
             LoadoutTitle = $"Last locked loadout from a previous session ({previous.Timestamp.LocalDateTime:g})";
-            Show(previous.Stratagems, previous.ByHand, previous.MissionStratagems);
+            Show(previous.Stratagems, previous.ByHand, previous.Recognized, previous.MissionStratagems);
         }
         else
         {
             _shownSnapshot = null;
-            Show([null, null, null, null], null, []);
+            Show([null, null, null, null], null, null, []);
         }
     }
 
-    private void Show(IReadOnlyList<string?> ids, IReadOnlyList<bool>? byHand, IReadOnlyList<string> mission)
+    private void Show(IReadOnlyList<string?> ids, IReadOnlyList<bool>? byHand, IReadOnlyList<string?>? recognized, IReadOnlyList<string> mission)
     {
         _shownIds = ids;
         _shownByHand = byHand;
+        _shownRecognized = recognized;
         _shownMission = mission;
-        SetTiles(ids, byHand);
+        SetTiles(ids, byHand, recognized);
     }
 
     private void RefreshHellboard()
@@ -313,7 +323,7 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
         MultiFunctionTitle = tiles.Count == 0 ? "Multi-function button – empty" : "Multi-function button";
     }
 
-    private void SetTiles(IEnumerable<string?> ids, IReadOnlyList<bool>? byHand = null)
+    private void SetTiles(IEnumerable<string?> ids, IReadOnlyList<bool>? byHand = null, IReadOnlyList<string?>? recognized = null)
     {
         var index = 0;
         foreach (var id in ids.Take(4))
@@ -328,7 +338,10 @@ public sealed partial class OverviewViewModel : ObservableObject, IDisposable
                     _images.Get(id),
                     _catalog.Find(id)?.IsTransferable == false ? "no input sequence yet" : null),
             };
-            var tile = new LoadoutTileViewModel(index, content, byHand is not null && index < byHand.Count && byHand[index], ShowHandHint && id is null);
+            var resetTo = HandChoice.TryGetRecognized(byHand, recognized, index, out var recognizedId)
+                ? recognizedId is null ? "empty" : _catalog.Find(recognizedId)?.Name ?? recognizedId
+                : null;
+            var tile = new LoadoutTileViewModel(index, content, byHand is not null && index < byHand.Count && byHand[index], ShowHandHint && id is null, resetTo);
 
             if (!Equals(Stratagems[index], tile))
             {

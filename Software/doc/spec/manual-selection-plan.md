@@ -3,7 +3,7 @@
 | | |
 |-|-|
 | Status | **Implemented without section 5** (branch `feature/manual-selection`); the multi-function list by hand is a later step |
-| Date | 2026-10-18, decisions 2026-10-20 |
+| Date | 2026-10-18, decisions 2026-10-20, right-click reset 2026-10-24 |
 | Scope | Overview of Hellboard Companion: choosing the four stratagems (and the detected part of the multi-function list) by clicking the tiles, sent to the Hellboard like a recognized loadout |
 
 Goal: the Hellboard stays usable when the recognition does not work – e.g. on a Windows 10 PC where the game window is not found, with an unusual resolution or HUD scale, or for a brand-new stratagem whose icon is not known yet. The player clicks a tile in the overview, picks the stratagem, and the Hellboard gets it. The same also corrects a single wrongly recognized slot. Nothing in the recognition itself changes.
@@ -43,11 +43,20 @@ Rules in the grid:
 
 Data: a new `StratagemPickerViewModel` (search text, active category, recently used, filtered items as `StratagemTileViewModel`) shared by the tile picker and the multi-function picker; the filter logic is a pure function so it can be unit-tested without Avalonia (like `MultiFunctionGroups.Split`).
 
+### 1.3 Right-click: back to the recognized stratagem (2026-10-24)
+
+- A **right-click** on a tile set by hand puts that one slot back to what the recognition had there; the other hand choices stay. It also works with the keyboard context key and a long press (Avalonia `ContextRequested`). A tile with nothing to go back to (not set by hand, the slot was "not recognized", or a hand choice of version 0.10 or older) ignores the right-click.
+- The tooltip of such a tile says "Right-click: back to the recognized one (<name>)".
+- What the recognition had is **stored with the hand choice** in `loadouts.jsonl` (`LockedLoadout.Recognized`, section 2), so the reset also works for the loadout of a previous session after a restart – the in-memory `Tracker.LastRecognized` behind "Back to recognized" is gone then.
+- A swap is undone as well (the slot that got the other stratagem gets its recognized one back). Choosing the recognized stratagem in the picker also clears the hand mark.
+- When the last hand mark goes away and the result equals the last recognized lock-in of this session, it counts as "Back to recognized" (the pending history entry is dropped, the recognized loadout is locked in again). Otherwise the result is sent as a hand choice without marks, which corrects nothing: the next automatic lock-in counts again (rule 3.2).
+
 ## 2. Data model
 
 - New `LockSource.ByHand` (JSON `"byHand"`), described as "set by hand" in the overview and "Set by hand" in the history.
 - A hand choice always produces a **complete `LockedLoadout`**: the shown loadout (live snapshot, last lock-in or previous session – the same base the overview shows) with the one slot replaced. `MissionStratagems` are taken over from the base. `IsComplete` is true unless a slot still is "not recognized" (`?`), which is then kept as `null`.
 - To be able to show which tiles were set by hand and to support "Back to recognized", the record gets an optional `IReadOnlyList<bool>? ByHand` (per player slot; `null` = none). Older Companion versions ignore the unknown property; lines with `"source": "byHand"` are skipped by older versions when they read the history (damaged-line handling), which is acceptable.
+- Since 2026-10-24 also `IReadOnlyList<string?>? Recognized` (JSON `"recognized"`): per player slot what the recognition had before the hand choice – stratagem id, `null` = empty, `"?"` = nothing to go back to. Derived from the shown loadout (a slot not set by hand counts with what is shown, a slot set by hand keeps its stored value), written with the hand choice and left out when no slot is set by hand (section 1.3).
 
 ## 3. Tracker, pipeline and the next automatic recognition
 
@@ -130,3 +139,4 @@ In total roughly the size of the UI polish round. The multi-function editing can
 7. **Hint line**: visible while the game is not found or nothing was recognized in this session; the README gets a short section "If the recognition does not work".
 8. **Teaching the recognition** from a hand correction: a possible follow-up, not part of this plan.
 9. **German names in the search**: later, if at all (then as an optional `nameDe` in `stratagems.json`).
+10. **Right-click reset** (2026-10-24): the recognized stratagem of every slot is stored with the hand choice; a right-click on a tile set by hand puts the slot back to it (section 1.3).

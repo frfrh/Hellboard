@@ -22,7 +22,7 @@
   <Window.Resources>
     <!-- Large stratagem tile (overview); a click opens the picker (manual-selection plan §1.1) -->
     <DataTemplate x:Key="LargeTile" x:DataType="vm:LoadoutTileViewModel">
-      <Button Classes="loadoutTile" ToolTip.Tip="Choose the stratagem by hand">
+      <Button Classes="loadoutTile" ToolTip.Tip="{Binding ToolTip}">
         <Panel>
           <StackPanel Spacing="8" HorizontalAlignment="Center">
             <Panel Width="88" Height="88">
@@ -158,7 +158,7 @@
                       ToolTip.Tip="Drops the stratagems set by hand and sends the loadout the recognition locked in last." />
             </StackPanel>
             <ItemsControl ItemsSource="{Binding Stratagems}" ItemTemplate="{StaticResource LargeTile}" ItemsPanel="{StaticResource Horizontal}"
-                          Button.Click="OnLoadoutTileClicked" />
+                          Button.Click="OnLoadoutTileClicked" ContextRequested="OnLoadoutTileContextRequested" />
             <TextBlock Text="Recognition not available? Click a tile to choose the stratagem by hand." IsVisible="{Binding ShowHandHint}"
                        Opacity="0.5" FontSize="12" TextWrapping="Wrap" />
           </StackPanel>

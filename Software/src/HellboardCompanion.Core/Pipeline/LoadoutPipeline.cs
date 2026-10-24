@@ -120,10 +120,18 @@ public sealed class LoadoutPipeline : IDisposable
     /// <summary>
     /// Locks in a loadout chosen by hand in the overview (manual-selection plan §3). Works without the
     /// game and in every recognition mode; history, problem entries and the transfer run as for a recognized loadout.
+    /// A loadout without any slot set by hand (every slot reset by right-click) that equals the last recognized one
+    /// counts as "Back to recognized".
     /// </summary>
     public Task SetByHandAsync(LockedLoadout loadout) =>
         Enqueue(_ =>
         {
+            if (loadout.ByHand is null && Tracker.LastLocked?.Source == LockSource.ByHand && loadout.HasSameContent(Tracker.LastRecognized))
+            {
+                _history.DiscardPending();
+                return Tracker.RevertToRecognized();
+            }
+
             Tracker.LockByHand(loadout);
             return true;
         });

@@ -19,13 +19,20 @@ public sealed record StratagemTileViewModel(string? Id, string Name, Bitmap? Ico
 }
 
 /// <summary>
-/// One of the four large tiles of the overview; a click chooses the stratagem by hand
-/// (manual-selection plan §1.1).
+/// One of the four large tiles of the overview; a click chooses the stratagem by hand, a right-click
+/// sets a slot chosen by hand back to the recognized stratagem (manual-selection plan §1.1, §1.3).
 /// </summary>
 /// <param name="IsByHand">The stratagem was set by hand.</param>
 /// <param name="InvitesChoice">Empty while nothing was recognized: shows "+" and "choose …".</param>
-public sealed record LoadoutTileViewModel(int Slot, StratagemTileViewModel Tile, bool IsByHand = false, bool InvitesChoice = false)
+/// <param name="ResetTo">Name of what the recognition had in this slot ("empty" for an empty slot); <c>null</c> = nothing to go back to.</param>
+public sealed record LoadoutTileViewModel(int Slot, StratagemTileViewModel Tile, bool IsByHand = false, bool InvitesChoice = false, string? ResetTo = null)
 {
+    public bool CanReset => ResetTo is not null;
+
+    public string ToolTip => CanReset
+        ? $"Click: choose the stratagem by hand{Environment.NewLine}Right-click: back to the recognized one ({ResetTo})"
+        : "Choose the stratagem by hand";
+
     public string Name => InvitesChoice && Tile.Id is null ? "choose …" : Tile.Name;
 
     public Bitmap? Icon => Tile.Icon;

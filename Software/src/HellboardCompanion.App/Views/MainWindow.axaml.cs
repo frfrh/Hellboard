@@ -59,6 +59,16 @@ public sealed partial class MainWindow : Window
         e.Handled = true;
     }
 
+    /// <summary>Right-click on a large tile: back to the recognized stratagem (manual-selection plan §1.3).</summary>
+    private void OnLoadoutTileContextRequested(object? sender, Avalonia.Input.ContextRequestedEventArgs e)
+    {
+        if ((e.Source as Avalonia.StyledElement)?.DataContext is LoadoutTileViewModel { CanReset: true } tile && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.Overview.ResetToRecognized(tile.Slot);
+            e.Handled = true;
+        }
+    }
+
     private async void OnCopyVersionClicked(object? sender, RoutedEventArgs e)
     {
         if (DataContext is MainWindowViewModel viewModel && Clipboard is { } clipboard)
